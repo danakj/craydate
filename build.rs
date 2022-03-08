@@ -10,10 +10,12 @@ fn main() {
         .join("buildsupport")
         .join("setup.c");
 
+    /*
     let clang = env::var("LIBCLANG_PATH").expect("missing LIBCLANG_PATH envvar");
+    env::set_var("CC", PathBuf::from(clang).join("clang"));
+    */
 
     env::set_var("CFLAGS", "-DTARGET_PLAYDATE=1 -DTARGET_EXTENSION=1");
-    env::set_var("CC", PathBuf::from(clang).join("clang"));
 
     cc::Build::new()
         .file(setup_c)
