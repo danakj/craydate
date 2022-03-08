@@ -23,6 +23,8 @@ fn main() {
     let builder = builder.clang_arg("-DPLAYDATE_SIMULATOR=1");
 
     let bindings = builder
+        .use_core()
+        .ctypes_prefix("ctypes")
         .clang_arg("--target=x86_64-pc-windows-msvc")
         .clang_arg(format!("-I{}", c_api.to_str().unwrap()))
         .clang_arg("-DTARGET_EXTENSION=1")

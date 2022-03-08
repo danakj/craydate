@@ -7,7 +7,7 @@ pub extern "C" fn eventHandler(
     api: *mut PlaydateAPI,
     event: PDSystemEvent,
     _arg: u32,
-) -> ::std::os::raw::c_int {
+) -> i32 {
     let cstr = CString::new("hello world maybe").unwrap();
     unsafe {
         let system = *(*api).system;
