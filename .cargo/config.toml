@@ -1,5 +1,5 @@
 [build]
-target = "arm-unknown-linux-musleabi"
+target = "armv7a-none-eabi"
 
 # Nice idea, but musleabi doesn't support linking. It just makes a staticlib.
 #[target.arm-unknown-linux-musleabi]
