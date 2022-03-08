@@ -13,3 +13,8 @@ playdate-sys = { path = "playdate-sys" }
 
 [build-dependencies]
 cc = "1"
+
+[features]
+# One day this can be not the default, once there is a binary choosing features.
+default = ["simulator"]
+simulator = ["playdate-sys/simulator"]

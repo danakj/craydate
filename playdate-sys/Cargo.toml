@@ -7,3 +7,6 @@ edition = "2021"
 
 [build-dependencies]
 bindgen = "*"
+
+[features]
+simulator = []
