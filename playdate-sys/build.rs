@@ -15,17 +15,19 @@ fn main() {
         env::var("PLAYDATE_SDK_PATH").expect("Set PLAYDATE_SDK_PATH to the correct path");
     let c_api = PathBuf::from(playdate_sdk).join("C_API");
 
-    #[cfg(feature = "simulator")]
-    let simulator_arg = "-DPLAYDATE_SIMULATOR=1";
-    #[cfg(not(feature = "simulator"))]
-    let simulator_arg = "";
-
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
     // the resulting bindings.
-    let bindings = bindgen::Builder::default()
+    let builder = bindgen::Builder::default();
+    // It's not clear if we use TARGET_SIMULATOR or PLAYDATE_SIMULATOR. Half the examples
+    // use one and half use the other.
+    #[cfg(feature = "simulator")]
+    let builder = builder.clang_arg("-DTARGET_SIMULATOR=1");
+    #[cfg(feature = "simulator")]
+    let builder = builder.clang_arg("-DPLAYDATE_SIMULATOR=1");
+
+    let bindings = builder
         .clang_arg(format!("-I{}", c_api.to_str().unwrap()))
-        .clang_arg(simulator_arg)
         .clang_arg("-DTARGET_EXTENSION=1")
         .clang_arg("-v")
         .allowlist_function("eventHandler")
