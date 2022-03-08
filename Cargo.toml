@@ -12,4 +12,4 @@ crate-type = ["dylib"]
 playdate-sys = { path = "playdate-sys" }
 
 [build-dependencies]
-cc = "1.0"
+cc = "1"
