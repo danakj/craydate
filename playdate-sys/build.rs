@@ -11,7 +11,8 @@ fn main() {
     // Tell cargo to invalidate the built crate whenever the wrapper changes
     println!("cargo:rerun-if-changed=wrapper.h");
 
-    let playdate_sdk = env::var("PLAYDATE_SDK_PATH").unwrap();
+    let playdate_sdk =
+        env::var("PLAYDATE_SDK_PATH").expect("Set PLAYDATE_SDK_PATH to the correct path");
     let c_api = PathBuf::from(playdate_sdk).join("C_API");
 
     // The bindgen::Builder is the main entry point
@@ -43,7 +44,6 @@ fn main() {
         // TODO: maybe do something with these if needed
         .opaque_type("playdate_json")
         .opaque_type("playdate_lua")
-
         // The input header we would like to generate
         // bindings for.
         .header("wrapper.h")
