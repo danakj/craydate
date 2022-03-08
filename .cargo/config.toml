@@ -1,2 +1,10 @@
 [build]
-target = "arm-linux-androideabi"
+target = "arm-unknown-linux-musleabi"
+
+# Nice idea, but musleabi doesn't support linking. It just makes a staticlib.
+#[target.arm-unknown-linux-musleabi]
+#rustflags = [
+#  "-Clink-arg=-fPIC",
+#  "-C",
+#  "linker-flavor=ld.lld",
+#]
