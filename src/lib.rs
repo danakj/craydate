@@ -1,10 +1,18 @@
 #![deny(clippy::all)]
+#![feature(core_intrinsics)]
 #![no_std]
 
 mod cstring;
 
 use playdate_sys::PDSystemEvent;
 use playdate_sys::PlaydateAPI;
+
+
+#[panic_handler]
+fn panic_handler(_info: &core::panic::PanicInfo) -> ! {
+    // TODO: Dump a log somewhere?
+    core::intrinsics::abort()
+}
 
 #[no_mangle]
 pub extern "C" fn eventHandler(api: *mut PlaydateAPI, event: PDSystemEvent, _arg: u32) -> i32 {
