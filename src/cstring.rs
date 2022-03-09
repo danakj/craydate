@@ -10,13 +10,10 @@ impl CString {
         let bytes = s.as_bytes();
 
         // TODO: Use memchr()
-        for i in 0..bytes.len() - 1 {
+        for i in 0..bytes.len() {
             if bytes[i] == 0 {
                 return None;
             }
-        }
-        if bytes[bytes.len() - 1] != 0 {
-            return None;
         }
 
         let v = unsafe {
@@ -63,7 +60,7 @@ impl CStr {
     pub unsafe fn from_bytes_with_nul_unchecked(s: &[u8]) -> &CStr {
         // SAFETY: Safe to cast because Cstr is repr(transparent) so they have the same byte
         // representation.
-        unsafe { &*(s as *const [u8] as *const CStr) }
+        &*(s as *const [u8] as *const CStr)
     }
 
     pub fn as_ptr(&self) -> *const u8 {
