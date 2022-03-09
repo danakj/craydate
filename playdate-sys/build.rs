@@ -27,6 +27,7 @@ fn main() {
         .ctypes_prefix("ctypes")
         .clang_arg("--target=x86_64-pc-windows-msvc")
         .clang_arg(format!("-I{}", c_api.to_str().unwrap()))
+        .clang_arg("-DTARGET_PLAYDATE=1")
         .clang_arg("-DTARGET_EXTENSION=1")
         .clang_arg("-v")
         .allowlist_function("eventHandler")
