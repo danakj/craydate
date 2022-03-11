@@ -34,18 +34,20 @@
             }
         },
         {
-            "type": "process",
-            "label": "simulator-win: cargo watch",
-            "group": "build",
-            "command": "cargo",
+            "type": "shell",
+            "label": "simulator-win: run simulator",
+            "command": "",
             "args": [
-                "check",
+                "${env:PLAYDATE_SDK_PATH}\\bin\\PlaydateSimulator.exe",
+                "C:\\Users\\Admin\\Documents\\helloworld.pdx"
             ],
-            "options": {
-                "cwd": "simulator-win",
-            },
-            "problemMatcher": "$rustc-watch",
-            "isBackground": true
-        }
+            "dependsOn": [
+                "simulator-win: cargo build"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        },
     ]
 }
