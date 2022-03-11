@@ -46,10 +46,6 @@
             "type": "process",
             "label": "simulator-win: run simulator (dev)",
             "command": "simulator-win\\target\\x86_64-pc-windows-msvc\\debug\\run_simulator.exe",
-            "args": [
-                "${env:PLAYDATE_SDK_PATH}\\bin\\PlaydateSimulator.exe",
-                "C:\\Users\\Admin\\Documents\\helloworld.pdx"
-            ],
             "dependsOn": [
                 "simulator-win: make pdx (dev)"
             ],
