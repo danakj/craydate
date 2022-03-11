@@ -14,23 +14,36 @@ use playdate_sys::{PDSystemEvent, PlaydateAPI};
 #[derive(Debug)]
 struct UpdateCallbackData {
     system: &'static playdate_sys::playdate_sys,
+    frame: u64,
+}
+impl UpdateCallbackData {
+    pub fn new(system: &'static playdate_sys::playdate_sys) -> Self {
+        Self { system, frame: 0 }
+    }
 }
 
 /// The main event loop for the Playdate game.
 ///
 /// # Return
 ///
-/// Return a non-zero value if the screen should be updated. Otherwise, 0 to indicate
-/// there is nothing to draw.
+/// Return a non-zero value to continue the execution of the program, or return 0 to pause the simulator.
+///
+/// The SDK (claims)[https://sdk.play.date/1.9.1/Inside%20Playdate%20with%20C.html#f-system.setUpdateCallback]
+/// that this function should return a non-zero value if the screen should be updated, and otherwise return 0
+/// to indicate there is nothing to draw.
 extern "C" fn update_callback(data: *mut c_void) -> i32 {
     // SAFETY: This function is the only place allowed to make a `&mut` reference from the `data`
     // pointer. We can  ensure that by never passing the pointer anywhere else.
     let data = unsafe { &mut *(data as *mut UpdateCallbackData) };
 
-    let cstr = unsafe { CStr::from_bytes_with_nul_unchecked(b"hello world maybe\0") };
-    unsafe { data.system.logToConsole.unwrap()(cstr.as_ptr()) };
+    if data.frame == 0 {
+        let cstr = unsafe { CStr::from_bytes_with_nul_unchecked(b"hello world maybe\0") };
+        unsafe { data.system.logToConsole.unwrap()(cstr.as_ptr()) };
+    }
 
-    0
+    data.frame += 1;
+
+    1  // Continue running the program.
 }
 
 /// Set up the execution environment for the Playdate device.
@@ -52,7 +65,7 @@ pub extern "C" fn eventHandler(api: *mut PlaydateAPI, event: PDSystemEvent, _arg
         GLOBAL_ALLOCATOR.set_system_ptr(system);
 
         // We will leak this UpdateCallbackData pointer so it has 'static lifetime.
-        let data_ptr = Box::into_raw(Box::new(UpdateCallbackData { system })) as *mut c_void;
+        let data_ptr = Box::into_raw(Box::new(UpdateCallbackData::new(system))) as *mut c_void;
         unsafe { system.setUpdateCallback.unwrap()(Some(update_callback), data_ptr) };
     }
 
