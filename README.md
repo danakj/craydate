@@ -12,5 +12,8 @@
    `simulator-win/.cargo/config.toml`.
 1. Add a task to build and check it in `.vscode/tasks.json`. Then Ctrl+Shift+B will give you
    the option to build it.
+1. Also add tasks run build and run the make_pdx and run_simulator bins, if they apply, in
+   `.vscode/tasks.json`. Then Ctrl+Shift+B will give you the option to run the project
+   in the simulator found at `$PLAYDATE_SDK_PATH`.
 1. Add it to `"rust-analyzer.linkedProjects"` in `.vscode/settings.json`. Then rust-analyzer will
    index it.

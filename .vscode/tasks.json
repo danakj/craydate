@@ -5,7 +5,7 @@
     "tasks": [
         {
             "type": "process",
-            "label": "simulator-win: cargo build",
+            "label": "simulator-win: cargo build (dev)",
             "command": "cargo",
             "args": [
                 "build"
@@ -34,15 +34,40 @@
             }
         },
         {
-            "type": "shell",
-            "label": "simulator-win: run simulator",
-            "command": "",
+            "type": "process",
+            "label": "simulator-win: cargo build bins (dev)",
+            "command": "cargo",
+            "args": [
+                "build",
+                "--bins"
+            ],
+            "options": {
+                "cwd": "simulator-win",
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        },
+        {
+            "type": "process",
+            "label": "simulator-win: make pdx (dev)",
+            "command": "simulator-win\\target\\x86_64-pc-windows-msvc\\debug\\make_pdx.exe",
+            "dependsOn": [
+                "simulator-win: cargo build bins (dev)"
+            ],
+            "group": "build",
+        },
+        {
+            "type": "process",
+            "label": "simulator-win: run simulator (dev)",
+            "command": "simulator-win\\target\\x86_64-pc-windows-msvc\\debug\\run_simulator.exe",
             "args": [
                 "${env:PLAYDATE_SDK_PATH}\\bin\\PlaydateSimulator.exe",
                 "C:\\Users\\Admin\\Documents\\helloworld.pdx"
             ],
             "dependsOn": [
-                "simulator-win: cargo build"
+                "simulator-win: make pdx (dev)"
             ],
             "group": "build",
             "presentation": {

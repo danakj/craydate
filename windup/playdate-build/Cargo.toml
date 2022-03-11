@@ -1,3 +1,4 @@
 [package]
 name = "playdate-build"
 version = "0.1.0"
+description = "Tools for building a pdx from the compiled game library."
