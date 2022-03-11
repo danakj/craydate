@@ -87,6 +87,6 @@ pub fn run_simulator(_pdx_source_dir: &str, pdx_out_dir: &str, pdx_name: &str) -
     // This directory, in `pdx_out_dir`, was created by `pdc`, the pdx compiler.
     let pdx = pdx_out_dir.join(format!("{}.pdx", pdx_name));
     let simulator_exe = sdk_path.join("bin").join(crate::consts::SIMULATOR_EXE);
-    Command::new(&simulator_exe).arg(pdx).spawn()?;
+    Command::new(&simulator_exe).arg(pdx).current_dir(sdk_path).spawn()?;
     Ok(())
 }
