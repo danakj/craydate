@@ -64,14 +64,18 @@ impl Allocator {
         }
     }
 
-    pub fn set_system_ptr(&self, sys: *mut playdate_sys::playdate_sys) {
-        self.sys.store(sys, Ordering::Release);
+    pub fn set_system_ptr(&self, sys: &'static playdate_sys::playdate_sys) {
+        self.sys.store(
+            sys as *const playdate_sys::playdate_sys as *mut playdate_sys::playdate_sys,
+            Ordering::Release,
+        );
     }
 
-    fn alloc_fn(&self, realloc: *mut u8, size: usize) -> *mut u8 {
-        let sys = self.sys.load(Ordering::Acquire);
-        let f = unsafe { (*sys).realloc }.unwrap();
-        unsafe { f(realloc as *mut c_void, size as u64) as *mut u8 }
+    fn alloc_fn(&self, ptr: *mut u8, size: usize) -> *mut u8 {
+        let sys_ptr = self.sys.load(Ordering::Acquire);
+        let sys = unsafe { &*sys_ptr };
+        let realloc = sys.realloc.unwrap();
+        unsafe { realloc(ptr as *mut c_void, size as u64) as *mut u8 }
     }
 
     fn write_shift_behind_ptr(ptr: *mut u8, shift: usize) {

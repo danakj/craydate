@@ -5,18 +5,31 @@ use alloc::boxed::Box;
 use core::ffi::c_void;
 use playdate_sys::{PDSystemEvent, PlaydateAPI};
 
-#[derive(Debug, Default)]
+/// The data passed to update_callback().
+///
+/// # Safety
+///
+/// The update_callback() function will construct a mutable reference from
+/// a `*mut` pointer. No other place may do so then.
+#[derive(Debug)]
 struct UpdateCallbackData {
-    _i: i32,
+    system: &'static playdate_sys::playdate_sys,
 }
 
 /// The main event loop for the Playdate game.
-/// 
+///
 /// # Return
-/// 
+///
 /// Return a non-zero value if the screen should be updated. Otherwise, 0 to indicate
 /// there is nothing to draw.
-extern "C" fn update_callback(_data: *mut c_void) -> i32 {
+extern "C" fn update_callback(data: *mut c_void) -> i32 {
+    // SAFETY: This function is the only place allowed to make a `&mut` reference from the `data`
+    // pointer. We can  ensure that by never passing the pointer anywhere else.
+    let data = unsafe { &mut *(data as *mut UpdateCallbackData) };
+
+    let cstr = unsafe { CStr::from_bytes_with_nul_unchecked(b"hello world maybe\0") };
+    unsafe { data.system.logToConsole.unwrap()(cstr.as_ptr()) };
+
     0
 }
 
@@ -28,17 +41,18 @@ extern "C" fn update_callback(_data: *mut c_void) -> i32 {
 /// the event `kEventInitLua` and then attempts to execute a lua program.
 #[no_mangle]
 pub extern "C" fn eventHandler(api: *mut PlaydateAPI, event: PDSystemEvent, _arg: u32) -> i32 {
-    let system = unsafe { *(*api).system };
-    if event == PDSystemEvent::kEventInit {
-        unsafe {
-            GLOBAL_ALLOCATOR.set_system_ptr((*api).system as *mut playdate_sys::playdate_sys)
-        };
+    // SAFETY: We have made a shared reference to the playdate_sys. Only refer to the object through
+    // the reference hereafter. We can ensure that by never passing a pointer to `system` or any
+    // pointer or reference to `api` elsewhere.
+    let system = unsafe { &*(*api).system };
 
-        let cstr = unsafe { CStr::from_bytes_with_nul_unchecked(b"hello world maybe\0") };
-        unsafe { system.logToConsole.unwrap()(cstr.as_ptr()) };
+    if event == PDSystemEvent::kEventInit {
+        // SAFETY: Do not allocate before the GLOBAL_ALLOCATOR is set up here, or we will crash
+        // in the allocator.
+        GLOBAL_ALLOCATOR.set_system_ptr(system);
 
         // We will leak this UpdateCallbackData pointer so it has 'static lifetime.
-        let data_ptr = Box::into_raw(Box::new(UpdateCallbackData::default())) as *mut c_void;
+        let data_ptr = Box::into_raw(Box::new(UpdateCallbackData { system })) as *mut c_void;
         unsafe { system.setUpdateCallback.unwrap()(Some(update_callback), data_ptr) };
     }
 
