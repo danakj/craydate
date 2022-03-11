@@ -68,3 +68,8 @@ type EventHandlerFn = extern "C" fn(*mut PlaydateAPI, PDSystemEvent, u32) -> i32
 #[used]
 #[link_section = ".capi_handler"]
 static EVENT_HANDLER: EventHandlerFn = eventHandler;
+
+#[no_mangle]
+pub extern "C" fn hello() {
+    eventHandler(core::ptr::null_mut(), playdate_sys::PDSystemEvent(0), 1);
+}

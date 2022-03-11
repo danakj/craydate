@@ -5,15 +5,15 @@ members = [
 ]
 
 [package]
+edition = "2021"
 name = "simulator-win"
 version = "0.1.0"
-edition = "2021"
 
 [lib]
 crate-type = ["dylib"]
 
 [dependencies]
-windup = {path= "windup"}
+windup = {path = "./windup"}
 
 [profile.dev]
 panic = "abort"
