@@ -23,14 +23,12 @@ impl UpdateCallbackData {
 }
 
 /// The main event loop for the Playdate game.
-///
-/// # Return
-///
-/// Return a non-zero value to continue the execution of the program, or return 0 to pause the simulator.
-///
-/// The SDK (claims)[https://sdk.play.date/1.9.1/Inside%20Playdate%20with%20C.html#f-system.setUpdateCallback]
-/// that this function should return a non-zero value if the screen should be updated, and otherwise return 0
-/// to indicate there is nothing to draw.
+/// 
+// Return a non-zero value to continue the execution of the program, or return 0 to pause the simulator.
+//
+// The SDK (claims)[https://sdk.play.date/1.9.1/Inside%20Playdate%20with%20C.html#f-system.setUpdateCallback]
+// that this function should return a non-zero value if the screen should be updated, and otherwise return 0
+// to indicate there is nothing to draw.
 extern "C" fn update_callback(data: *mut c_void) -> i32 {
     // SAFETY: This function is the only place allowed to make a `&mut` reference from the `data`
     // pointer. We can  ensure that by never passing the pointer anywhere else.
@@ -43,7 +41,7 @@ extern "C" fn update_callback(data: *mut c_void) -> i32 {
 
     data.frame += 1;
 
-    1  // Continue running the program.
+    1 // Continue running the program.
 }
 
 /// Set up the execution environment for the Playdate device.
