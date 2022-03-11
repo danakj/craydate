@@ -10,8 +10,14 @@ struct UpdateCallbackData {
     _i: i32,
 }
 
-extern "C" fn update_callback(data: *mut c_void) -> i32 {
-    return 0; // Return non-zero to update the screen.
+/// The main event loop for the Playdate game.
+/// 
+/// # Return
+/// 
+/// Return a non-zero value if the screen should be updated. Otherwise, 0 to indicate
+/// there is nothing to draw.
+extern "C" fn update_callback(_data: *mut c_void) -> i32 {
+    0
 }
 
 /// Set up the execution environment for the Playdate device.
