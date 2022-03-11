@@ -52,12 +52,13 @@ pub fn build_pdx(pdx_source_dir: &str, pdx_out_dir: &str, pdx_name: &str) -> Res
 
     // Copy the library into the source dir for the compiler.
     let lib_name = format!("{}{}{}", DLL_PREFIX, pdx_name.replace('-', "_"), DLL_SUFFIX);
+    let pdex_lib_name = format!("{}{}{}", DLL_PREFIX, "pdex", DLL_SUFFIX);
     let lib_path = &pdx_out_dir;
     let lib_path = lib_path.parent().unwrap(); // Cargo OUT_DIR.
     let lib_path = lib_path.parent().unwrap(); // Cargo crate dir.
     let lib_path = lib_path.parent().unwrap(); // Cargo build dir.
     let lib_path = lib_path.parent().unwrap(); // Where the actual library lives.
-    std::fs::copy(lib_path.join(&lib_name), pdx_source_dir.join(&lib_name))?;
+    std::fs::copy(lib_path.join(&lib_name), pdx_source_dir.join(&pdex_lib_name))?;
 
     let pdx_compiler = PathBuf::from(&sdk_path)
         .join("bin")
