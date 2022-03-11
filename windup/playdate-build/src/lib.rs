@@ -1,3 +1,5 @@
+/// Consts used to configure behaviour that may be controlled by cfgs.
+mod consts;
 /// Errors that can be returned from the crate.
 mod error;
 
@@ -35,7 +37,7 @@ pub fn export_vars() {
     println!("cargo:rustc-env={}={}", "PDX_NAME", pdx_name());
 }
 
-pub fn build_pdx(pdx_source_dir: &str, pdx_out_dir: &str, pdx_name: &str) -> Result<(String)> {
+pub fn build_pdx(pdx_source_dir: &str, pdx_out_dir: &str, pdx_name: &str) -> Result<String> {
     let sdk_path = std::env::var("PLAYDATE_SDK_PATH")
         .expect("PLAYDATE_SDK_PATH environment variable is not set");
 
@@ -75,10 +77,15 @@ pub fn build_pdx(pdx_source_dir: &str, pdx_out_dir: &str, pdx_name: &str) -> Res
     }
 }
 
-pub fn run_simulator(
-    _pdx_source_dir: &str,
-    _pdx_out_dir: &str,
-    _pdx_name: &str,
-) -> std::io::Result<()> {
-    todo!("run the simulator");
+pub fn run_simulator(_pdx_source_dir: &str, pdx_out_dir: &str, pdx_name: &str) -> Result<()> {
+    let sdk_path = PathBuf::from(
+        std::env::var("PLAYDATE_SDK_PATH")
+            .expect("PLAYDATE_SDK_PATH environment variable is not set"),
+    );
+    let pdx_out_dir = PathBuf::from(pdx_out_dir);
+    // This directory, in `pdx_out_dir`, was created by `pdc`, the pdx compiler.
+    let pdx = pdx_out_dir.join(format!("{}.pdx", pdx_name));
+    let simulator_exe = sdk_path.join("bin").join(crate::consts::SIMULATOR_EXE);
+    Command::new(&simulator_exe).arg(pdx).spawn()?;
+    Ok(())
 }
