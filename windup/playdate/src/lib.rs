@@ -5,7 +5,7 @@
 
 mod allocator;
 mod cstring;
-mod run_loop;
+mod event_loop;
 
 pub use cstring::{CString, CStr};
 
