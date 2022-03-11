@@ -9,7 +9,6 @@ version = "0.1.0"
 crate-type = ["staticlib"]
 
 [dependencies]
-compiler_builtins = {version = "0.1", features = ["mem"]}
 playdate-sys = {path = "../playdate-sys"}
 static_assertions = "1"
 

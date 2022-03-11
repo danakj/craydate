@@ -68,8 +68,3 @@ type EventHandlerFn = extern "C" fn(*mut PlaydateAPI, PDSystemEvent, u32) -> i32
 #[used]
 #[link_section = ".capi_handler"]
 static EVENT_HANDLER: EventHandlerFn = eventHandler;
-
-
-//#[cfg(all(target_os = "windows"))]
-//#[link(name = "msvcrt")]
-//extern {}
