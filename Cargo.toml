@@ -10,7 +10,7 @@ name = "simulator-win"
 version = "0.1.0"
 
 [lib]
-crate-type = ["dylib"]
+crate-type = ["cdylib"]
 
 [dependencies]
 windup = {path = "./windup"}

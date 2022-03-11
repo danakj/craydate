@@ -1,7 +1,7 @@
 #![no_std]
 #![deny(clippy::all)]
 #![feature(core_intrinsics)]
-#![feature(default_alloc_error_handler)]
+#![feature(alloc_error_handler)]
 
 mod allocator;
 mod cstring;
@@ -12,12 +12,15 @@ use playdate_sys::PlaydateAPI;
 #[global_allocator]
 pub static GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();
 
-#[panic_handler]
-fn panic_handler(_info: &core::panic::PanicInfo) -> ! {
+pub fn panic_handler(_info: &core::panic::PanicInfo) -> ! {
     // TODO: Dump a log somewhere?
     core::intrinsics::abort()
 }
 
+#[alloc_error_handler]
+pub fn my_example_handler(layout: core::alloc::Layout) -> ! {
+    panic!("memory allocation of {} bytes at alignment {} failed", layout.size(), layout.align())
+}
 /// A way to store a pointer in a static variable, by telling the compiler it's Sync.
 ///
 /// This is, of course, unsound if the pointer is used across threads and is not
@@ -68,8 +71,3 @@ type EventHandlerFn = extern "C" fn(*mut PlaydateAPI, PDSystemEvent, u32) -> i32
 #[used]
 #[link_section = ".capi_handler"]
 static EVENT_HANDLER: EventHandlerFn = eventHandler;
-
-#[no_mangle]
-pub extern "C" fn hello() {
-    eventHandler(core::ptr::null_mut(), playdate_sys::PDSystemEvent(0), 1);
-}
