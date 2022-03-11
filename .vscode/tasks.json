@@ -35,26 +35,10 @@
         },
         {
             "type": "process",
-            "label": "simulator-win: cargo build bins (dev)",
-            "command": "cargo",
-            "args": [
-                "build",
-                "--bins"
-            ],
-            "options": {
-                "cwd": "simulator-win",
-            },
-            "group": "build",
-            "presentation": {
-                "reveal": "always",
-            }
-        },
-        {
-            "type": "process",
             "label": "simulator-win: make pdx (dev)",
             "command": "simulator-win\\target\\x86_64-pc-windows-msvc\\debug\\make_pdx.exe",
             "dependsOn": [
-                "simulator-win: cargo build bins (dev)"
+                "simulator-win: cargo build (dev)",
             ],
             "group": "build",
         },

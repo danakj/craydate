@@ -3,8 +3,6 @@ edition = "2021"
 name = "playdate"
 version = "0.1.0"
 
-[lib]
-
 [dependencies]
 playdate-sys = {path = "../playdate-sys"}
 static_assertions = "1"

@@ -11,5 +11,5 @@ members = [
 ]
 
 [dependencies]
-playdate-sys = {path = "playdate-sys"}
+playdate = {path = "playdate"}
 static_assertions = "1"
