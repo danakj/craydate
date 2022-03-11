@@ -1,0 +1,15 @@
+[package]
+name = "windup-target"
+version = "0.1.0"
+
+[lib]
+crate_type = ["cdylib"]
+path = "empty.rs"
+
+[dependencies]
+simulator-win = {path = "simulator-win"}
+
+[profile.dev]
+panic = "abort"
+[profile.release]
+panic = "abort"

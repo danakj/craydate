@@ -1,9 +1,3 @@
-[workspace]
-members = [
-  "windup",
-  "playdate-sys",
-]
-
 [package]
 edition = "2021"
 name = "simulator-win"
@@ -13,7 +7,11 @@ version = "0.1.0"
 crate-type = ["cdylib"]
 
 [dependencies]
-windup = {path = "./windup"}
+playdate = {path = "../windup/playdate"}
+windup = {path = "../windup"}
+
+[build-dependencies]
+playdate-build = {path = "../windup/playdate-build"}
 
 [profile.dev]
 panic = "abort"

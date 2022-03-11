@@ -1,0 +1,6 @@
+{
+    "rust-analyzer.linkedProjects": [
+        "simulator-win/Cargo.toml",
+    ],
+    "rust-analyzer.checkOnSave.enable": false,
+}

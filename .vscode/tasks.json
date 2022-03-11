@@ -1,0 +1,51 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "process",
+            "label": "simulator-win: cargo build",
+            "command": "cargo",
+            "args": [
+                "build"
+            ],
+            "options": {
+                "cwd": "simulator-win",
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        },
+        {
+            "type": "process",
+            "label": "simulator-win: cargo check",
+            "command": "cargo",
+            "args": [
+                "check",
+            ],
+            "options": {
+                "cwd": "simulator-win",
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        },
+        {
+            "type": "process",
+            "label": "simulator-win: cargo watch",
+            "group": "build",
+            "command": "cargo",
+            "args": [
+                "check",
+            ],
+            "options": {
+                "cwd": "simulator-win",
+            },
+            "problemMatcher": "$rustc-watch",
+            "isBackground": true
+        }
+    ]
+}

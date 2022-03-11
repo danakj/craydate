@@ -385,10 +385,3 @@ dependencies = [
  "playdate-sys",
  "static_assertions",
 ]
-
-[[package]]
-name = "windup-target"
-version = "0.1.0"
-dependencies = [
- "simulator-win",
-]

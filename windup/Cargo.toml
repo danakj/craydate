@@ -3,8 +3,13 @@ edition = "2021"
 name = "windup"
 version = "0.1.0"
 
-[lib]
+[workspace]
+members = [
+  "playdate",
+  "playdate-build",
+  "playdate-sys",
+]
 
 [dependencies]
-playdate-sys = {path = "../playdate-sys"}
+playdate-sys = {path = "playdate-sys"}
 static_assertions = "1"

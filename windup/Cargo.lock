@@ -274,15 +274,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43b2853a4d09f215c24cc5489c992ce46052d359b5109343cbafbf26bc62f8a3"
 
 [[package]]
-name = "simulator-win"
-version = "0.1.0"
-dependencies = [
- "playdate",
- "playdate-build",
- "windup",
-]
-
-[[package]]
 name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -384,11 +375,4 @@ version = "0.1.0"
 dependencies = [
  "playdate-sys",
  "static_assertions",
-]
-
-[[package]]
-name = "windup-target"
-version = "0.1.0"
-dependencies = [
- "simulator-win",
 ]
