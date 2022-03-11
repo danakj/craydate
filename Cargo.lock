@@ -108,6 +108,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "compiler_builtins"
+version = "0.1.70"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "80873f979f0a344a4ade87c2f70d9ccf5720b83b10c97ec7cd745895d021e85a"
+
+[[package]]
 name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -268,6 +274,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43b2853a4d09f215c24cc5489c992ce46052d359b5109343cbafbf26bc62f8a3"
 
 [[package]]
+name = "simulator-win"
+version = "0.1.0"
+dependencies = [
+ "windup",
+]
+
+[[package]]
 name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -368,6 +381,7 @@ name = "windup"
 version = "0.1.0"
 dependencies = [
  "cc",
+ "compiler_builtins",
  "playdate-sys",
  "static_assertions",
 ]

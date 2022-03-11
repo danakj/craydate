@@ -1,21 +1,21 @@
+[workspace]
+members = [
+  "windup",
+  "playdate-sys",
+]
+
 [package]
-name = "windup"
+name = "simulator-win"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["dylib"]
 
 [dependencies]
-playdate-sys = { path = "playdate-sys" }
-static_assertions = "1"
+windup = {path= "windup"}
 
-[build-dependencies]
-cc = "1"
-
-[features]
-# One day this can be not the default, once there is a binary choosing features.
-default = ["simulator"]
-simulator = ["playdate-sys/simulator"]
+[profile.dev]
+panic = "abort"
+[profile.release]
+panic = "abort"

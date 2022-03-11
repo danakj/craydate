@@ -86,12 +86,13 @@ impl Allocator {
 
     const fn tests() {
         const _STORAGE: usize = core::mem::size_of::<usize>();
-        const_assert_eq!(_STORAGE, 4);
+        const_assert!(_STORAGE == 4 || _STORAGE == 8);
 
         // Alignment of 1 means nothing has to shift.
         const_assert_eq!(calc_alloc_size(1, 1), _STORAGE + 1);
         // Alignment is smaller than storage size and alloc size, so neither is aligned.
-        const_assert_eq!(calc_alloc_size(3, 2), (2 * 2) + 3 + (2 - 1));
+        const_assert!(_STORAGE != 4 || (calc_alloc_size(3, 2) == (2 * 2) + 3 + (2 - 1)));
+        const_assert!(_STORAGE != 8 || (calc_alloc_size(3, 2) == (2 * 4) + 3 + (2 - 1)));
         // Alignment is larger than storage size and alloc size, but neither is aligned.
         const_assert_eq!(calc_alloc_size(5, 11), (11 * 1) + 5 + (11 - 1));
         // Storage size is aligned, alloc size is not.
@@ -99,10 +100,12 @@ impl Allocator {
         const_assert_eq!(calc_alloc_size(2, 4), _STORAGE + 2 + (4 - 1));
         const_assert_eq!(calc_alloc_size(5, 4), _STORAGE + 5 + (4 - 1));
         // Storage size is not aligned, and is smaller than alignment. Alloc size is aligned.
-        const_assert_eq!(calc_alloc_size(5, 5), (5 * 1) + 5 + (5 - 1));
+        const_assert!(_STORAGE != 4 || (calc_alloc_size(5, 5) == (5 * 1) + 5 + (5 - 1)));
+        const_assert!(_STORAGE != 8 || (calc_alloc_size(5, 5) == (5 * 2) + 5 + (5 - 1)));
         const_assert_eq!(calc_alloc_size(5, 20), (20 * 1) + 5 + (20 - 1));
         // Storage size is not aligned, and is larger than alignment. Alloc size is aligned.
-        const_assert_eq!(calc_alloc_size(5, 3), (3 * 2) + 5 + (3 - 1));
+        const_assert!(_STORAGE != 4 || (calc_alloc_size(5, 3) == (3 * 2) + 5 + (3 - 1)));
+        const_assert!(_STORAGE != 8 || (calc_alloc_size(5, 3) == (3 * 3) + 5 + (3 - 1)));
 
         // Verify that the shifted data will fit in the allocated size for various sizes,
         // alignments, and allocation offsets.
@@ -180,22 +183,3 @@ unsafe impl core::alloc::GlobalAlloc for Allocator {
         ptr
     }
 }
-
-/*
-#if TARGET_PLAYDATE
-
-#include "pd_api.h"
-
-typedef int (PDEventHandler)(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg);
-
-extern PDEventHandler eventHandler;
-PDEventHandler* PD_eventHandler __attribute__((section(".capi_handler"))) = &eventHandler;
-
-extern uint32_t bssStart asm("__bss_start__");
-uint32_t* _bss_start __attribute__((section(".bss_start"))) = &bssStart;
-
-extern uint32_t bssEnd asm("__bss_end__");
-uint32_t* _bss_end __attribute__((section(".bss_end"))) = &bssEnd;
-
-#endif
-*/

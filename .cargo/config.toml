@@ -1,11 +1,4 @@
 [build]
-target = "armv7a-none-eabi"
-# target = "thumbv7em-none-eabihf" ??
+target = "x86_64-pc-windows-msvc"
 
-# Nice idea, but musleabi doesn't support linking. It just makes a staticlib.
-#[target.arm-unknown-linux-musleabi]
-#rustflags = [
-#  "-Clink-arg=-fPIC",
-#  "-C",
-#  "linker-flavor=ld.lld",
-#]
+#target = "armv7a-none-eabi"
