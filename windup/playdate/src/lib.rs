@@ -16,6 +16,8 @@ mod cstring;
 #[doc(hidden)]
 pub mod macro_helpers;
 
+pub use cstring::{CStr, CString};
+
 #[global_allocator]
 pub static GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();
 
