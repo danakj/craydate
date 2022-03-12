@@ -7,7 +7,7 @@
 extern crate playdate_macro;
 
 /// A game crate should annotate their game loop function with this attribute macro.
-/// 
+///
 /// The annotated function must be async, and will indicate that it's done updating
 /// and ready to draw by `await`ing the `draw` Future passed to it.
 pub use playdate_macro::main;
@@ -21,6 +21,7 @@ pub mod macro_helpers;
 
 pub use api::{Api, System};
 pub use cstring::{CStr, CString};
+pub use playdate_sys::LCDSolidColor;
 
 #[global_allocator]
 pub static GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();

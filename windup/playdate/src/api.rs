@@ -2,7 +2,9 @@ use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
+use playdate_sys::playdate_graphics as CGraphics;
 use playdate_sys::playdate_sys as CSystem;
+use playdate_sys::LCDSolidColor;
 use playdate_sys::PlaydateAPI as CApi;
 
 use crate::macro_helpers::Executor;
@@ -10,6 +12,7 @@ use crate::CStr;
 
 pub struct Api {
   pub system: System,
+  pub graphics: Graphics,
 }
 impl Api {
   pub(crate) fn new(c_api: &'static CApi, exec: *mut Executor) -> Api {
@@ -17,6 +20,9 @@ impl Api {
       system: System {
         system: unsafe { &*c_api.system },
         exec,
+      },
+      graphics: Graphics {
+        graphics: unsafe { &*c_api.graphics },
       },
     }
   }
@@ -69,5 +75,14 @@ impl Future for NextUpdateFuture {
       exec.wakers_waiting_for_update.push(ctxt.waker().clone());
       Poll::Pending
     }
+  }
+}
+
+pub struct Graphics {
+  pub(crate) graphics: &'static CGraphics,
+}
+impl Graphics {
+  pub fn clear(&self, color: LCDSolidColor) {
+    unsafe { self.graphics.clear.unwrap()(color as usize) };
   }
 }

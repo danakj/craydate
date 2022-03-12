@@ -1,3 +1,3 @@
 fn main() {
-    playdate_build::export_vars()
+  playdate_build::export_vars()
 }
