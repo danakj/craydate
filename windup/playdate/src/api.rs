@@ -1,15 +1,15 @@
+use core::future::Future;
+use core::pin::Pin;
+use core::task::{Context, Poll};
+
 use playdate_sys::playdate_sys as CSystem;
 use playdate_sys::PlaydateAPI as CApi;
 
-use crate::macro_helpers::Executor;
-use crate::cstring::CStr;
-use core::future::Future;
-use core::pin::Pin;
-use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
+use crate::executor::Executor;
+use crate::CStr;
 
 pub struct Api {
   pub system: System,
-
 }
 impl Api {
   pub(crate) fn new(c_api: &'static CApi, exec: *mut Executor) -> Api {
