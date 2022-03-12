@@ -83,7 +83,7 @@ mod poll_main_waker {
   //!
   //! In this case the only future tracked by the executor is the main function, unless we
   //! introduced a spawn() or similar function to run multiple async functions in tandem
-  //! when each gets blocked
+  //! when each gets blocked.
   use super::*;
 
   fn clone_fn(exec_ptr: *const ()) -> RawWaker {
