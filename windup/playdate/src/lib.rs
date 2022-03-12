@@ -5,20 +5,14 @@
 
 extern crate playdate_macro;
 
-pub mod prelude {
-  // Macros and traits should be re-exported in here, as well as very common types that
-  // should always be available without their full path.
-
-  pub use crate::cstring::{CStr, CString};
-}
-// The prelude section is also used in this crate.
-use prelude::*;
-
+/// A game crate should annotate their game loop function with this attribute macro.
+/// 
+/// The annotated function must be async, and will indicate that it's done updating
+/// and ready to draw by `await`ing the `draw` Future passed to it.
 pub use playdate_macro::main;
 
 mod allocator;
 mod cstring;
-mod event_loop;
 #[doc(hidden)]
 pub mod macro_helpers;
 

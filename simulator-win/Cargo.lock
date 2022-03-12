@@ -404,6 +404,5 @@ name = "windup"
 version = "0.1.0"
 dependencies = [
  "playdate",
- "playdate-macro",
  "static_assertions",
 ]

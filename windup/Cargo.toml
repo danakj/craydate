@@ -14,6 +14,3 @@ members = [
 [dependencies]
 playdate = {path = "playdate"}
 static_assertions = "1"
-
-[build-dependencies]
-playdate-macro = {path = "playdate-macro"}
