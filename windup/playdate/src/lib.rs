@@ -7,19 +7,23 @@ mod allocator;
 mod cstring;
 mod event_loop;
 
-pub use cstring::{CString, CStr};
+pub use cstring::{CStr, CString};
 
 #[global_allocator]
 pub static GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();
 
 pub fn panic_handler(_info: &core::panic::PanicInfo) -> ! {
-    // TODO: Dump a log somewhere?
-    core::intrinsics::abort()
+  // TODO: Dump a log somewhere?
+  core::intrinsics::abort()
 }
 
 #[alloc_error_handler]
 pub fn my_example_handler(layout: core::alloc::Layout) -> ! {
-    panic!("memory allocation of {} bytes at alignment {} failed", layout.size(), layout.align())
+  panic!(
+    "memory allocation of {} bytes at alignment {} failed",
+    layout.size(),
+    layout.align()
+  )
 }
 /// A way to store a pointer in a static variable, by telling the compiler it's Sync.
 ///
@@ -30,8 +34,8 @@ struct BssPtr(*const u32);
 unsafe impl Sync for BssPtr {}
 
 extern "C" {
-    static __bss_start__: u32;
-    static __bss_end__: u32;
+  static __bss_start__: u32;
+  static __bss_end__: u32;
 }
 
 #[cfg(all(target_arch = "arm", target_os = "none"))]
