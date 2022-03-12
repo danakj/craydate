@@ -2,6 +2,7 @@
 #![deny(clippy::all)]
 #![feature(core_intrinsics)]
 #![feature(alloc_error_handler)]
+#![feature(never_type)]
 
 extern crate playdate_macro;
 

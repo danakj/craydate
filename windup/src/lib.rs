@@ -1,13 +1,13 @@
 #![no_std]
+#![feature(never_type)]
+
 use playdate::CStr;
 
-#[no_mangle]
-extern "C" fn playdate_setup() {}
-
-#[no_mangle]
-extern "C" fn playdate_loop() {}
-
 #[playdate::main]
-fn main() -> &'static CStr {
-    CStr::from_bytes_with_nul(b"hello from main\0").unwrap()
+async fn main(api: playdate::macro_helpers::SafeApi) -> ! {
+    loop {
+        api.log(CStr::from_bytes_with_nul(b"before\0").unwrap());
+        api.next_update().await;
+        api.log(CStr::from_bytes_with_nul(b"after\0").unwrap());
+    }
 }
