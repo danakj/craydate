@@ -133,11 +133,12 @@ extern "C" fn update_callback(exec_ptr: *mut c_void) -> i32 {
     let waker = poll_main_waker::make_waker(exec_ptr);
     // SAFETY: poll() can execute arbitrary code, so we could end up in code with access to the
     // executor, so we must drop our reference to the Executor first.
+    //
+    // This holds a reference to the inside of a Box<> in the Executor, so it's not a reference into
+    // the Executor itself. That makes it okay to have that reference around (in our local variable)
+    // while other code (in poll()) uses the Executor. It's not ok to keep `exec` around though.
     let future = {
       let exec: &mut Executor = unsafe { &mut *(exec_ptr) };
-      // This returns a reference to the inside of a Box<>, so it's not a reference into
-      // the Exector, so it's okay to have that reference around while other code uses the
-      // Executor.
       let option_ref = exec.main_future.as_mut();
       // Unwrap is okay because there's always a Future present, since the main function never
       // returns. The `main_future` type is only Option to split the construction of the Exector.
