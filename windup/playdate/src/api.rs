@@ -9,13 +9,14 @@ use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 
 pub struct Api {
   pub system: System,
+
 }
 impl Api {
   pub(crate) fn new(c_api: &'static CApi, exec: *mut Executor) -> Api {
     Api {
       system: System {
-        system: unsafe { &(*c_api.system) },
-        exec: exec,
+        system: unsafe { &*c_api.system },
+        exec,
       },
     }
   }

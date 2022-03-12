@@ -18,8 +18,7 @@ mod cstring;
 #[doc(hidden)]
 pub mod macro_helpers;
 
-pub use api::Api;
-pub use api::System;
+pub use api::{Api, System};
 pub use cstring::{CStr, CString};
 
 #[global_allocator]
