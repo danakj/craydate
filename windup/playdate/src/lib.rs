@@ -15,6 +15,7 @@ pub use playdate_macro::main;
 mod allocator;
 mod api;
 mod cstring;
+mod debug;
 #[doc(hidden)]
 pub mod macro_helpers;
 
