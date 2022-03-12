@@ -7,9 +7,13 @@ version = "0.1.0"
 members = [
   "playdate",
   "playdate-build",
+  "playdate-macro",
   "playdate-sys",
 ]
 
 [dependencies]
 playdate = {path = "playdate"}
 static_assertions = "1"
+
+[build-dependencies]
+playdate-macro = {path = "playdate-macro"}

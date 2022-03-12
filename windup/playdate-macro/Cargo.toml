@@ -1,0 +1,12 @@
+[package]
+name = "playdate-macro"
+version = "0.1.0"
+description = "Proc macros for using the playdate crate."
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = {version = "1", features = ["full"]}
+proc-macro2 = "1"
+quote = "1"

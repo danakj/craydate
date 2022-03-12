@@ -3,15 +3,32 @@
 #![feature(core_intrinsics)]
 #![feature(alloc_error_handler)]
 
+extern crate playdate_macro;
+
+pub mod prelude {
+  // Macros and traits should be re-exported in here, as well as very common types that
+  // should always be available without their full path.
+
+  pub use crate::cstring::{CStr, CString};
+}
+// The prelude section is also used in this crate.
+use prelude::*;
+
+pub use playdate_macro::main;
+
 mod allocator;
 mod cstring;
 mod event_loop;
-
-pub use cstring::{CStr, CString};
+#[doc(hidden)]
+pub mod macro_helpers;
 
 #[global_allocator]
 pub static GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();
 
+/// A helper implementation of panic_handler for the toplevel crate to forward to.
+///
+/// Since the top-level crate has to implement the `#[panic_handler]` we make it
+/// easy by letting them simply forward over to this function.
 pub fn panic_handler(_info: &core::panic::PanicInfo) -> ! {
   // TODO: Dump a log somewhere?
   core::intrinsics::abort()

@@ -211,6 +211,7 @@ checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 name = "playdate"
 version = "0.1.0"
 dependencies = [
+ "playdate-macro",
  "playdate-sys",
  "static_assertions",
 ]
@@ -218,6 +219,15 @@ dependencies = [
 [[package]]
 name = "playdate-build"
 version = "0.1.0"
+
+[[package]]
+name = "playdate-macro"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "playdate-sys"
@@ -293,6 +303,17 @@ name = "strsim"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
+
+[[package]]
+name = "syn"
+version = "1.0.86"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a65b3f4ffa0092e9887669db0eae07941f023991ab58ea44da8fe8e2d511c6b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "unicode-xid",
+]
 
 [[package]]
 name = "termcolor"
@@ -383,5 +404,6 @@ name = "windup"
 version = "0.1.0"
 dependencies = [
  "playdate",
+ "playdate-macro",
  "static_assertions",
 ]
