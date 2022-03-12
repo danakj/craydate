@@ -5,6 +5,11 @@ use alloc::boxed::Box;
 use core::ffi::c_void;
 use playdate_sys::{PDSystemEvent, PlaydateAPI};
 
+extern "C" {
+    fn playdate_setup();
+    fn playdate_loop();
+}
+
 /// The data passed to update_callback().
 ///
 /// # Safety
@@ -23,7 +28,7 @@ impl UpdateCallbackData {
 }
 
 /// The main event loop for the Playdate game.
-/// 
+///
 // Return a non-zero value to continue the execution of the program, or return 0 to pause the simulator.
 //
 // The SDK (claims)[https://sdk.play.date/1.9.1/Inside%20Playdate%20with%20C.html#f-system.setUpdateCallback]
@@ -40,6 +45,8 @@ extern "C" fn update_callback(data: *mut c_void) -> i32 {
     }
 
     data.frame += 1;
+
+    unsafe { playdate_loop() };
 
     1 // Continue running the program.
 }
@@ -65,6 +72,8 @@ pub extern "C" fn eventHandler(api: *mut PlaydateAPI, event: PDSystemEvent, _arg
         // We will leak this UpdateCallbackData pointer so it has 'static lifetime.
         let data_ptr = Box::into_raw(Box::new(UpdateCallbackData::new(system))) as *mut c_void;
         unsafe { system.setUpdateCallback.unwrap()(Some(update_callback), data_ptr) };
+
+        unsafe { playdate_setup() };
     }
 
     // send me $5 and I'll comment yikes on your undocumented return value
