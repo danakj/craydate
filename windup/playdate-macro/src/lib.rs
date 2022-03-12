@@ -29,7 +29,7 @@ pub fn main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
       #[no_mangle]
       extern "C" fn eventHandler(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3) -> i32 {
-        fn main_wrapper(api: ::playdate::System) -> Pin<Box<dyn Future<Output = !>>> {
+        fn main_wrapper(api: ::playdate::Api) -> Pin<Box<dyn Future<Output = !>>> {
           Box::pin(#func_ident(api))
         }
         let config = GameConfig {

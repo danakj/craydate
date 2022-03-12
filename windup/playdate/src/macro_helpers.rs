@@ -15,7 +15,7 @@ use playdate_sys::PlaydateAPI as CApi;
 use crate::*;
 
 pub struct GameConfig {
-  pub main_fn: fn(api::System) -> Pin<Box<dyn Future<Output = !>>>,
+  pub main_fn: fn(api::Api) -> Pin<Box<dyn Future<Output = !>>>,
 }
 
 // A placeholder to avoid exposing the type/value to playdate's dependent.
@@ -39,14 +39,15 @@ pub(crate) struct Executor {
 }
 
 pub fn initialize(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3, config: GameConfig) {
-  let api = eh1.0;
+  let api_ptr = eh1.0;
   let event = eh2.0;
   let _arg = eh3.0;
 
-  // SAFETY: We have made a shared reference to the `CSystem`. Only refer to the object through
-  // the reference hereafter. We can ensure that by never passing a pointer to the `CSystem` or any
-  // pointer or reference to the `CApi` elsewhere.
-  let system: &CSystem = unsafe { &*(*api).system };
+  // SAFETY: We have made a shared reference to the `CApi`. Only refer to the object through
+  // the reference hereafter. We can ensure that by never passing a pointer to the `CApi`
+  // or any pointer or reference to `CSystem` elsewhere.
+  let api: &CApi = unsafe { &(*api_ptr) };
+  let system: &CSystem = unsafe { &(*api.system) };
 
   if event == CSystemEvent::kEventInit {
     // SAFETY: Do not allocate before the GLOBAL_ALLOCATOR is set up here, or we will crash
@@ -69,7 +70,11 @@ pub fn initialize(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3, co
     // of the main function. The main function can never return (its output is `!`), so the
     // future will never be complete. We will poll() it to actually run the code in the main
     // function on the first execution of update_callback().
-    let future = (config.main_fn)(api::System { exec: exec_ptr, system });
+
+    // TODO: should exec_ptr be constructed internally here?
+    let api = api::Api::new(api, exec_ptr);
+
+    let future = (config.main_fn)(api);
     // SAFETY: Nothing stores the executor as a reference. The main function has run and constructed
     // a future, which may have the executor pointer inside, but not a reference.
     unsafe { (*exec_ptr).main_future = Some(future) };
