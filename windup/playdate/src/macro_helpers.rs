@@ -8,34 +8,34 @@ use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 
-use playdate_sys::playdate_sys as System;
-use playdate_sys::PDSystemEvent as SystemEvent;
-use playdate_sys::PlaydateAPI as Api;
+use playdate_sys::playdate_sys as CSystem;
+use playdate_sys::PDSystemEvent as CSystemEvent;
+use playdate_sys::PlaydateAPI as CApi;
 
 use crate::*;
 
 pub struct GameConfig {
-  pub main_fn: fn(SafeApi) -> Pin<Box<dyn Future<Output = !>>>,
+  pub main_fn: fn(api::System) -> Pin<Box<dyn Future<Output = !>>>,
 }
 
 // A placeholder to avoid exposing the type/value to playdate's dependent.
 #[repr(transparent)]
-pub struct EventHandler1(*mut Api);
+pub struct EventHandler1(*mut CApi);
 
 // A placeholder to avoid exposing the type/value to playdate's dependent.
 #[repr(transparent)]
-pub struct EventHandler2(SystemEvent);
+pub struct EventHandler2(CSystemEvent);
 
 // A placeholder for `u32` to avoid exposing the type/value to playdate's dependent.
 #[repr(transparent)]
 pub struct EventHandler3(u32);
 
-struct Executor {
-  system: &'static System,
+pub(crate) struct Executor {
+  pub system: &'static CSystem,
   main_future: Option<Pin<Box<dyn Future<Output = !>>>>,
   poll_main: bool,
-  frame: u64,
-  wakers_waiting_for_update: Vec<Waker>,
+  pub frame: u64,
+  pub wakers_waiting_for_update: Vec<Waker>,
 }
 
 pub fn initialize(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3, config: GameConfig) {
@@ -43,12 +43,12 @@ pub fn initialize(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3, co
   let event = eh2.0;
   let _arg = eh3.0;
 
-  // SAFETY: We have made a shared reference to the System. Only refer to the object through
-  // the reference hereafter. We can ensure that by never passing a pointer to the `System` or any
-  // pointer or reference to the `Api` elsewhere.
-  let system: &System = unsafe { &*(*api).system };
+  // SAFETY: We have made a shared reference to the `CSystem`. Only refer to the object through
+  // the reference hereafter. We can ensure that by never passing a pointer to the `CSystem` or any
+  // pointer or reference to the `CApi` elsewhere.
+  let system: &CSystem = unsafe { &*(*api).system };
 
-  if event == SystemEvent::kEventInit {
+  if event == CSystemEvent::kEventInit {
     // SAFETY: Do not allocate before the GLOBAL_ALLOCATOR is set up here, or we will crash
     // in the allocator.
     GLOBAL_ALLOCATOR.set_system_ptr(system);
@@ -69,7 +69,7 @@ pub fn initialize(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3, co
     // of the main function. The main function can never return (its output is `!`), so the
     // future will never be complete. We will poll() it to actually run the code in the main
     // function on the first execution of update_callback().
-    let future = (config.main_fn)(SafeApi { exec: exec_ptr });
+    let future = (config.main_fn)(api::System { exec: exec_ptr, system });
     // SAFETY: Nothing stores the executor as a reference. The main function has run and constructed
     // a future, which may have the executor pointer inside, but not a reference.
     unsafe { (*exec_ptr).main_future = Some(future) };
@@ -150,55 +150,6 @@ extern "C" fn update_callback(exec_ptr: *mut c_void) -> i32 {
   }
 
   1 // Returning 0 will pause the simulator.
-}
-
-pub struct SafeApi {
-  exec: *mut Executor,
-}
-impl SafeApi {
-  /// An async function that waits for the next update step from the Playdate SDK.
-  pub async fn next_update(&self) {
-    self.next_update_sync().await
-  }
-
-  fn next_update_sync(&self) -> NextUpdateFuture {
-    NextUpdateFuture {
-      exec: self.exec,
-      seen_frame: unsafe { (*self.exec).frame },
-    }
-  }
-
-  pub fn log(&self, s: &CStr) {
-    let exec: &mut Executor = unsafe { &mut *(self.exec as *mut Executor) };
-    unsafe { exec.system.logToConsole.unwrap()(s.as_ptr()) };
-  }
-}
-
-/// A future for which poll() waits for the next update, then returns Complete.
-struct NextUpdateFuture {
-  exec: *mut Executor,
-  seen_frame: u64,
-}
-
-impl Future for NextUpdateFuture {
-  type Output = ();
-
-  fn poll(self: Pin<&mut Self>, ctxt: &mut Context<'_>) -> Poll<()> {
-    let frame = {
-      let exec: &mut Executor = unsafe { &mut *(self.exec as *mut Executor) };
-      exec.frame
-    };
-
-    if frame > self.seen_frame {
-      Poll::Ready(())
-    } else {
-      // Register the waker to be woken when the frame changes. We will observe that it has
-      // indeed changed and return Ready since we have saved the current frame at construction.
-      let exec: &mut Executor = unsafe { &mut *(self.exec as *mut Executor) };
-      exec.wakers_waiting_for_update.push(ctxt.waker().clone());
-      Poll::Pending
-    }
-  }
 }
 
 // SAFETY: Can not hold a reference on the Executor.

@@ -13,10 +13,12 @@ extern crate playdate_macro;
 pub use playdate_macro::main;
 
 mod allocator;
+mod api;
 mod cstring;
 #[doc(hidden)]
 pub mod macro_helpers;
 
+pub use api::System;
 pub use cstring::{CStr, CString};
 
 #[global_allocator]

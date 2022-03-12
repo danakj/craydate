@@ -4,7 +4,7 @@
 use playdate::CStr;
 
 #[playdate::main]
-async fn main(api: playdate::macro_helpers::SafeApi) -> ! {
+async fn main(api: playdate::System) -> ! {
     loop {
         api.log(CStr::from_bytes_with_nul(b"before\0").unwrap());
         api.next_update().await;
