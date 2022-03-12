@@ -7,7 +7,7 @@ use playdate_sys::playdate_sys as CSystem;
 use playdate_sys::LCDSolidColor;
 use playdate_sys::PlaydateAPI as CApi;
 
-use crate::macro_helpers::Executor;
+use crate::executor::Executor;
 use crate::CStr;
 
 pub struct Api {

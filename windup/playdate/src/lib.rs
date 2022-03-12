@@ -16,6 +16,7 @@ mod allocator;
 mod api;
 mod cstring;
 mod debug;
+mod executor;
 #[doc(hidden)]
 pub mod macro_helpers;
 
