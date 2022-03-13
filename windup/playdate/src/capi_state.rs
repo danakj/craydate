@@ -18,7 +18,7 @@ impl CApiState {
       system: unsafe { &*api.system },
       api,
       executor: unsafe {
-        NonNull::new_unchecked(Box::into_raw(Box::new(Executor::new(&*api.system))))
+        NonNull::new_unchecked(Box::into_raw(Box::new(Executor::new())))
       },
     }
   }

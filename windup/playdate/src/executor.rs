@@ -4,8 +4,6 @@ use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, RawWaker, RawWakerVTable, Waker};
 
-use crate::ctypes::*;
-
 /// Tracks a Future whose ownership was given to the executor.
 ///
 /// The Future is boxed in order for the Executor to extend its lifetime.
@@ -25,8 +23,6 @@ impl<T> ExecutorOwnedFuture<T> {
 /// Wakers or Futures.
 #[non_exhaustive]
 pub struct Executor {
-  pub system: &'static CSystem,
-
   // The main Future is different than other spawned Futures, in that it never completes and thus has
   // an output type of `!`.
   main_future: Option<ExecutorOwnedFuture<!>>,
@@ -44,9 +40,8 @@ pub struct Executor {
   pub wakers_for_update_callback: Vec<Waker>,
 }
 impl Executor {
-  pub fn new(system: &'static CSystem) -> Executor {
+  pub fn new() -> Executor {
     Executor {
-      system,
       main_future: None,
       first_poll_main: false,
       frame: 0,
