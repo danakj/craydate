@@ -1,9 +1,7 @@
 #![no_std]
 #![feature(never_type)]
 
-use playdate::CStr;
-use playdate::LCDColor;
-use playdate::LCDPattern;
+use playdate::{CStr, LCDBitmapFlip, LCDSolidColor, LCDColor, LCDPattern};
 
 #[playdate::main]
 async fn main(api: playdate::Api) -> ! {
@@ -16,8 +14,11 @@ async fn main(api: playdate::Api) -> ! {
     // Mask
     0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111,
   ];
-
   graphics.clear(LCDColor::Pattern(&grey50));
+
+  let bmp = graphics.new_bitmap(100, 40, LCDSolidColor::kColorWhite);
+  graphics.draw_bitmap(&bmp, 5, 9, LCDBitmapFlip::kBitmapUnflipped);
+
   loop {
     let fw = system.frame_watcher();
     system.log(CStr::from_bytes_with_nul(b"before\0").unwrap());
