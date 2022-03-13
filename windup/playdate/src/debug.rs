@@ -1,5 +1,5 @@
 use crate::ctypes::*;
-use crate::{CStr, CString};
+use crate::CString;
 
 struct SystemRef(&'static CSystem);
 unsafe impl Sync for SystemRef {}
@@ -15,12 +15,10 @@ pub fn initialize(system: &'static CSystem) {
 ///
 /// Note that the simulator console is also sent to stderr.
 #[allow(dead_code)]
-pub fn log<S>(s: S)
-where
-  S: AsRef<str>,
+pub fn log<S: AsRef<str>>(s: S)
 {
   let maybe_system: Option<&'static CSystem> = unsafe { SYSTEM.as_ref().map(|r| r.0) };
-  match CString::new(s.as_ref()) {
+  match CString::from_vec(s.as_ref()) {
     Some(cstr) => match maybe_system {
       Some(system) => {
         unsafe { system.logToConsole.unwrap()(cstr.as_ptr()) };

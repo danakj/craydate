@@ -5,7 +5,7 @@ use core::task::{Context, Poll};
 use crate::capi_state::CApiState;
 use crate::executor::Executor;
 use crate::graphics::Graphics;
-use crate::CStr;
+use crate::{CStr, CString};
 
 #[derive(Debug)]
 pub struct Api {
@@ -31,8 +31,15 @@ impl System {
     FrameWatcher { state: self.state }
   }
 
-  pub fn log(&self, s: &CStr) {
-    unsafe { self.state.system.logToConsole.unwrap()(s.as_ptr()) };
+  pub fn log<S: AsRef<str>>(&self, s: S) {
+    let maybe_cstring = CString::from_vec(s.as_ref());
+    let cstr = match maybe_cstring.as_deref() {
+      Some(cstr) => cstr,
+      None => unsafe {
+        CStr::from_bytes_with_nul_unchecked(b"Invalid string given to log(), embedded null?\0")
+      },
+    };
+    unsafe { self.state.system.logToConsole.unwrap()(cstr.as_ptr()) }
   }
 }
 
