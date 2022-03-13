@@ -1,5 +1,4 @@
-use playdate_sys::playdate_sys as CSystem;
-
+use crate::ctypes::*;
 use crate::CStr;
 
 pub unsafe fn _log(system: &'static CSystem, bytes: &[u8]) {

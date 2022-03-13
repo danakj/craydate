@@ -1,12 +1,10 @@
-extern crate alloc;
-
 pub use alloc::boxed::Box;
 use alloc::vec::Vec;
 use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, RawWaker, RawWakerVTable, Waker};
 
-use playdate_sys::playdate_sys as CSystem;
+use crate::ctypes::*;
 
 /// Tracks a Future whose ownership was given to the executor.
 ///

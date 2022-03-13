@@ -4,6 +4,7 @@
 #![feature(alloc_error_handler)]
 #![feature(never_type)]
 
+extern crate alloc;
 extern crate playdate_macro;
 
 /// A game crate should annotate their game loop function with this attribute macro.
@@ -15,6 +16,7 @@ pub use playdate_macro::main;
 mod allocator;
 mod api;
 mod cstring;
+mod ctypes;
 mod debug;
 mod executor;
 #[doc(hidden)]
@@ -22,7 +24,7 @@ pub mod macro_helpers;
 
 pub use api::{Api, System};
 pub use cstring::{CStr, CString};
-pub use playdate_sys::LCDSolidColor;
+pub use ctypes::LCDSolidColor;
 
 #[global_allocator]
 pub static GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();

@@ -2,11 +2,7 @@ use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
-use playdate_sys::playdate_graphics as CGraphics;
-use playdate_sys::playdate_sys as CSystem;
-use playdate_sys::LCDSolidColor;
-use playdate_sys::PlaydateAPI as CApi;
-
+use crate::ctypes::*;
 use crate::executor::Executor;
 use crate::CStr;
 
