@@ -1,3 +1,5 @@
+#![deny(clippy::all)]
+
 /// Consts used to configure behaviour that may be controlled by cfgs.
 mod consts;
 /// Errors that can be returned from the crate.

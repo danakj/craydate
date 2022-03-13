@@ -1,3 +1,4 @@
+#![deny(clippy::all)]
 #![no_std]
 
 extern crate windup;

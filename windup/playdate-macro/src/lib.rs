@@ -1,3 +1,5 @@
+#![deny(clippy::all)]
+
 extern crate proc_macro;
 extern crate proc_macro2;
 extern crate quote;

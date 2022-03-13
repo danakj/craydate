@@ -1,4 +1,5 @@
 #![no_std]
+#![deny(clippy::all)]
 #![feature(never_type)]
 
 use playdate::{CStr, CString, LCDBitmapFlip, LCDColor, LCDPattern, LCDSolidColor, PDStringEncoding};
