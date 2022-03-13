@@ -72,11 +72,30 @@ impl Future for NextUpdateFuture {
   }
 }
 
+pub enum LCDColor<'a> {
+  Solid(LCDSolidColor),
+  Pattern(&'a LCDPattern),
+}
+
+impl<'a> LCDColor<'a> {
+  pub unsafe fn as_c_color(&self) -> usize {
+    // SAFETY: the returned usize for patterns is technically a raw pointer to the LCDPattern
+    // array itself.  It must be passed to Playdate before the LCDColor is dead or moved.
+    // Also, yes really, LCDColor can be both an enum and a pointer.
+    match self {
+      LCDColor::Solid(color) => color.0 as usize,
+      LCDColor::Pattern(&color) => color.as_ptr() as usize,
+    }
+  }
+}
+
 pub struct Graphics {
   pub(crate) state: &'static CApiState,
 }
 impl Graphics {
-  pub fn clear(&self, color: LCDSolidColor) {
-    unsafe { self.state.graphics.clear.unwrap()(color.0 as usize) };
+  pub fn clear<'a>(&self, color: LCDColor<'a>) {
+    unsafe {
+      self.state.graphics.clear.unwrap()(color.as_c_color());
+    }
   }
 }

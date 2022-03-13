@@ -34,6 +34,7 @@ fn main() {
     .allowlist_function("eventHandler")
     .allowlist_type("PlaydateAPI")
     .allowlist_type("PDSystemEvent")
+    .allowlist_type("LCDPattern")
     .newtype_enum("LCDSolidColor")
     .newtype_enum("PDSystemEvent")
     .newtype_enum("LCDBitmapDrawMode")
