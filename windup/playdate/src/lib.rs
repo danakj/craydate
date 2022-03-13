@@ -33,12 +33,34 @@ pub use graphics::*;
 #[global_allocator]
 pub static GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();
 
+
+
 /// A helper implementation of panic_handler for the toplevel crate to forward to.
 ///
 /// Since the top-level crate has to implement the `#[panic_handler]` we make it
 /// easy by letting them simply forward over to this function.
-pub fn panic_handler(_info: &core::panic::PanicInfo) -> ! {
-  // TODO: Dump a log somewhere?
+pub fn panic_handler(panic_info: &core::panic::PanicInfo) -> ! {
+  crate::debug::log_bytes_to_stdout(b"panic!");
+  if let Some(loc) = panic_info.location() {
+    crate::debug::log_bytes_to_stdout(b" at ");
+    crate::debug::log_bytes_to_stdout(loc.file().as_bytes());
+    crate::debug::log_bytes_to_stdout(b":");
+    crate::debug::log_usize_to_stdout(loc.line() as usize);
+    crate::debug::log_bytes_to_stdout(b":");
+    crate::debug::log_usize_to_stdout(loc.column() as usize);
+    // TODO: caller()s
+    crate::debug::log_bytes_to_stdout(b"\n");
+
+  }
+
+  if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+    crate::debug::log_bytes_to_stdout(b"payload: ");
+    crate::debug::log_bytes_to_stdout(s.as_bytes());
+    crate::debug::log_bytes_to_stdout(b"\n");
+  } else {
+    //crate::debug::log_bytes_to_stdout(b"panic has unknown payload");
+  }
+
   core::intrinsics::abort()
 }
 
