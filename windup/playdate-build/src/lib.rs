@@ -6,10 +6,19 @@ mod consts;
 mod error;
 
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX, EXE_SUFFIX};
-use std::path::PathBuf;
+use std::path::{Path,PathBuf};
 use std::process::Command;
 
+extern crate rusync;
+
 pub use error::{PlaydateBuildError, Result};
+
+fn sync<P: AsRef<Path>, Q: AsRef<Path>>(source: P, destination: Q) -> Result<rusync::Stats> {
+  let options = rusync::SyncOptions::default();
+  let progress_info = Box::new(rusync::ConsoleProgressInfo::new());
+  let syncer = rusync::Syncer::new(source.as_ref(), destination.as_ref(), options, progress_info);
+  Ok(syncer.sync()?)
+}
 
 fn pdx_source_dir() -> PathBuf {
   let dir = std::env::var("OUT_DIR").expect("OUT_DIR envionment variable is not set");
@@ -60,6 +69,8 @@ pub fn build_pdx(pdx_source_dir: &str, pdx_out_dir: &str, pdx_name: &str) -> Res
   let lib_path = lib_path.parent().unwrap(); // Cargo crate dir.
   let lib_path = lib_path.parent().unwrap(); // Cargo build dir.
   let lib_path = lib_path.parent().unwrap(); // Where the actual library lives.
+
+  // TODO: rusync doesn't handle file -> dir or file -> file rsyncing.
   std::fs::copy(
     lib_path.join(&lib_name),
     pdx_source_dir.join(&pdex_lib_name),

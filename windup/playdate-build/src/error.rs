@@ -1,10 +1,13 @@
 use std::error::Error;
 use std::fmt::Display;
 
+extern crate anyhow;
+
 pub type Result<T> = std::result::Result<T, PlaydateBuildError>;
 
 #[derive(Debug)]
 pub enum PlaydateBuildError {
+  AnyhowError(anyhow::Error),
   IOError(std::io::Error),
   PdxCompilerError(String),
 }
@@ -21,6 +24,7 @@ impl Error for PlaydateBuildError {
 impl Display for PlaydateBuildError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
+      Self::AnyhowError(e) => write!(f, "{}", e),
       Self::IOError(e) => write!(f, "{}", e),
       Self::PdxCompilerError(s) => write!(f, "{}", s),
     }
@@ -30,5 +34,11 @@ impl Display for PlaydateBuildError {
 impl From<std::io::Error> for PlaydateBuildError {
   fn from(e: std::io::Error) -> Self {
     Self::IOError(e)
+  }
+}
+
+impl From<anyhow::Error> for PlaydateBuildError {
+  fn from(e: anyhow::Error) -> Self {
+    Self::AnyhowError(e)
   }
 }

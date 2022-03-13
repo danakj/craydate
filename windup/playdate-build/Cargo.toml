@@ -2,3 +2,7 @@
 name = "playdate-build"
 version = "0.1.0"
 description = "Tools for building a pdx from the compiled game library."
+
+[dependencies]
+anyhow = "1.0"
+rusync = "0.7.2"
