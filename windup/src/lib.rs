@@ -17,7 +17,7 @@ async fn main(api: playdate::Api) -> ! {
   ];
   graphics.clear(LCDColor::Pattern(&grey50));
 
-  let bmp = graphics.new_bitmap(100, 40, LCDSolidColor::kColorWhite);
+  let bmp = graphics.new_bitmap(100, 40, LCDColor::Solid(LCDSolidColor::kColorWhite));
   graphics.draw_bitmap(&bmp, 5, 9, LCDBitmapFlip::kBitmapUnflipped);
   drop(bmp);
 
@@ -26,6 +26,9 @@ async fn main(api: playdate::Api) -> ! {
 
   let text = CStr::from_bytes_with_nul(b"Bloop\0").unwrap();
   graphics.draw_text(text, PDStringEncoding::kASCIIEncoding, 30, 20);
+
+  let copy = graphics.copy_frame_buffer_bitmap();
+  graphics.draw_bitmap(&copy, 0, 30, LCDBitmapFlip::kBitmapUnflipped);
 
   loop {
     let fw = system.frame_watcher();

@@ -45,10 +45,12 @@ impl Graphics {
     }
   }
 
-  // NOTE: it appears in practice that new_bitmap's bg_color parameter is only
-  // interpreted as an LCDSolidColor and not as an LCDColor/LCDPattern.
-  pub fn new_bitmap(&self, width: i32, height: i32, bg_color: LCDSolidColor) -> LCDBitmap {
-    let bg_color = LCDColor::Solid(bg_color);
+  pub fn set_draw_mode(&self, mode: LCDBitmapDrawMode) {
+    unsafe { self.state.graphics.setDrawMode.unwrap()(mode) }
+  }
+
+  // FIXME: for some reason, patterns don't appear to work here, but do work with a C example.
+  pub fn new_bitmap(&self, width: i32, height: i32, bg_color: LCDColor) -> LCDBitmap {
     let bitmap_ptr =
       unsafe { self.state.graphics.newBitmap.unwrap()(width, height, bg_color.as_c_color()) };
     LCDBitmap {
@@ -68,6 +70,14 @@ impl Graphics {
     unsafe {
       let text = text.as_ptr() as *const core::ffi::c_void;
       self.state.graphics.drawText.unwrap()(text, len, encoding, x, y);
+    }
+  }
+
+  pub fn copy_frame_buffer_bitmap(&self) -> LCDBitmap {
+    let bitmap_ptr = unsafe { self.state.graphics.copyFrameBufferBitmap.unwrap()() };
+    LCDBitmap {
+      bitmap_ptr,
+      state: self.state,
     }
   }
 }
