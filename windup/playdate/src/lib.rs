@@ -18,15 +18,15 @@ mod api;
 mod capi_state;
 mod cstring;
 mod ctypes;
+mod ctypes_enums;
 mod debug;
 mod executor;
 #[doc(hidden)]
 pub mod macro_helpers;
 
-// TODO: should we just include api::*?
-pub use api::{Api, LCDBitmap, LCDColor, System};
+pub use api::*;
 pub use cstring::{CStr, CString};
-pub use ctypes::{LCDBitmapFlip, LCDPattern, LCDSolidColor, PDStringEncoding};
+pub use ctypes_enums::*;
 
 #[global_allocator]
 pub static GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();
