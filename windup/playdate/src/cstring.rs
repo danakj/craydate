@@ -16,10 +16,11 @@ impl CString {
     }
 
     let v = unsafe {
-      let mut v = Vec::with_capacity(s.len() + 1);
-      core::ptr::copy_nonoverlapping(bytes.as_ptr(), v.as_mut_ptr(), bytes.len());
-      v[s.len()] = 0;
-      v.set_len(v.len() + 1);
+      let num_bytes_without_nul = bytes.len();
+      let mut v = Vec::with_capacity(num_bytes_without_nul + 1);
+      core::ptr::copy_nonoverlapping(bytes.as_ptr(), v.as_mut_ptr(), num_bytes_without_nul);
+      *v.as_mut_ptr().add(num_bytes_without_nul) = 0;
+      v.set_len(num_bytes_without_nul + 1);
       v
     };
 

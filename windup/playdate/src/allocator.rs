@@ -160,7 +160,7 @@ unsafe impl core::alloc::GlobalAlloc for Allocator {
     let ptr = self.alloc_fn(null_mut(), size) as *mut u8;
     let shift = calc_shift_for_align(ptr as u64, layout.align());
 
-    assert!(layout.size() + shift < size);
+    assert!(layout.size() + shift <= size);
     assert_eq!(ptr.add(shift) as usize % layout.align(), 0);
 
     let ptr = ptr.add(shift);
