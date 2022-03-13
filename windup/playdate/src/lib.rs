@@ -26,7 +26,7 @@ pub mod macro_helpers;
 // TODO: should we just include api::*?
 pub use api::{Api, LCDBitmap, LCDColor, System};
 pub use cstring::{CStr, CString};
-pub use ctypes::{LCDPattern, LCDSolidColor, LCDBitmapFlip};
+pub use ctypes::{LCDBitmapFlip, LCDPattern, LCDSolidColor, PDStringEncoding};
 
 #[global_allocator]
 pub static GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();

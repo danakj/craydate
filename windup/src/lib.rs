@@ -1,7 +1,7 @@
 #![no_std]
 #![feature(never_type)]
 
-use playdate::{CStr, LCDBitmapFlip, LCDSolidColor, LCDColor, LCDPattern};
+use playdate::{CStr, CString, LCDBitmapFlip, LCDColor, LCDPattern, LCDSolidColor, PDStringEncoding};
 
 #[playdate::main]
 async fn main(api: playdate::Api) -> ! {
@@ -18,6 +18,13 @@ async fn main(api: playdate::Api) -> ! {
 
   let bmp = graphics.new_bitmap(100, 40, LCDSolidColor::kColorWhite);
   graphics.draw_bitmap(&bmp, 5, 9, LCDBitmapFlip::kBitmapUnflipped);
+  drop(bmp);
+
+  // TODO: this crashes???
+  // let text = CString::new("Bloop");
+
+  let text = CStr::from_bytes_with_nul(b"Bloop\0").unwrap();
+  graphics.draw_text(text, PDStringEncoding::kASCIIEncoding, 30, 20);
 
   loop {
     let fw = system.frame_watcher();

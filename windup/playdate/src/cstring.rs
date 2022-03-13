@@ -65,4 +65,12 @@ impl CStr {
   pub fn as_ptr(&self) -> *const u8 {
     self.0.as_ptr()
   }
+
+  pub fn to_bytes_with_nul(&self) -> &[u8] {
+    &self.0
+  }
+
+  pub fn to_bytes(&self) -> &[u8] {
+    &self.0[..self.0.len() - 1]
+  }
 }

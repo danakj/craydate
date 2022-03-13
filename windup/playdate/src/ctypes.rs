@@ -6,5 +6,6 @@ pub use playdate_sys::LCDBitmap as CLCDBitmap;
 pub use playdate_sys::LCDBitmapFlip;
 pub use playdate_sys::LCDPattern;
 pub use playdate_sys::LCDSolidColor;
+pub use playdate_sys::PDStringEncoding;
 pub use playdate_sys::PDSystemEvent as CSystemEvent;
 pub use playdate_sys::PlaydateAPI as CApi;
