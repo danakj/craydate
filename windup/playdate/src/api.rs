@@ -28,9 +28,7 @@ pub struct System {
 impl System {
   /// A watcher that lets you `await` for the next frame update from the Playdate device.
   pub fn frame_watcher(&self) -> FrameWatcher {
-    FrameWatcher {
-      state: self.state,
-    }
+    FrameWatcher { state: self.state }
   }
 
   pub fn log(&self, s: &CStr) {
@@ -44,7 +42,7 @@ pub struct FrameWatcher {
 }
 impl FrameWatcher {
   /// Runs until the next frame from the Playdate device, then returns the frame number.
-  /// 
+  ///
   /// This function returns after the Playdate device calls the "update callback" to signify that
   /// the game should perform updates for the next frame to be displayed.
   pub async fn next(&self) -> u64 {

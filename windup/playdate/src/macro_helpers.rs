@@ -59,12 +59,17 @@ pub fn initialize(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3, co
 
     Executor::set_main_future(capi.executor.as_ptr(), (config.main_fn)(api));
 
-    unsafe { system.setUpdateCallback.unwrap()(Some(update_callback), capi as *const CApiState as *mut c_void) };
+    unsafe {
+      system.setUpdateCallback.unwrap()(
+        Some(update_callback),
+        capi as *const CApiState as *mut c_void,
+      )
+    };
   }
 }
 
 extern "C" fn update_callback(capi_ptr: *mut c_void) -> i32 {
-  let capi = unsafe { &*(capi_ptr as *const CApiState)};
+  let capi = unsafe { &*(capi_ptr as *const CApiState) };
   let exec_ptr = capi.executor.as_ptr();
 
   capi.frame_number.set(capi.frame_number.get() + 1);

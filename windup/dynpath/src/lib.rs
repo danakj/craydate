@@ -34,9 +34,9 @@ pub fn dynpath(attr: TokenStream, item: TokenStream) -> TokenStream {
   };
 
   let dir = if option == "OUT_DIR" {
-      std::env::var("OUT_DIR").unwrap()
+    std::env::var("OUT_DIR").unwrap()
   } else {
-      panic!()
+    panic!()
   };
 
   let item = parse_macro_input!(item as syn::ItemMod);

@@ -49,8 +49,12 @@ impl Graphics {
   // interpreted as an LCDSolidColor and not as an LCDColor/LCDPattern.
   pub fn new_bitmap(&self, width: i32, height: i32, bg_color: LCDSolidColor) -> LCDBitmap {
     let bg_color = LCDColor::Solid(bg_color);
-    let bitmap_ptr = unsafe { self.state.graphics.newBitmap.unwrap()(width, height, bg_color.as_c_color()) };
-    LCDBitmap { bitmap_ptr, state: self.state }
+    let bitmap_ptr =
+      unsafe { self.state.graphics.newBitmap.unwrap()(width, height, bg_color.as_c_color()) };
+    LCDBitmap {
+      bitmap_ptr,
+      state: self.state,
+    }
   }
 
   pub fn draw_bitmap(&self, bitmap: &LCDBitmap, x: i32, y: i32, flip: LCDBitmapFlip) {

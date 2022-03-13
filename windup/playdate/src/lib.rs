@@ -20,8 +20,8 @@ mod cstring;
 mod ctypes;
 mod ctypes_enums;
 mod debug;
-mod graphics;
 mod executor;
+mod graphics;
 #[doc(hidden)]
 pub mod macro_helpers;
 
