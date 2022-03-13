@@ -1,3 +1,5 @@
+use core::marker::PhantomData;
+
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::{CStr, CString};
@@ -34,6 +36,46 @@ impl Drop for LCDBitmap {
   }
 }
 
+impl LCDBitmap {
+  pub fn data(&self) -> LCDBitmapData {
+    let mut width: i32 = 0;
+    let mut height: i32 = 0;
+    let mut rowbytes: i32 = 0;
+    let mut hasmask: i32 = 0;
+    let mut data: *mut u8 = core::ptr::null_mut();
+    unsafe {
+      self.state.graphics.getBitmapData.unwrap()(
+        self.bitmap_ptr,
+        &mut width,
+        &mut height,
+        &mut rowbytes,
+        &mut hasmask,
+        &mut data,
+      )
+    };
+    LCDBitmapData {
+      width,
+      height,
+      rowbytes,
+      hasmask,
+      data,
+      phantom: PhantomData,
+    }
+  }
+}
+
+pub struct LCDBitmapData<'a> {
+  pub width: i32,
+  pub height: i32,
+  pub rowbytes: i32,
+  // TODO: is hasmask logically a boolean?
+  pub hasmask: i32,
+  // TODO: direct access into the bitmap, so does not need to be freed?
+  pub data: *mut u8,
+  // Share lifetime of LCDBitmap that generated this.
+  phantom: PhantomData<&'a ()>,
+}
+
 #[derive(Debug)]
 pub struct Graphics {
   pub(crate) state: &'static CApiState,
@@ -57,6 +99,11 @@ impl Graphics {
       bitmap_ptr,
       state: self.state,
     }
+  }
+
+  pub fn get_bitmap_data<'a>(&self, bitmap: &'a LCDBitmap) -> LCDBitmapData<'a> {
+    // This exists to match the API.
+    bitmap.data()
   }
 
   pub fn draw_bitmap(&self, bitmap: &LCDBitmap, x: i32, y: i32, flip: LCDBitmapFlip) {

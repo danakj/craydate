@@ -28,6 +28,13 @@ async fn main(api: playdate::Api) -> ! {
   graphics.draw_text(text, PDStringEncoding::kASCIIEncoding, 30, 20);
 
   let copy = graphics.copy_frame_buffer_bitmap();
+
+  let data = copy.data();
+  unsafe {
+    for i in 0..15 {
+      *data.data.offset(i) = 0;
+    }
+  }
   graphics.draw_bitmap(&copy, 0, 30, LCDBitmapFlip::kBitmapUnflipped);
 
   loop {
