@@ -15,6 +15,7 @@ pub mod ctypes {
   pub type c_void = core::ffi::c_void;
 }
 
+#[rustfmt::skip]
 #[dynpath("OUT_DIR")]
 mod bindings;
 
