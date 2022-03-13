@@ -31,8 +31,6 @@ pub struct Executor {
   // main_future in the next update_callback(). After that it's polled when the given Waker signals.
   first_poll_main: bool,
 
-  pub frame: u64,
-
   // The executor provides async "blocking" tasks, and keeps track of the Wakers that are
   // currently waiting for them.
   //
@@ -44,7 +42,6 @@ impl Executor {
     Executor {
       main_future: None,
       first_poll_main: false,
-      frame: 0,
       // There will only ever be a single such waker unless we introduce a spawn()
       // or similar function that has a 2nd async function running in tandem with the
       // main function (ie. when it blocks on an async thing).
@@ -57,6 +54,11 @@ impl Executor {
     let exec = unsafe { Self::as_mut_ref(exec_ptr) };
     exec.main_future = Some(ExecutorOwnedFuture(main));
     exec.first_poll_main = true;
+  }
+
+  pub fn add_waker_for_update_callback(exec_ptr: *mut Executor, waker: &Waker) {
+    let exec = unsafe { Self::as_mut_ref(exec_ptr) };
+    exec.wakers_for_update_callback.push(waker.clone());
   }
 
   pub fn _spawn(_exec_ptr: *mut Executor, _future: Pin<Box<dyn Future<Output = ()>>>) {

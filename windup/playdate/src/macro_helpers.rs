@@ -67,7 +67,7 @@ extern "C" fn update_callback(capi_ptr: *mut c_void) -> i32 {
   let capi = unsafe { &*(capi_ptr as *const CApiState)};
   let exec_ptr = capi.executor.as_ptr();
 
-  unsafe { (*exec_ptr).frame += 1 };
+  capi.frame_number.set(capi.frame_number.get() + 1);
 
   let exec: &mut Executor = unsafe { &mut *(exec_ptr) };
   let mut wakers = core::mem::replace(&mut exec.wakers_for_update_callback, Vec::with_capacity(1));

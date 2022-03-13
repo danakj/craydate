@@ -19,9 +19,9 @@ async fn main(api: playdate::Api) -> ! {
 
   graphics.clear(LCDColor::Pattern(&grey50));
   loop {
+    let fw = system.frame_watcher();
     system.log(CStr::from_bytes_with_nul(b"before\0").unwrap());
-    system.next_update().await;
+    fw.next().await;
     system.log(CStr::from_bytes_with_nul(b"after\0").unwrap());
-    system.next_update().await;
   }
 }

@@ -2,11 +2,12 @@ use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
-use crate::ctypes::*;
-use crate::CStr;
 use crate::capi_state::CApiState;
+use crate::ctypes::*;
 use crate::executor::Executor;
+use crate::CStr;
 
+#[derive(Debug)]
 pub struct Api {
   pub system: System,
   pub graphics: Graphics,
@@ -14,29 +15,21 @@ pub struct Api {
 impl Api {
   pub(crate) fn new(state: &'static CApiState) -> Api {
     Api {
-      system: System {
-        state,
-      },
-      graphics: Graphics {
-        state,
-      },
+      system: System { state },
+      graphics: Graphics { state },
     }
   }
 }
 
+#[derive(Debug)]
 pub struct System {
   pub(crate) state: &'static CApiState,
 }
 impl System {
-  /// An async function that waits for the next update step from the Playdate SDK.
-  pub async fn next_update(&self) {
-    self.next_update_sync().await
-  }
-
-  fn next_update_sync(&self) -> NextUpdateFuture {
-    NextUpdateFuture {
-      exec: self.state.executor.as_ptr(),
-      seen_frame: unsafe { self.state.executor.as_ref().frame },
+  /// A watcher that lets you `await` for the next frame update from the Playdate device.
+  pub fn frame_watcher(&self) -> FrameWatcher {
+    FrameWatcher {
+      state: self.state,
     }
   }
 
@@ -45,33 +38,50 @@ impl System {
   }
 }
 
+#[derive(Debug)]
+pub struct FrameWatcher {
+  state: &'static CApiState,
+}
+impl FrameWatcher {
+  /// Runs until the next frame from the Playdate device, then returns the frame number.
+  /// 
+  /// This function returns after the Playdate device calls the "update callback" to signify that
+  /// the game should perform updates for the next frame to be displayed.
+  pub async fn next(&self) -> u64 {
+    self.next_impl().await
+  }
+  fn next_impl(&self) -> FrameWatcherFuture {
+    FrameWatcherFuture {
+      state: self.state,
+      seen_frame: self.state.frame_number.get(),
+    }
+  }
+}
+
 /// A future for which poll() waits for the next update, then returns Complete.
-struct NextUpdateFuture {
-  exec: *mut Executor,
+struct FrameWatcherFuture {
+  state: &'static CApiState,
   seen_frame: u64,
 }
 
-impl Future for NextUpdateFuture {
-  type Output = ();
+impl Future for FrameWatcherFuture {
+  type Output = u64;
 
-  fn poll(self: Pin<&mut Self>, ctxt: &mut Context<'_>) -> Poll<()> {
-    let frame = {
-      let exec: &mut Executor = unsafe { &mut *(self.exec as *mut Executor) };
-      exec.frame
-    };
+  fn poll(self: Pin<&mut Self>, ctxt: &mut Context<'_>) -> Poll<u64> {
+    let frame = self.state.frame_number.get();
 
     if frame > self.seen_frame {
-      Poll::Ready(())
+      Poll::Ready(frame)
     } else {
       // Register the waker to be woken when the frame changes. We will observe that it has
       // indeed changed and return Ready since we have saved the current frame at construction.
-      let exec: &mut Executor = unsafe { &mut *(self.exec as *mut Executor) };
-      exec.wakers_for_update_callback.push(ctxt.waker().clone());
+      Executor::add_waker_for_update_callback(self.state.executor.as_ptr(), ctxt.waker());
       Poll::Pending
     }
   }
 }
 
+#[derive(Debug)]
 pub enum LCDColor<'a> {
   Solid(LCDSolidColor),
   Pattern(&'a LCDPattern),
@@ -89,6 +99,7 @@ impl<'a> LCDColor<'a> {
   }
 }
 
+#[derive(Debug)]
 pub struct Graphics {
   pub(crate) state: &'static CApiState,
 }
