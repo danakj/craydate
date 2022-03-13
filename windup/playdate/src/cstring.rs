@@ -30,6 +30,10 @@ impl CString {
   pub fn as_ptr(&self) -> *const u8 {
     self.v.as_ptr()
   }
+
+  pub fn as_bytes(&self) -> &[u8] {
+    self.v.as_slice()
+  }
 }
 impl core::ops::Deref for CString {
   type Target = CStr;
@@ -74,4 +78,15 @@ impl CStr {
   pub fn to_bytes(&self) -> &[u8] {
     &self.0[..self.0.len() - 1]
   }
+}
+
+impl AsRef<CStr> for CString {
+  fn as_ref(&self) -> &CStr {
+      unsafe { &CStr::from_bytes_with_nul_unchecked(self.as_bytes()) }
+  }
+}
+impl AsRef<CStr> for CStr {
+    fn as_ref(&self) -> &CStr {
+        self
+    }
 }
