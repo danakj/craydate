@@ -68,7 +68,7 @@ impl Future for NextUpdateFuture {
       // Register the waker to be woken when the frame changes. We will observe that it has
       // indeed changed and return Ready since we have saved the current frame at construction.
       let exec: &mut Executor = unsafe { &mut *(self.exec as *mut Executor) };
-      exec.wakers_waiting_for_update.push(ctxt.waker().clone());
+      exec.wakers_for_update_callback.push(ctxt.waker().clone());
       Poll::Pending
     }
   }

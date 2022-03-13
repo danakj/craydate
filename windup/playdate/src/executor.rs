@@ -41,7 +41,7 @@ pub struct Executor {
   // currently waiting for them.
   //
   // These are waiting for the `frame` to increment.
-  pub wakers_waiting_for_update: Vec<Waker>,
+  pub wakers_for_update_callback: Vec<Waker>,
 }
 impl Executor {
   pub fn new(system: &'static CSystem) -> Executor {
@@ -53,7 +53,7 @@ impl Executor {
       // There will only ever be a single such waker unless we introduce a spawn()
       // or similar function that has a 2nd async function running in tandem with the
       // main function (ie. when it blocks on an async thing).
-      wakers_waiting_for_update: Vec::with_capacity(1),
+      wakers_for_update_callback: Vec::with_capacity(1),
     }
   }
 

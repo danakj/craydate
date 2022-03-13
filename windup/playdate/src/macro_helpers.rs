@@ -69,7 +69,7 @@ extern "C" fn update_callback(exec_ptr: *mut c_void) -> i32 {
   unsafe { (*exec_ptr).frame += 1 };
 
   let exec: &mut Executor = unsafe { &mut *(exec_ptr) };
-  let mut wakers = core::mem::replace(&mut exec.wakers_waiting_for_update, Vec::with_capacity(1));
+  let mut wakers = core::mem::replace(&mut exec.wakers_for_update_callback, Vec::with_capacity(1));
   drop(exec);
 
   for w in wakers.drain(..) {
