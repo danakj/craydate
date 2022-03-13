@@ -79,6 +79,6 @@ pub struct Graphics {
 }
 impl Graphics {
   pub fn clear(&self, color: LCDSolidColor) {
-    unsafe { self.graphics.clear.unwrap()(color as usize) };
+    unsafe { self.graphics.clear.unwrap()(color.0 as usize) };
   }
 }
