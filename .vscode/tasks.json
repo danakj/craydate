@@ -43,9 +43,13 @@
             "group": "build",
         },
         {
-            "type": "process",
+            "type": "shell",
             "label": "simulator-win: run simulator (dev)",
             "command": "simulator-win\\target\\x86_64-pc-windows-msvc\\debug\\run_simulator.exe",
+            "args": [
+                ">stdout.txt",
+                "2>&1",
+            ],
             "dependsOn": [
                 "simulator-win: make pdx (dev)"
             ],

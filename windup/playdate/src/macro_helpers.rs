@@ -39,6 +39,8 @@ pub fn initialize(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3, co
   let api: &CApi = unsafe { &(*api_ptr) };
   let system: &CSystem = unsafe { &(*api.system) };
 
+  crate::debug::initialize(system);
+
   if event == CSystemEvent::kEventInit {
     // SAFETY: Do not allocate before the GLOBAL_ALLOCATOR is set up here, or we will crash
     // in the allocator.
