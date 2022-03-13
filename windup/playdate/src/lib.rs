@@ -15,6 +15,7 @@ pub use playdate_macro::main;
 
 mod allocator;
 mod api;
+mod capi_state;
 mod cstring;
 mod ctypes;
 mod debug;

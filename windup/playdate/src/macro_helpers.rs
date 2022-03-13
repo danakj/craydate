@@ -7,10 +7,8 @@ use core::ffi::c_void;
 use core::future::Future;
 use core::pin::Pin;
 
-use playdate_sys::playdate_sys as CSystem;
-use playdate_sys::PDSystemEvent as CSystemEvent;
-use playdate_sys::PlaydateAPI as CApi;
-
+use crate::capi_state::CApiState;
+use crate::ctypes::*;
 use crate::executor::Executor;
 use crate::*;
 
@@ -46,8 +44,10 @@ pub fn initialize(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3, co
     // in the allocator.
     GLOBAL_ALLOCATOR.set_system_ptr(system);
 
-    // We will leak this pointer so it has 'static lifetime.
-    let exec_ptr = Box::into_raw(Box::new(Executor::new(system)));
+    // We leak this pointer so it has 'static lifetime.
+    let capi = Box::into_raw(Box::new(CApiState::new(api)));
+    // The CApiState is always accessed through a shared pointer.
+    let capi = unsafe { &*capi };
 
     // We start by running the main function. This gets the future for our single execution
     // of the main function. The main function can never return (its output is `!`), so the
@@ -55,16 +55,17 @@ pub fn initialize(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3, co
     // function on the first execution of update_callback().
 
     // TODO: should exec_ptr be constructed internally here?
-    let api = api::Api::new(api, exec_ptr);
+    let api = api::Api::new(capi);
 
-    Executor::set_main_future(exec_ptr, (config.main_fn)(api));
+    Executor::set_main_future(capi.executor.as_ptr(), (config.main_fn)(api));
 
-    unsafe { system.setUpdateCallback.unwrap()(Some(update_callback), exec_ptr as *mut c_void) };
+    unsafe { system.setUpdateCallback.unwrap()(Some(update_callback), capi as *const CApiState as *mut c_void) };
   }
 }
 
-extern "C" fn update_callback(exec_ptr: *mut c_void) -> i32 {
-  let exec_ptr = exec_ptr as *mut Executor;
+extern "C" fn update_callback(capi_ptr: *mut c_void) -> i32 {
+  let capi = unsafe { &*(capi_ptr as *const CApiState)};
+  let exec_ptr = capi.executor.as_ptr();
 
   unsafe { (*exec_ptr).frame += 1 };
 

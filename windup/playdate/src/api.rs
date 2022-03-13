@@ -3,30 +3,29 @@ use core::pin::Pin;
 use core::task::{Context, Poll};
 
 use crate::ctypes::*;
-use crate::executor::Executor;
 use crate::CStr;
+use crate::capi_state::CApiState;
+use crate::executor::Executor;
 
 pub struct Api {
   pub system: System,
   pub graphics: Graphics,
 }
 impl Api {
-  pub(crate) fn new(c_api: &'static CApi, exec: *mut Executor) -> Api {
+  pub(crate) fn new(state: &'static CApiState) -> Api {
     Api {
       system: System {
-        system: unsafe { &*c_api.system },
-        exec,
+        state,
       },
       graphics: Graphics {
-        graphics: unsafe { &*c_api.graphics },
+        state,
       },
     }
   }
 }
 
 pub struct System {
-  pub(crate) system: &'static CSystem,
-  pub(crate) exec: *mut Executor,
+  pub(crate) state: &'static CApiState,
 }
 impl System {
   /// An async function that waits for the next update step from the Playdate SDK.
@@ -36,14 +35,13 @@ impl System {
 
   fn next_update_sync(&self) -> NextUpdateFuture {
     NextUpdateFuture {
-      exec: self.exec,
-      seen_frame: unsafe { (*self.exec).frame },
+      exec: self.state.executor.as_ptr(),
+      seen_frame: unsafe { self.state.executor.as_ref().frame },
     }
   }
 
   pub fn log(&self, s: &CStr) {
-    let exec: &mut Executor = unsafe { &mut *(self.exec as *mut Executor) };
-    unsafe { exec.system.logToConsole.unwrap()(s.as_ptr()) };
+    unsafe { self.state.system.logToConsole.unwrap()(s.as_ptr()) };
   }
 }
 
@@ -75,10 +73,10 @@ impl Future for NextUpdateFuture {
 }
 
 pub struct Graphics {
-  pub(crate) graphics: &'static CGraphics,
+  pub(crate) state: &'static CApiState,
 }
 impl Graphics {
   pub fn clear(&self, color: LCDSolidColor) {
-    unsafe { self.graphics.clear.unwrap()(color.0 as usize) };
+    unsafe { self.state.graphics.clear.unwrap()(color.0 as usize) };
   }
 }
