@@ -20,9 +20,6 @@ pub fn log(bytes: &[u8]) {
         Some(system) => unsafe { system.logToConsole.unwrap()(cstr.as_ptr()) },
         None => log_bytes_to_stdout(b"debug::log() called before debug::initialize()\n"),
       }
-      // Replace the null at the end with \n.
-      log_bytes_to_stdout(&bytes[0..bytes.len() - 1]);
-      crate::debug::log_bytes_to_stdout(b"\n");
     }
     None => log_bytes_to_stdout(b"Invalid bytes given to log()\n"),
   }
