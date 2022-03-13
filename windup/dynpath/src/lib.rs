@@ -3,10 +3,9 @@ extern crate proc_macro2;
 extern crate quote;
 extern crate syn;
 
-use proc_macro::{TokenStream, *};
-use quote::{quote, quote_spanned, ToTokens};
-use syn::spanned::Spanned;
-use syn::{parse_macro_input, ItemFn};
+use proc_macro::*;
+use quote::{quote, ToTokens};
+use syn::parse_macro_input;
 
 macro_rules! tokens {
     ($($expr:expr),* $(,)?) => {
