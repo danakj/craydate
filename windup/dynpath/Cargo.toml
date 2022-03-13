@@ -1,0 +1,12 @@
+[package]
+name = "dynpath"
+version = "0.1.0"
+description = "An attribute macro to specify a path to a module dynamically."
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = {version = "1", features = ["full"]}
+proc-macro2 = "1"
+quote = "1"

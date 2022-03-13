@@ -3,6 +3,9 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
+#![feature(proc_macro_hygiene)]
+
+use dynpath::dynpath;
 
 pub mod ctypes {
   pub type c_int = i32;
@@ -12,4 +15,7 @@ pub mod ctypes {
   pub type c_void = core::ffi::c_void;
 }
 
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+#[dynpath("OUT_DIR")]
+mod bindings;
+
+pub use bindings::*;
