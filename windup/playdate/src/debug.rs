@@ -1,5 +1,5 @@
 use crate::ctypes::*;
-use crate::null_terminated::ToNullTerminated;
+use crate::null_terminated::ToNullTerminatedString;
 
 struct SystemRef(&'static CSystem);
 unsafe impl Sync for SystemRef {}
@@ -19,7 +19,7 @@ pub fn log<S: AsRef<str>>(s: S) {
   let maybe_system: Option<&'static CSystem> = unsafe { SYSTEM.as_ref().map(|r| r.0) };
   match maybe_system {
     Some(system) => {
-      let vec = s.as_ref().to_null_terminated();
+      let vec = s.as_ref().to_null_terminated_utf8();
       unsafe { system.logToConsole.unwrap()(vec.as_ptr()) };
       log_to_stdout("LOG: ");
       log_to_stdout_with_newline(s.as_ref());

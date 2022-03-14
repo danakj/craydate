@@ -3,7 +3,7 @@ use core::pin::Pin;
 use core::task::{Context, Poll};
 
 use crate::capi_state::CApiState;
-use crate::null_terminated::ToNullTerminated;
+use crate::null_terminated::ToNullTerminatedString;
 use crate::executor::Executor;
 use crate::graphics::Graphics;
 
@@ -32,7 +32,7 @@ impl System {
   }
 
   pub fn log<S: AsRef<str>>(&self, s: S) {
-    let vec = s.as_ref().to_null_terminated();
+    let vec = s.as_ref().to_null_terminated_utf8();
     unsafe { self.state.system.logToConsole.unwrap()(vec.as_ptr()) }
   }
 }
