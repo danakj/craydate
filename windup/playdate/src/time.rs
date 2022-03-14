@@ -4,19 +4,19 @@
 pub struct TimeTicks(u32);
 impl TimeTicks {
   // Returns the number of hours passed in the time, truncating any non-whole hours.
-  pub fn total_hours(&self) -> u32 {
+  pub fn total_whole_hours(&self) -> u32 {
     self.0 / (1000 * 60 * 60)
   }
   // Returns the number of minutes passed in the time, truncating any non-whole minutes.
-  pub fn total_minutes(&self) -> u32 {
+  pub fn total_whole_minutes(&self) -> u32 {
     self.0 / (1000 * 60)
   }
   // Returns the number of seconds passed in the time, truncating any non-whole seconds.
-  pub fn total_seconds(&self) -> u32 {
+  pub fn total_whole_seconds(&self) -> u32 {
     self.0 / 1000
   }
   // Returns the number of milliseconds passed in the time, truncating any non-whole milliseconds.
-  pub fn total_milliseconds(&self) -> u32 {
+  pub fn total_whole_milliseconds(&self) -> u32 {
     self.0
   }
 
@@ -32,19 +32,19 @@ impl TimeTicks {
 pub struct TimeDelta(i32);
 impl TimeDelta {
   // Returns the number of hours in the delta, truncating any non-whole hours.
-  pub fn total_hours(&self) -> i32 {
+  pub fn total_whole_hours(&self) -> i32 {
     self.0 / (1000 * 60 * 60)
   }
   // Returns the number of minutes in the delta, truncating any non-whole minutes.
-  pub fn total_minutes(&self) -> i32 {
+  pub fn total_whole_minutes(&self) -> i32 {
     self.0 / (1000 * 60)
   }
   // Returns the number of seconds in the delta, truncating any non-whole seconds.
-  pub fn total_seconds(&self) -> i32 {
+  pub fn total_whole_seconds(&self) -> i32 {
     self.0 / 1000
   }
   // Returns the number of milliseconds in the delta, truncating any non-whole milliseconds.
-  pub fn total_milliseconds(&self) -> i32 {
+  pub fn total_whole_milliseconds(&self) -> i32 {
     self.0
   }
 
