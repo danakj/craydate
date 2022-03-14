@@ -6,7 +6,7 @@ mod consts;
 mod error;
 
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX, EXE_SUFFIX};
-use std::path::{Path,PathBuf};
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 extern crate rusync;
@@ -16,7 +16,12 @@ pub use error::{PlaydateBuildError, Result};
 fn sync<P: AsRef<Path>, Q: AsRef<Path>>(source: P, destination: Q) -> Result<rusync::Stats> {
   let options = rusync::SyncOptions::default();
   let progress_info = Box::new(rusync::ConsoleProgressInfo::new());
-  let syncer = rusync::Syncer::new(source.as_ref(), destination.as_ref(), options, progress_info);
+  let syncer = rusync::Syncer::new(
+    source.as_ref(),
+    destination.as_ref(),
+    options,
+    progress_info,
+  );
   Ok(syncer.sync()?)
 }
 
@@ -28,6 +33,15 @@ fn pdx_source_dir() -> PathBuf {
 fn pdx_out_dir() -> PathBuf {
   let dir = std::env::var("OUT_DIR").expect("OUT_DIR envionment variable is not set");
   PathBuf::from(dir).join("pdx_out")
+}
+
+fn pdx_asset_dir() -> PathBuf {
+  // FIXME: this is an unfortunate hardcoding of the asset dir relative to the simulator-win cargo manifest dir.
+  // It makes some logical sense to have the assets for a project be located with the windup code.
+  // Maybe there is some better folder structure that could make simulator-win/playdate-build more independent.
+  let sim_dir =
+    std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR envionment variable is not set");
+  PathBuf::from(sim_dir).join("../windup/assets")
 }
 
 fn pdx_name() -> String {
@@ -45,10 +59,20 @@ pub fn export_vars() {
     "PDX_OUT_DIR",
     pdx_out_dir().to_string_lossy()
   );
+  println!(
+    "cargo:rustc-env={}={}",
+    "PDX_ASSET_DIR",
+    pdx_asset_dir().to_string_lossy()
+  );
   println!("cargo:rustc-env={}={}", "PDX_NAME", pdx_name());
 }
 
-pub fn build_pdx(pdx_source_dir: &str, pdx_out_dir: &str, pdx_name: &str) -> Result<String> {
+pub fn build_pdx(
+  pdx_source_dir: &str,
+  pdx_out_dir: &str,
+  pdx_asset_dir: &str,
+  pdx_name: &str,
+) -> Result<String> {
   let sdk_path =
     std::env::var("PLAYDATE_SDK_PATH").expect("PLAYDATE_SDK_PATH environment variable is not set");
 
@@ -75,6 +99,8 @@ pub fn build_pdx(pdx_source_dir: &str, pdx_out_dir: &str, pdx_name: &str) -> Res
     lib_path.join(&lib_name),
     pdx_source_dir.join(&pdex_lib_name),
   )?;
+
+  sync(&pdx_asset_dir, &pdx_source_dir)?;
 
   let pdx_compiler = PathBuf::from(&sdk_path).join("bin").join(format!("pdc{}", EXE_SUFFIX));
   let out = Command::new(&pdx_compiler)
