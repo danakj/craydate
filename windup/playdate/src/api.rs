@@ -37,6 +37,12 @@ impl System {
     }
   }
 
+  // System Api notes. Everything in the CSystem Api is exposed here in a Rusty way except:
+  // - formatString() is not exposed, as the format!() macro replaces it in Rust.
+  // - setUpdateCallback() is not exposed, as it is used internally.
+  // - drawFPS() is moved to the Graphics api.
+  // - TODO: All system menu interaction functions.
+
   /// A watcher that lets you `await` for the next frame update from the Playdate device.
   pub fn frame_watcher(&self) -> FrameWatcher {
     FrameWatcher { state: self.state }
