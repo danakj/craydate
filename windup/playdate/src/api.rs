@@ -86,8 +86,11 @@ impl System {
   /// Returns the battery percentage, which is a value between 0 and 1.
   pub fn battery_percentage(&self) -> f32 {
     unsafe { self.state.csystem.getBatteryPercentage.unwrap()() / 100f32 }
+  }
 
-
+  /// Returns the battery voltage.
+  pub fn battery_voltage(&self) -> f32 {
+    unsafe { self.state.csystem.getBatteryVoltage.unwrap()() }
   }
 }
 
