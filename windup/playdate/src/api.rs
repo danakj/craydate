@@ -82,6 +82,13 @@ impl System {
   pub fn is_reduce_flashing_enabled(&self) -> bool {
     unsafe { self.state.csystem.getReduceFlashing.unwrap()() != 0 }
   }
+
+  /// Returns the battery percentage, which is a value between 0 and 1.
+  pub fn battery_percentage(&self) -> f32 {
+    unsafe { self.state.csystem.getBatteryPercentage.unwrap()() / 100f32 }
+
+
+  }
 }
 
 #[derive(Debug)]

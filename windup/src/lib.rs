@@ -35,8 +35,6 @@ async fn main(api: playdate::Api) -> ! {
   let fw = system.frame_watcher();
   loop {
 
-    let timer = system.start_timer();
     fw.next().await;
-    system.log(format!("Waited {}us for next frame", timer.elapsed_microseconds()));
   }
 }
