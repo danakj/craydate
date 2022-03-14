@@ -76,7 +76,7 @@ impl LCDBitmap {
   }
 }
 
-pub struct LCDBitmapData<'a> {
+pub struct LCDBitmapData<'bitmap> {
   width: i32,
   height: i32,
   rowbytes: i32,
@@ -84,9 +84,9 @@ pub struct LCDBitmapData<'a> {
   // TODO: direct access into the bitmap, so does not need to be freed?
   data: *mut u8,
   // Share lifetime of LCDBitmap that generated this.
-  phantom: PhantomData<&'a ()>,
+  phantom: PhantomData<&'bitmap ()>,
 }
-impl<'a> LCDBitmapData<'a> {
+impl<'bitmap> LCDBitmapData<'bitmap> {
   pub fn width(&self) -> i32 {
     self.width
   }
@@ -111,20 +111,20 @@ impl<'a> LCDBitmapData<'a> {
     unsafe { core::slice::from_raw_parts_mut(self.data, (self.rowbytes * self.height) as usize) }
   }
   /// Gives read acccess to the individual pixels of the bitmap.
-  pub fn pixels(&self) -> LCDBitmapPixels {
-    LCDBitmapPixels { data: self }
+  pub fn pixels<'data>(&'data self) -> LCDBitmapPixels<'bitmap, 'data> {
+    LCDBitmapPixels { data: &self }
   }
-  pub fn pixels_mut(&'a mut self) -> LCDBitmapPixelsMut {
+  pub fn pixels_mut<'data>(&'data mut self) -> LCDBitmapPixelsMut<'bitmap, 'data> {
     LCDBitmapPixelsMut { data: self }
   }
 }
 
 /// Provide shared access to the pixels in an LCDBitmap, through its LCDBitmapData.
-pub struct LCDBitmapPixels<'a> {
-  data: &'a LCDBitmapData<'a>,
+pub struct LCDBitmapPixels<'bitmap, 'data> {
+  data: &'data LCDBitmapData<'bitmap>,
 }
 // An impl when LCDBitmapPixels holds a shared reference to LCDBitmapData.
-impl LCDBitmapPixels<'_> {
+impl LCDBitmapPixels<'_, '_> {
   pub fn get(&self, x: usize, y: usize) -> bool {
     let index = self.data.width as usize * y + x;
     let byte_index = index / 8;
@@ -134,11 +134,11 @@ impl LCDBitmapPixels<'_> {
 }
 
 /// Provide exclusive access to the pixels in an LCDBitmap, through its LCDBitmapData.
-pub struct LCDBitmapPixelsMut<'a> {
-  data: &'a mut LCDBitmapData<'a>,
+pub struct LCDBitmapPixelsMut<'bitmap, 'data> {
+  data: &'data mut LCDBitmapData<'bitmap>,
 }
 // An impl when LCDBitmapPixels holds a mutable reference to LCDBitmapData.
-impl LCDBitmapPixelsMut<'_> {
+impl LCDBitmapPixelsMut<'_, '_> {
   pub fn get(&self, x: usize, y: usize) -> bool {
     LCDBitmapPixels { data: self.data }.get(x, y)
   }
