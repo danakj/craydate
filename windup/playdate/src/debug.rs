@@ -11,9 +11,9 @@ pub fn initialize(system: &'static CSystem) {
   log("debug::log initialized.");
 }
 
-/// Log a string to the simulator console. This function may allocate.
-///
-/// Note that the simulator console is also sent to stderr.
+/// Log a string to the Playdate console, and to stdout.
+/// 
+/// Note that this function may allocate, so must not be called before Playdate initialization.
 #[allow(dead_code)]
 pub fn log<S: AsRef<str>>(s: S) {
   let maybe_system: Option<&'static CSystem> = unsafe { SYSTEM.as_ref().map(|r| r.0) };
@@ -25,6 +25,24 @@ pub fn log<S: AsRef<str>>(s: S) {
       log_to_stdout_with_newline(s.as_ref());
     }
     None => log_to_stdout_with_newline("ERROR: debug::log() called before debug::initialize()"),
+  }
+}
+
+/// Log a string to the Playdate console denoted as an error, and pauses the simulator. Also
+/// writes the string to stdout.
+/// 
+/// Note that this function may allocate, so must not be called before Playdate initialization.
+#[allow(dead_code)]
+pub fn error<S: AsRef<str>>(s: S) {
+  let maybe_system: Option<&'static CSystem> = unsafe { SYSTEM.as_ref().map(|r| r.0) };
+  match maybe_system {
+    Some(system) => {
+      let vec = s.as_ref().to_null_terminated_utf8();
+      unsafe { system.error.unwrap()(vec.as_ptr()) };
+      log_to_stdout("ERROR: ");
+      log_to_stdout_with_newline(s.as_ref());
+    }
+    None => log_to_stdout_with_newline("ERROR: debug::error() called before debug::initialize()"),
   }
 }
 

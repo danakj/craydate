@@ -31,8 +31,15 @@ impl System {
     FrameWatcher { state: self.state }
   }
 
+  /// Prints a string to the Playdate console, as well as to stdout.
   pub fn log<S: AsRef<str>>(&self, s: S) {
     crate::debug::log(s)
+  }
+
+  /// Prints an error string in red to the Playdate console, and pauses Playdate. Also prints the
+  /// string to stdout.
+  pub fn error<S: AsRef<str>>(&self, s: S) {
+    crate::debug::error(s);
   }
 }
 
