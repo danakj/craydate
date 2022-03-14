@@ -4,24 +4,34 @@ use core::marker::PhantomData;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 
+/// Represents a method for drawing to the display or a bitmap. Similar to a SkPaint in Skia.
 #[derive(Debug)]
 pub enum LCDColor<'a> {
+  /// A single color, which is one of `LCDSolidColor`.
   Solid(LCDSolidColor),
+  /// A reference to a 16 byte buffer, the first 8 bytes are pixels and the last 8 bytes are masks.
   Pattern(&'a LCDPattern),
 }
 
-impl<'a> LCDColor<'a> {
-  pub unsafe fn as_c_color(&self) -> usize {
-    // SAFETY: the returned usize for patterns is technically a raw pointer to the LCDPattern
-    // array itself.  It must be passed to Playdate before the LCDColor is dead or moved.
-    // Also, yes really, LCDColor can be both an enum and a pointer.
+impl LCDColor<'_> {
+  /// Returns a usize representation of an LCDColor which can be passed to the Playdate C Api.
+  ///
+  /// # Safety
+  ///
+  /// The returned usize for patterns is technically a raw pointer to the LCDPattern array itself. Thus
+  /// the caller must ensure that the LCDColor outlives the returned usize. Also, yes really, LCDColor can be
+  /// both an enum and a pointer.
+  pub(crate) unsafe fn to_c_color(&self) -> usize {
     match self {
-      LCDColor::Solid(color) => color.0 as usize,
-      LCDColor::Pattern(&color) => color.as_ptr() as usize,
+      LCDColor::Solid(solid) => solid.0 as usize,
+      LCDColor::Pattern(&pattern) => pattern.as_ptr() as usize,
     }
   }
 }
 
+/// An opaque handle for a bitmap, which frees the bitmap memory when dropped.
+///
+/// Get access to the bitmap's data through the `data()` method.
 #[derive(Debug)]
 pub struct LCDBitmap {
   bitmap_ptr: *mut CLCDBitmap,
@@ -37,6 +47,7 @@ impl Drop for LCDBitmap {
 }
 
 impl LCDBitmap {
+  /// Get access to the bitmap's data, including its pixels.
   pub fn data(&self) -> LCDBitmapData {
     let mut width: i32 = 0;
     let mut height: i32 = 0;
@@ -65,15 +76,35 @@ impl LCDBitmap {
 }
 
 pub struct LCDBitmapData<'a> {
-  pub width: i32,
-  pub height: i32,
-  pub rowbytes: i32,
-  // TODO: is hasmask logically a boolean?
-  pub hasmask: i32,
+  width: i32,
+  height: i32,
+  rowbytes: i32,
+  hasmask: i32,
   // TODO: direct access into the bitmap, so does not need to be freed?
-  pub data: *mut u8,
+  data: *mut u8,
   // Share lifetime of LCDBitmap that generated this.
   phantom: PhantomData<&'a ()>,
+}
+impl LCDBitmapData<'_> {
+  pub fn width(&self) -> i32 {
+    self.width
+  }
+  pub fn height(&self) -> i32 {
+    self.height
+  }
+  pub fn rowbytes(&self) -> i32 {
+    self.rowbytes
+  }
+  // TODO: is hasmask logically a boolean?
+  pub fn hasmask(&self) -> i32 {
+    self.hasmask
+  }
+  pub fn pixels(&self) -> &[u8] {
+    unsafe { core::slice::from_raw_parts(self.data, (self.rowbytes * self.height) as usize) }
+  }
+  pub fn pixels_mut(&mut self) -> &mut [u8] {
+    unsafe { core::slice::from_raw_parts_mut(self.data, (self.rowbytes * self.height) as usize) }
+  }
 }
 
 #[derive(Debug)]
@@ -83,7 +114,7 @@ pub struct Graphics {
 impl Graphics {
   pub fn clear<'a>(&self, color: LCDColor<'a>) {
     unsafe {
-      self.state.graphics.clear.unwrap()(color.as_c_color());
+      self.state.graphics.clear.unwrap()(color.to_c_color());
     }
   }
 
@@ -94,7 +125,7 @@ impl Graphics {
   // FIXME: for some reason, patterns don't appear to work here, but do work with a C example.
   pub fn new_bitmap(&self, width: i32, height: i32, bg_color: LCDColor) -> LCDBitmap {
     let bitmap_ptr =
-      unsafe { self.state.graphics.newBitmap.unwrap()(width, height, bg_color.as_c_color()) };
+      unsafe { self.state.graphics.newBitmap.unwrap()(width, height, bg_color.to_c_color()) };
     LCDBitmap {
       bitmap_ptr,
       state: self.state,
