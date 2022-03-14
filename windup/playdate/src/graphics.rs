@@ -74,6 +74,10 @@ impl LCDBitmap {
       phantom: PhantomData,
     }
   }
+
+  pub(crate) unsafe fn get_mut_ptr(&self) -> *mut CLCDBitmap {
+    self.bitmap_ptr
+  }
 }
 
 pub struct LCDBitmapData<'bitmap> {

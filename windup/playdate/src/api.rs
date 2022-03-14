@@ -1,3 +1,4 @@
+use alloc::rc::Rc;
 use core::cell::Cell;
 use core::future::Future;
 use core::pin::Pin;
@@ -58,13 +59,13 @@ impl System {
   }
 
   /// Returns the current wall-clock time.
-  /// 
+  ///
   /// This time is subject to drift and may go backwards. It can be useful when combined with
   /// timezone information for displaying a clock, but prefer `current_time()` for most application
   /// logic and for tracking elapsed time.
   pub fn wall_clock_time(&self) -> WallClockTime {
     let mut time = 0;
-    unsafe { self.state.csystem.getSecondsSinceEpoch.unwrap()(&mut time); }
+    unsafe { self.state.csystem.getSecondsSinceEpoch.unwrap()(&mut time) };
     WallClockTime(time)
   }
 
@@ -102,6 +103,31 @@ impl System {
   /// Returns the battery voltage.
   pub fn battery_voltage(&self) -> f32 {
     unsafe { self.state.csystem.getBatteryVoltage.unwrap()() }
+  }
+
+  /// Sets the bitmap to be displayed beside (and behind) the system menu.
+  ///
+  /// The bitmap _must_ be 400x240 pixels, and an error will be logged if it is not. All important
+  /// content should be in the left half of the image in an area 200 pixels wide, as the menu will
+  /// obscure the rest. The right side of the image will be visible briefly as the menu animates in
+  /// and out.
+  ///
+  /// The `xoffset` is clamped to between 0 and 200. If it is non-zero, the bitmap will be animated
+  /// to the left by `xoffset` pixels. For example, if the offset is 200 then the right 200 pixels
+  /// would be visible instead of the left 200 pixels while the menu is open.
+  ///
+  /// The bitmap will be copied, so the reference is not held.
+  pub fn set_menu_image(&self, bitmap: &crate::graphics::LCDBitmap, xoffset: i32) {
+    // SAFETY: Playdate makes a copy from the given pointer, so we can pass it in and then drop the
+    // reference on `bitmap` when we leave the function.
+    let ptr = unsafe { bitmap.get_mut_ptr() };
+    unsafe { self.state.csystem.setMenuImage.unwrap()(ptr, xoffset.clamp(0, 200)) }
+  }
+
+  /// Removes the user-specified bitmap from beside the system menu. The default image is displayed
+  /// instead.
+  pub fn clear_menu_image(&self) {
+    unsafe { self.state.csystem.setMenuImage.unwrap()(core::ptr::null_mut(), 0) }
   }
 }
 
