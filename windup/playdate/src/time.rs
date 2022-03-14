@@ -8,7 +8,7 @@ use core::cell::Cell;
 /// retain the TimeTicks type instead of unwrapping a primitive type from it.
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct TimeTicks(u32);
+pub struct TimeTicks(pub(crate) u32);
 impl TimeTicks {
   // Returns the number of hours passed in the time, truncating any non-whole hours.
   pub fn total_whole_hours(&self) -> u32 {
@@ -36,7 +36,7 @@ impl TimeTicks {
 /// The difference between two TimeTicks.
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct TimeDelta(i32);
+pub struct TimeDelta(pub(crate) i32);
 impl TimeDelta {
   // Returns the number of hours in the delta, truncating any non-whole hours.
   pub fn total_whole_hours(&self) -> i32 {
@@ -66,9 +66,9 @@ impl core::ops::Add<TimeDelta> for TimeTicks {
 
   fn add(self, rhs: TimeDelta) -> Self::Output {
     if rhs.0 >= 0 {
-      TimeTicks(self.0 + rhs.0 as u32)
+      TimeTicks(self.0.checked_add(rhs.0 as u32).unwrap())
     } else {
-      TimeTicks(self.0 - (-rhs.0) as u32)
+      TimeTicks(self.0.checked_sub((-rhs.0) as u32).unwrap())
     }
   }
 }
@@ -77,9 +77,9 @@ impl core::ops::Sub<TimeDelta> for TimeTicks {
 
   fn sub(self, rhs: TimeDelta) -> Self::Output {
     if rhs.0 >= 0 {
-      TimeTicks(self.0 - rhs.0 as u32)
+      TimeTicks(self.0.checked_sub(rhs.0 as u32).unwrap())
     } else {
-      TimeTicks(self.0 + (-rhs.0) as u32)
+      TimeTicks(self.0.checked_add((-rhs.0) as u32).unwrap())
     }
   }
 }
@@ -95,17 +95,6 @@ impl core::ops::Sub<TimeTicks> for TimeTicks {
       let positive_val = rhs.0 - self.0;
       TimeDelta(-(positive_val as i32))
     }
-  }
-}
-
-impl From<u32> for TimeTicks {
-  fn from(u: u32) -> Self {
-    TimeTicks(u)
-  }
-}
-impl From<i32> for TimeDelta {
-  fn from(i: i32) -> Self {
-    TimeDelta(i)
   }
 }
 
@@ -168,4 +157,59 @@ impl Drop for HighResolutionTimer<'_> {
     fn drop(&mut self) {
         self.active_marker.set(false)
     }
+}
+
+/// Represents a wall-clock time.
+/// 
+/// The time can be affected by changing the clock on the device, or by clock drift. As such this
+/// time is not guaranteed to increase monotonically. This can be useful for displaying a clock, if
+/// combined with timezone data, but should not be used for tracking elapsed time. `TimeTicks`
+/// should be used for that instead.
+/// 
+/// Similar to the standard library type `std::time::SystemTime`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct WallClockTime(pub(crate) u32);
+impl WallClockTime {
+  /// The epoch represents the time at midnight (hour 0), January 1, 2000.
+  /// 
+  /// Note that this is different from the well-known unix epoch which is 1970.
+  #[allow(dead_code)]
+  pub const PLAYDATE_EPOCH: WallClockTime = WallClockTime(0);
+}
+
+impl core::ops::Add<TimeDelta> for WallClockTime {
+  type Output = TimeTicks;
+
+  fn add(self, rhs: TimeDelta) -> Self::Output {
+    if rhs.0 >= 0 {
+      TimeTicks(self.0.checked_add(rhs.0 as u32).unwrap())
+    } else {
+      TimeTicks(self.0.checked_sub((-rhs.0) as u32).unwrap())
+    }
+  }
+}
+impl core::ops::Sub<TimeDelta> for WallClockTime {
+  type Output = TimeTicks;
+
+  fn sub(self, rhs: TimeDelta) -> Self::Output {
+    if rhs.0 >= 0 {
+      TimeTicks(self.0.checked_sub(rhs.0 as u32).unwrap())
+    } else {
+      TimeTicks(self.0.checked_add((-rhs.0) as u32).unwrap())
+    }
+  }
+}
+
+impl core::ops::Sub<WallClockTime> for WallClockTime {
+  type Output = TimeDelta;
+
+  fn sub(self, rhs: WallClockTime) -> Self::Output {
+    if self > rhs {
+      let positive_val = self.0 - rhs.0;
+      TimeDelta(positive_val as i32)
+    } else {
+      let positive_val = rhs.0 - self.0;
+      TimeDelta(-(positive_val as i32))
+    }
+  }
 }

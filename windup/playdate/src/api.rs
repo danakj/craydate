@@ -6,7 +6,7 @@ use core::task::{Context, Poll};
 use crate::capi_state::CApiState;
 use crate::executor::Executor;
 use crate::graphics::Graphics;
-use crate::time::{HighResolutionTimer, TimeTicks};
+use crate::time::{HighResolutionTimer, TimeTicks, WallClockTime};
 
 #[derive(Debug)]
 pub struct Api {
@@ -54,7 +54,18 @@ impl System {
 
   /// Returns the current time in milliseconds.
   pub fn current_time(&self) -> TimeTicks {
-    TimeTicks::from(unsafe { self.state.csystem.getCurrentTimeMilliseconds.unwrap()() })
+    TimeTicks(unsafe { self.state.csystem.getCurrentTimeMilliseconds.unwrap()() })
+  }
+
+  /// Returns the current wall-clock time.
+  /// 
+  /// This time is subject to drift and may go backwards. It can be useful when combined with
+  /// timezone information for displaying a clock, but prefer `current_time()` for most application
+  /// logic and for tracking elapsed time.
+  pub fn wall_clock_time(&self) -> WallClockTime {
+    let mut time = 0;
+    unsafe { self.state.csystem.getSecondsSinceEpoch.unwrap()(&mut time); }
+    WallClockTime(time)
   }
 
   /// Starts a high resolution timer, and returns an object representing it.
