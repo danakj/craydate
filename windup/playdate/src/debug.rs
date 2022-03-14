@@ -1,5 +1,5 @@
 use crate::ctypes::*;
-use crate::CString;
+use crate::null_terminated::ToNullTerminated;
 
 struct SystemRef(&'static CSystem);
 unsafe impl Sync for SystemRef {}
@@ -15,19 +15,16 @@ pub fn initialize(system: &'static CSystem) {
 ///
 /// Note that the simulator console is also sent to stderr.
 #[allow(dead_code)]
-pub fn log<S: AsRef<str>>(s: S)
-{
+pub fn log<S: AsRef<str>>(s: S) {
   let maybe_system: Option<&'static CSystem> = unsafe { SYSTEM.as_ref().map(|r| r.0) };
-  match CString::from_vec(s.as_ref()) {
-    Some(cstr) => match maybe_system {
-      Some(system) => {
-        unsafe { system.logToConsole.unwrap()(cstr.as_ptr()) };
-        log_to_stdout("LOG: ");
-        log_to_stdout_with_newline(s.as_ref());
-      }
-      None => log_to_stdout_with_newline("ERROR: debug::log() called before debug::initialize()"),
-    },
-    None => log_to_stdout_with_newline("ERROR: Invalid string given to log(), embedded null?"),
+  match maybe_system {
+    Some(system) => {
+      let vec = s.as_ref().to_null_terminated();
+      unsafe { system.logToConsole.unwrap()(vec.as_ptr()) };
+      log_to_stdout("LOG: ");
+      log_to_stdout_with_newline(s.as_ref());
+    }
+    None => log_to_stdout_with_newline("ERROR: debug::log() called before debug::initialize()"),
   }
 }
 

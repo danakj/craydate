@@ -3,9 +3,9 @@ use core::pin::Pin;
 use core::task::{Context, Poll};
 
 use crate::capi_state::CApiState;
+use crate::null_terminated::ToNullTerminated;
 use crate::executor::Executor;
 use crate::graphics::Graphics;
-use crate::{CStr, CString};
 
 #[derive(Debug)]
 pub struct Api {
@@ -32,14 +32,8 @@ impl System {
   }
 
   pub fn log<S: AsRef<str>>(&self, s: S) {
-    let maybe_cstring = CString::from_vec(s.as_ref());
-    let cstr = match maybe_cstring.as_deref() {
-      Some(cstr) => cstr,
-      None => unsafe {
-        CStr::from_bytes_with_nul_unchecked(b"Invalid string given to log(), embedded null?\0")
-      },
-    };
-    unsafe { self.state.system.logToConsole.unwrap()(cstr.as_ptr()) }
+    let vec = s.as_ref().to_null_terminated();
+    unsafe { self.state.system.logToConsole.unwrap()(vec.as_ptr()) }
   }
 }
 

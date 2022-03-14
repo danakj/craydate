@@ -1,8 +1,8 @@
+use core::ffi::c_void;
 use core::marker::PhantomData;
 
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
-use crate::{CStr, CString};
 
 #[derive(Debug)]
 pub enum LCDColor<'a> {
@@ -107,17 +107,18 @@ impl Graphics {
   }
 
   pub fn draw_bitmap(&self, bitmap: &LCDBitmap, x: i32, y: i32, flip: LCDBitmapFlip) {
-    unsafe {
-      self.state.graphics.drawBitmap.unwrap()(bitmap.bitmap_ptr, x, y, flip);
-    }
+    unsafe { self.state.graphics.drawBitmap.unwrap()(bitmap.bitmap_ptr, x, y, flip) }
   }
 
-  pub fn draw_text(&self, text: &CStr, encoding: PDStringEncoding, x: i32, y: i32) {
-    let len = text.to_bytes().len() as u64;
-    unsafe {
-      let text = text.as_ptr() as *const core::ffi::c_void;
-      self.state.graphics.drawText.unwrap()(text, len, encoding, x, y);
-    }
+  pub fn draw_text<S>(&self, text: S, encoding: PDStringEncoding, x: i32, y: i32)
+  where
+    S: AsRef<str>,
+  {
+    use crate::null_terminated::ToNullTerminated;
+    let null_term = text.as_ref().to_null_terminated();
+    let ptr = null_term.as_ptr() as *const c_void;
+    let len = null_term.len() as u64;
+    unsafe { self.state.graphics.drawText.unwrap()(ptr, len, encoding, x, y) }; // TODO: Return the int from Playdate?
   }
 
   pub fn copy_frame_buffer_bitmap(&self) -> LCDBitmap {
