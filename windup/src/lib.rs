@@ -2,7 +2,7 @@
 #![deny(clippy::all)]
 #![feature(never_type)]
 
-use playdate::{LCDBitmapFlip, LCDColor, LCDPattern, LCDSolidColor, PDStringEncoding, format};
+use playdate::{format, LCDBitmapFlip, LCDColor, LCDPattern, LCDSolidColor, PDStringEncoding};
 
 #[playdate::main]
 async fn main(api: playdate::Api) -> ! {
@@ -26,15 +26,18 @@ async fn main(api: playdate::Api) -> ! {
   let copy = graphics.copy_frame_buffer_bitmap();
 
   let mut data = copy.data();
-  for i in 0..8*15 {
+  for i in 0..8 * 15 {
     data.pixels_mut().set(i, 0, false);
   }
   graphics.draw_bitmap(&copy, 0, 30, LCDBitmapFlip::kBitmapUnflipped);
 
-  system.log(format!("Entering main loop at time {}", api.system.current_time()));
+  system.log(format!(
+    "Entering main loop at time {}",
+    api.system.current_time()
+  ));
   let fw = system.frame_watcher();
   loop {
-
+    graphics.draw_fps(400 - 15, 0);
     fw.next().await;
   }
 }
