@@ -1,5 +1,8 @@
+use crate::ctypes::*;
+use core::cell::Cell;
+
 /// Represents the current device time, which is a monotonically increasing value.
-/// 
+///
 /// At this time the highest resolution available is milliseconds, so callers that need a raw
 /// value should normally use `total_whole_milliseconds()`. However it is always preferable to
 /// retain the TimeTicks type instead of unwrapping a primitive type from it.
@@ -115,4 +118,54 @@ impl core::fmt::Display for TimeDelta {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     write!(f, "{} seconds", self.to_seconds())
   }
+}
+
+/// The system's high resolution timer. There is only one timer available in the system.
+///
+#[derive(Debug)]
+/// The timer is meant for measuring short times, and the longer it runs the more lossy it becomes.
+pub struct HighResolutionTimer<'a> {
+  csystem: &'static CSystem,
+  active_marker: &'a Cell<bool>
+}
+impl<'a> HighResolutionTimer<'a> {
+  pub(crate) fn new(csystem: &'static CSystem, active_marker: &'a Cell<bool>) -> Self {
+    active_marker.set(true);
+    HighResolutionTimer { csystem, active_marker }
+  }
+
+  fn elapsed(&self) -> f32 {
+    unsafe { self.csystem.getElapsedTime.unwrap()() }
+  }
+
+  pub fn elapsed_seconds_lossy(&self) -> f32 {
+    self.elapsed()
+  }
+
+  /// Return the elapsed number of millisecnds since the timer started.
+  ///
+  /// As a u32 can only represent 2147 seconds, the returned value will simply stop
+  /// increasing if it reaches u32::MAX. While the HighResolutionTimer is not meant
+  /// for tracking long times, `elapsed_seconds_lossy()` can track elapsed times that
+  /// exceed u32::MAX.
+  pub fn elapsed_microseconds(&self) -> u32 {
+    let seconds = self.elapsed();
+
+    // `f32::trunc()` not in `no_std`.
+    let seconds_whole = unsafe { core::intrinsics::truncf32(seconds) };
+    let seconds_fract = seconds - seconds_whole;
+
+    // We pull out the fractional part before multiplying to avoid losing precision in it due to the
+    // whole number part.
+    let micros_from_whole = (seconds_whole * 1000000f32) as u32;
+    let micros_from_fract = (seconds_fract * 1000000f32) as u32;
+
+    micros_from_whole.checked_add(micros_from_fract).unwrap_or(u32::MAX)
+  }
+}
+
+impl Drop for HighResolutionTimer<'_> {
+    fn drop(&mut self) {
+        self.active_marker.set(false)
+    }
 }

@@ -42,7 +42,7 @@ pub struct LCDBitmap {
 impl Drop for LCDBitmap {
   fn drop(&mut self) {
     unsafe {
-      self.state.graphics.freeBitmap.unwrap()(self.bitmap_ptr);
+      self.state.cgraphics.freeBitmap.unwrap()(self.bitmap_ptr);
     }
   }
 }
@@ -56,7 +56,7 @@ impl LCDBitmap {
     let mut hasmask: i32 = 0;
     let mut data: *mut u8 = core::ptr::null_mut();
     unsafe {
-      self.state.graphics.getBitmapData.unwrap()(
+      self.state.cgraphics.getBitmapData.unwrap()(
         self.bitmap_ptr,
         &mut width,
         &mut height,
@@ -159,20 +159,24 @@ pub struct Graphics {
   pub(crate) state: &'static CApiState,
 }
 impl Graphics {
+  pub(crate) fn new(state: &'static CApiState) -> Self {
+    Graphics { state }
+  }
+
   pub fn clear<'a>(&self, color: LCDColor<'a>) {
     unsafe {
-      self.state.graphics.clear.unwrap()(color.to_c_color());
+      self.state.cgraphics.clear.unwrap()(color.to_c_color());
     }
   }
 
   pub fn set_draw_mode(&self, mode: LCDBitmapDrawMode) {
-    unsafe { self.state.graphics.setDrawMode.unwrap()(mode) }
+    unsafe { self.state.cgraphics.setDrawMode.unwrap()(mode) }
   }
 
   // FIXME: for some reason, patterns don't appear to work here, but do work with a C example.
   pub fn new_bitmap(&self, width: i32, height: i32, bg_color: LCDColor) -> LCDBitmap {
     let bitmap_ptr =
-      unsafe { self.state.graphics.newBitmap.unwrap()(width, height, bg_color.to_c_color()) };
+      unsafe { self.state.cgraphics.newBitmap.unwrap()(width, height, bg_color.to_c_color()) };
     LCDBitmap {
       bitmap_ptr,
       state: self.state,
@@ -185,7 +189,7 @@ impl Graphics {
   }
 
   pub fn draw_bitmap(&self, bitmap: &LCDBitmap, x: i32, y: i32, flip: LCDBitmapFlip) {
-    unsafe { self.state.graphics.drawBitmap.unwrap()(bitmap.bitmap_ptr, x, y, flip) }
+    unsafe { self.state.cgraphics.drawBitmap.unwrap()(bitmap.bitmap_ptr, x, y, flip) }
   }
 
   pub fn draw_text<S>(&self, text: S, encoding: PDStringEncoding, x: i32, y: i32)
@@ -196,11 +200,11 @@ impl Graphics {
     let null_term = text.as_ref().to_null_terminated_utf8();
     let ptr = null_term.as_ptr() as *const c_void;
     let len = null_term.len() as u64;
-    unsafe { self.state.graphics.drawText.unwrap()(ptr, len, encoding, x, y) }; // TODO: Return the int from Playdate?
+    unsafe { self.state.cgraphics.drawText.unwrap()(ptr, len, encoding, x, y) }; // TODO: Return the int from Playdate?
   }
 
   pub fn copy_frame_buffer_bitmap(&self) -> LCDBitmap {
-    let bitmap_ptr = unsafe { self.state.graphics.copyFrameBufferBitmap.unwrap()() };
+    let bitmap_ptr = unsafe { self.state.cgraphics.copyFrameBufferBitmap.unwrap()() };
     LCDBitmap {
       bitmap_ptr,
       state: self.state,

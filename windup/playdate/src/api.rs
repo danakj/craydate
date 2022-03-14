@@ -1,11 +1,12 @@
 use core::future::Future;
 use core::pin::Pin;
+use core::cell::Cell;
 use core::task::{Context, Poll};
 
 use crate::capi_state::CApiState;
 use crate::executor::Executor;
 use crate::graphics::Graphics;
-use crate::time::TimeTicks;
+use crate::time::{HighResolutionTimer, TimeTicks};
 
 #[derive(Debug)]
 pub struct Api {
@@ -15,8 +16,8 @@ pub struct Api {
 impl Api {
   pub(crate) fn new(state: &'static CApiState) -> Api {
     Api {
-      system: System { state },
-      graphics: Graphics { state },
+      system: System::new(state),
+      graphics: Graphics::new(state),
     }
   }
 }
@@ -24,8 +25,14 @@ impl Api {
 #[derive(Debug)]
 pub struct System {
   pub(crate) state: &'static CApiState,
+  // Runtime tracking to ensure only one timer is active.
+  timer_active: Cell<bool>,
 }
 impl System {
+  fn new(state: &'static CApiState) -> Self {
+    System  { state, timer_active: Cell::new(false)  }
+  }
+
   /// A watcher that lets you `await` for the next frame update from the Playdate device.
   pub fn frame_watcher(&self) -> FrameWatcher {
     FrameWatcher { state: self.state }
@@ -44,7 +51,23 @@ impl System {
 
   /// Returns the current time in milliseconds.
   pub fn get_current_time(&self) -> TimeTicks {
-    TimeTicks::from(unsafe { self.state.system.getCurrentTimeMilliseconds.unwrap()() })
+    TimeTicks::from(unsafe { self.state.csystem.getCurrentTimeMilliseconds.unwrap()() })
+  }
+
+  /// Starts a high resolution timer, and returns an object representing it.
+  /// 
+  /// # Panics
+  /// 
+  /// There can only be one HighResolutionTimer active at a time, as multiple timers would clobber
+  /// each other inside Playdate. This function will panic if a HighResolutionTimer is started while
+  /// another is active. Drop the returned HighResolutionTimer to finish using it.
+  pub fn start_timer(&self) -> HighResolutionTimer {
+    if self.timer_active.get() {
+      panic!("HighResolutionTimer is already active.")
+    }
+    let timer = HighResolutionTimer::new(self.state.csystem, &self.timer_active);
+    unsafe { self.state.csystem.resetElapsedTime.unwrap()() };
+    timer
   }
 }
 
