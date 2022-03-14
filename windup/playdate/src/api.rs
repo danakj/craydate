@@ -53,7 +53,7 @@ impl System {
   }
 
   /// Returns the current time in milliseconds.
-  pub fn get_current_time(&self) -> TimeTicks {
+  pub fn current_time(&self) -> TimeTicks {
     TimeTicks::from(unsafe { self.state.csystem.getCurrentTimeMilliseconds.unwrap()() })
   }
 
