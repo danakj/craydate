@@ -30,9 +30,12 @@ pub mod macro_helpers;
 pub use api::*;
 pub use ctypes_enums::*;
 pub use graphics::*;
-pub use alloc::format;
-pub use alloc::string::String;
 pub use time::{TimeDelta, TimeTicks};
+
+/// Reexport some of alloc, since things in alloc are not guaranteed to work in `no_std` as it all
+/// depends on our global allocator. This makes it clear they can be used, and avoids the need for
+/// `export mod alloc` elsewhere.
+pub use alloc::{format, string::String};
 
 #[global_allocator]
 pub static GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();
