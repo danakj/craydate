@@ -130,9 +130,8 @@ pub struct LCDBitmapPixels<'bitmap, 'data> {
 // An impl when LCDBitmapPixels holds a shared reference to LCDBitmapData.
 impl LCDBitmapPixels<'_, '_> {
   pub fn get(&self, x: usize, y: usize) -> bool {
-    let index = self.data.width as usize * y + x;
-    let byte_index = index / 8;
-    let bit_index = index % 8;
+    let byte_index = self.data.rowbytes as usize * y + x / 8;
+    let bit_index = x % 8;
     (self.data.as_bytes()[byte_index] >> (7 - bit_index)) & 0x1 != 0
   }
 }
@@ -147,9 +146,8 @@ impl LCDBitmapPixelsMut<'_, '_> {
     LCDBitmapPixels { data: self.data }.get(x, y)
   }
   pub fn set(&mut self, x: usize, y: usize, new_value: bool) {
-    let index = self.data.width as usize * y + x;
-    let byte_index = index / 8;
-    let bit_index = index % 8;
+    let byte_index = self.data.rowbytes as usize * y + x / 8;
+    let bit_index = x % 8;
     if new_value {
       self.data.as_mut_bytes()[byte_index] |= 1u8 << (7 - bit_index);
     } else {
