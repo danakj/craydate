@@ -4,7 +4,7 @@
 /// value should normally use `total_whole_milliseconds()`. However it is always preferable to
 /// retain the TimeTicks type instead of unwrapping a primitive type from it.
 #[repr(transparent)]
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TimeTicks(u32);
 impl TimeTicks {
   // Returns the number of hours passed in the time, truncating any non-whole hours.
@@ -32,7 +32,7 @@ impl TimeTicks {
 
 /// The difference between two TimeTicks.
 #[repr(transparent)]
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TimeDelta(i32);
 impl TimeDelta {
   // Returns the number of hours in the delta, truncating any non-whole hours.
@@ -106,13 +106,13 @@ impl From<i32> for TimeDelta {
   }
 }
 
-impl core::fmt::Debug for TimeTicks {
+impl core::fmt::Display for TimeTicks {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-    write!(f, "{}", self.to_seconds())
+    write!(f, "{} seconds", self.to_seconds())
   }
 }
-impl core::fmt::Debug for TimeDelta {
+impl core::fmt::Display for TimeDelta {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-    write!(f, "{}", self.to_seconds())
+    write!(f, "{} seconds", self.to_seconds())
   }
 }

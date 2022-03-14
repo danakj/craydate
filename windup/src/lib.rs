@@ -31,7 +31,7 @@ async fn main(api: playdate::Api) -> ! {
   }
   graphics.draw_bitmap(&copy, 0, 30, LCDBitmapFlip::kBitmapUnflipped);
 
-  system.log(format!("Entering main loop at time {}s", api.system.get_current_time().to_seconds()));
+  system.log(format!("Entering main loop at time {}s", api.system.get_current_time()));
   loop {
     let fw = system.frame_watcher();
     fw.next().await;
