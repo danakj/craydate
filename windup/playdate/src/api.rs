@@ -3,7 +3,6 @@ use core::pin::Pin;
 use core::task::{Context, Poll};
 
 use crate::capi_state::CApiState;
-use crate::null_terminated::ToNullTerminatedString;
 use crate::executor::Executor;
 use crate::graphics::Graphics;
 
