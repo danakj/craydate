@@ -3,7 +3,6 @@ use core::marker::PhantomData;
 
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
-use crate::null_terminated;
 
 /// Represents a method for drawing to the display or a bitmap. Similar to a SkPaint in Skia.
 #[derive(Debug)]
