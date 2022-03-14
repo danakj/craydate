@@ -1,6 +1,6 @@
+use core::cell::Cell;
 use core::future::Future;
 use core::pin::Pin;
-use core::cell::Cell;
 use core::task::{Context, Poll};
 
 use crate::capi_state::CApiState;
@@ -30,7 +30,10 @@ pub struct System {
 }
 impl System {
   fn new(state: &'static CApiState) -> Self {
-    System  { state, timer_active: Cell::new(false)  }
+    System {
+      state,
+      timer_active: Cell::new(false),
+    }
   }
 
   /// A watcher that lets you `await` for the next frame update from the Playdate device.
@@ -55,9 +58,9 @@ impl System {
   }
 
   /// Starts a high resolution timer, and returns an object representing it.
-  /// 
+  ///
   /// # Panics
-  /// 
+  ///
   /// There can only be one HighResolutionTimer active at a time, as multiple timers would clobber
   /// each other inside Playdate. This function will panic if a HighResolutionTimer is started while
   /// another is active. Drop the returned HighResolutionTimer to finish using it.
@@ -68,6 +71,16 @@ impl System {
     let timer = HighResolutionTimer::new(self.state.csystem, &self.timer_active);
     unsafe { self.state.csystem.resetElapsedTime.unwrap()() };
     timer
+  }
+
+  /// Returns whether the global "flipped" system setting is set.
+  pub fn is_flipped_enabled(&self) -> bool {
+    unsafe { self.state.csystem.getFlipped.unwrap()() != 0 }
+  }
+
+  /// Returns whether the global "reduce flashing" system setting is set.
+  pub fn is_reduce_flashing_enabled(&self) -> bool {
+    unsafe { self.state.csystem.getReduceFlashing.unwrap()() != 0 }
   }
 }
 
