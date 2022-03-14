@@ -36,8 +36,29 @@ impl TimeTicks {
 /// The difference between two TimeTicks.
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct TimeDelta(pub(crate) i32);
+pub struct TimeDelta(i32);
 impl TimeDelta {
+  /// Constructs a TimeDelta that represents the given number of days.
+  pub const fn from_days(h: i32) -> Self {
+    Self::from_hours(h * 24)
+  }
+  /// Constructs a TimeDelta that represents the given number of hours.
+  pub const fn from_hours(h: i32) -> Self {
+    Self::from_minutes(h * 60)
+  }
+  /// Constructs a TimeDelta that represents the given number of minutes.
+  pub const fn from_minutes(m: i32) -> Self {
+    Self::from_seconds(m * 60)
+  }
+  /// Constructs a TimeDelta that represents the given number of seconds.
+  pub const fn from_seconds(s: i32) -> Self {
+    TimeDelta(s * 1000)
+  }
+  /// Constructs a TimeDelta that represents the given number of milliseconds.
+  pub const fn from_milliseconds(s: i32) -> Self {
+    TimeDelta(s)
+  }
+
   // Returns the number of hours in the delta, truncating any non-whole hours.
   pub fn total_whole_hours(&self) -> i32 {
     self.0 / (1000 * 60 * 60)
