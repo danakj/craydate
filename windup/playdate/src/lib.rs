@@ -22,6 +22,7 @@ mod debug;
 mod executor;
 mod graphics;
 mod null_terminated;
+mod time;
 
 #[doc(hidden)]
 pub mod macro_helpers;
@@ -29,7 +30,9 @@ pub mod macro_helpers;
 pub use api::*;
 pub use ctypes_enums::*;
 pub use graphics::*;
+pub use alloc::format;
 pub use alloc::string::String;
+pub use time::{TimeDelta, TimeTicks};
 
 #[global_allocator]
 pub static GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();

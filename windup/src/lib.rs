@@ -2,7 +2,7 @@
 #![deny(clippy::all)]
 #![feature(never_type)]
 
-use playdate::{LCDBitmapFlip, LCDColor, LCDPattern, LCDSolidColor, PDStringEncoding};
+use playdate::{LCDBitmapFlip, LCDColor, LCDPattern, LCDSolidColor, PDStringEncoding, format};
 
 #[playdate::main]
 async fn main(api: playdate::Api) -> ! {
@@ -31,12 +31,9 @@ async fn main(api: playdate::Api) -> ! {
   }
   graphics.draw_bitmap(&copy, 0, 30, LCDBitmapFlip::kBitmapUnflipped);
 
+  system.log(format!("Entering main loop at time {}s", api.system.get_current_time().to_seconds()));
   loop {
     let fw = system.frame_watcher();
-    //system.log(CString::from_vec("cstring").unwrap());
-    let s = playdate::String::new() + "before" + " with " + "concat";
-    system.log(&s);
     fw.next().await;
-    system.log("after");
   }
 }

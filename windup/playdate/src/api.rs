@@ -5,6 +5,7 @@ use core::task::{Context, Poll};
 use crate::capi_state::CApiState;
 use crate::executor::Executor;
 use crate::graphics::Graphics;
+use crate::time::TimeTicks;
 
 #[derive(Debug)]
 pub struct Api {
@@ -39,6 +40,11 @@ impl System {
   /// string to stdout.
   pub fn error<S: AsRef<str>>(&self, s: S) {
     crate::debug::error(s);
+  }
+
+  /// Returns the current time in milliseconds.
+  pub fn get_current_time(&self) -> TimeTicks {
+    TimeTicks::from(unsafe { self.state.system.getCurrentTimeMilliseconds.unwrap()() })
   }
 }
 
