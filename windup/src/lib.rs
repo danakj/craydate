@@ -33,6 +33,20 @@ async fn main(api: playdate::Api) -> ! {
   }
   graphics.draw_bitmap(&copy, 0, 30, LCDBitmapFlip::kBitmapUnflipped);
 
+  // working image
+  let yo_path = "images/yo";
+  let load = graphics.load_bitmap(yo_path);
+  if let Ok(bitmap) = load {
+    graphics.draw_bitmap(&bitmap, 100, 80, LCDBitmapFlip::kBitmapUnflipped);
+  }
+
+  // broken image
+  let broken_path = "images/wat";
+  let load = graphics.load_bitmap(broken_path);
+  if let Err(error) = load {
+    system.log(error);
+  }
+
   system.log(format!(
     "Entering main loop at time {}",
     api.system.current_time()

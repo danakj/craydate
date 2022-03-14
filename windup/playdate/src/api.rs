@@ -9,6 +9,7 @@ use crate::executor::Executor;
 use crate::geometry::Vector3;
 use crate::graphics::Graphics;
 use crate::time::{HighResolutionTimer, TimeTicks, WallClockTime};
+use crate::String;
 
 #[derive(Debug)]
 pub struct Api {
@@ -220,5 +221,12 @@ impl Inputs {
     } else {
       None
     }
+  }
+}
+pub struct Error(pub String);
+
+impl AsRef<str> for Error {
+  fn as_ref(&self) -> &str {
+    &self.0
   }
 }

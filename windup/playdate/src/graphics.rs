@@ -1,8 +1,10 @@
 use core::ffi::c_void;
 use core::marker::PhantomData;
 
+use crate::api::Error;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
+use crate::String;
 
 /// Represents a method for drawing to the display or a bitmap. Similar to a SkPaint in Skia.
 #[derive(Debug)]
@@ -183,6 +185,33 @@ impl Graphics {
       bitmap_ptr,
       state: self.state,
     }
+  }
+
+  pub fn load_bitmap<S>(&self, path: S) -> Result<LCDBitmap, Error>
+  where
+    S: AsRef<str>,
+  {
+    use crate::null_terminated::ToNullTerminatedString;
+    let path = path.as_ref().to_null_terminated_utf8().as_ptr();
+    let mut out_err: *const u8 = core::ptr::null_mut();
+
+    let bitmap_ptr = unsafe { self.state.cgraphics.loadBitmap.unwrap()(path, &mut out_err) };
+
+    if bitmap_ptr.is_null() {
+      if out_err.is_null() {
+        return Err(Error(String::from("LoadBitmap: unknown error")));
+      }
+
+      // TODO: turn out_err into a String, using magic.
+      return Err(Error(String::from(
+        "LoadBitmap: (do something with out_err here)",
+      )));
+    }
+
+    Ok(LCDBitmap {
+      bitmap_ptr,
+      state: self.state,
+    })
   }
 
   pub fn get_bitmap_data<'a>(&self, bitmap: &'a LCDBitmap) -> LCDBitmapData<'a> {
