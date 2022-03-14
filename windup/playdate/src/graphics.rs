@@ -9,7 +9,8 @@ use crate::ctypes::*;
 pub enum LCDColor<'a> {
   /// A single color, which is one of `LCDSolidColor`.
   Solid(LCDSolidColor),
-  /// A reference to a 16 byte buffer, the first 8 bytes are pixels and the last 8 bytes are masks.
+  /// A reference to a 16 byte buffer, the first 8 bytes are 8x8 pixels (each pixel is 1 bit) and the last
+  /// 8 bytes are 8x8 masks (each mask is 1 bit) that each defines if the corresponding pixel is used.
   Pattern(&'a LCDPattern),
 }
 
@@ -85,7 +86,7 @@ pub struct LCDBitmapData<'a> {
   // Share lifetime of LCDBitmap that generated this.
   phantom: PhantomData<&'a ()>,
 }
-impl LCDBitmapData<'_> {
+impl<'a> LCDBitmapData<'a> {
   pub fn width(&self) -> i32 {
     self.width
   }
@@ -99,11 +100,65 @@ impl LCDBitmapData<'_> {
   pub fn hasmask(&self) -> i32 {
     self.hasmask
   }
-  pub fn pixels(&self) -> &[u8] {
+  /// Gives read acccess to the pixels of the bitmap as an array of bytes. Each byte represents 8 pixels,
+  /// where each pixel is a bit.
+  pub fn as_bytes(&self) -> &[u8] {
     unsafe { core::slice::from_raw_parts(self.data, (self.rowbytes * self.height) as usize) }
   }
-  pub fn pixels_mut(&mut self) -> &mut [u8] {
+  /// Gives read-write acccess to the pixels of the bitmap as an array of bytes. Each byte represents 8 pixels,
+  /// where each pixel is a bit.
+  pub fn as_mut_bytes(&mut self) -> &mut [u8] {
     unsafe { core::slice::from_raw_parts_mut(self.data, (self.rowbytes * self.height) as usize) }
+  }
+  /// Gives read acccess to the individual pixels of the bitmap.
+  pub fn pixels(&self) -> LCDBitmapPixels {
+    LCDBitmapPixels { data: self }
+  }
+  pub fn pixels_mut(&'a mut self) -> LCDBitmapPixelsMut {
+    LCDBitmapPixelsMut { data: self }
+  }
+}
+
+/// Provide shared access to the pixels in an LCDBitmap, through its LCDBitmapData.
+pub struct LCDBitmapPixels<'a> {
+  data: &'a LCDBitmapData<'a>,
+}
+// An impl when LCDBitmapPixels holds a shared reference to LCDBitmapData.
+impl LCDBitmapPixels<'_> {
+  pub fn get(&self, x: usize, y: usize) -> bool {
+    let index = self.data.width as usize * y + x;
+    let byte_index = index / 8;
+    let bit_index = index % 8;
+    (self.data.as_bytes()[byte_index] >> (7 - bit_index)) & 0x1 != 0
+  }
+}
+
+/// Provide exclusive access to the pixels in an LCDBitmap, through its LCDBitmapData.
+pub struct LCDBitmapPixelsMut<'a> {
+  data: &'a mut LCDBitmapData<'a>,
+}
+// An impl when LCDBitmapPixels holds a mutable reference to LCDBitmapData.
+impl LCDBitmapPixelsMut<'_> {
+  pub fn get(&self, x: usize, y: usize) -> bool {
+    LCDBitmapPixels { data: self.data }.get(x, y)
+  }
+  pub fn set(&mut self, x: usize, y: usize, new_value: bool) {
+    let index = self.data.width as usize * y + x;
+    let byte_index = index / 8;
+    let bit_index = index % 8;
+    if new_value {
+      crate::debug::log_byte_to_stdout(self.data.as_mut_bytes()[byte_index]);
+      crate::debug::log_to_stdout(" to ");
+      self.data.as_mut_bytes()[byte_index] |= 1u8 << (7 - bit_index);
+      crate::debug::log_byte_to_stdout(self.data.as_mut_bytes()[byte_index]);
+      crate::debug::log_to_stdout_with_newline("");
+    } else {
+      crate::debug::log_byte_to_stdout(self.data.as_mut_bytes()[byte_index]);
+      crate::debug::log_to_stdout(" to ");
+      self.data.as_mut_bytes()[byte_index] &= !(1u8 << (7 - bit_index));
+      crate::debug::log_byte_to_stdout(self.data.as_mut_bytes()[byte_index]);
+      crate::debug::log_to_stdout_with_newline("");
+    }
   }
 }
 

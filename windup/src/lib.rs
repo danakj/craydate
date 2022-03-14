@@ -26,8 +26,9 @@ async fn main(api: playdate::Api) -> ! {
   let copy = graphics.copy_frame_buffer_bitmap();
 
   let mut data = copy.data();
-  for i in 0..15 {
-    data.pixels_mut()[i] = 0;
+  let mut pixels = data.pixels_mut();
+  for i in 0..8*15 {
+    pixels.set(i, 0, false);
   }
   graphics.draw_bitmap(&copy, 0, 30, LCDBitmapFlip::kBitmapUnflipped);
 
