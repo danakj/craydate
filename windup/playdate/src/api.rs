@@ -32,8 +32,7 @@ impl System {
   }
 
   pub fn log<S: AsRef<str>>(&self, s: S) {
-    let vec = s.as_ref().to_null_terminated_utf8();
-    unsafe { self.state.system.logToConsole.unwrap()(vec.as_ptr()) }
+    crate::debug::log(s)
   }
 }
 
