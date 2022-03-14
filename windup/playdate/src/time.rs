@@ -1,4 +1,8 @@
 /// Represents the current device time, which is a monotonically increasing value.
+/// 
+/// At this time the highest resolution available is milliseconds, so callers that need a raw
+/// value should normally use `total_whole_milliseconds()`. However it is always preferable to
+/// retain the TimeTicks type instead of unwrapping a primitive type from it.
 #[repr(transparent)]
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TimeTicks(u32);
