@@ -147,17 +147,9 @@ impl LCDBitmapPixelsMut<'_> {
     let byte_index = index / 8;
     let bit_index = index % 8;
     if new_value {
-      crate::debug::log_byte_to_stdout(self.data.as_mut_bytes()[byte_index]);
-      crate::debug::log_to_stdout(" to ");
       self.data.as_mut_bytes()[byte_index] |= 1u8 << (7 - bit_index);
-      crate::debug::log_byte_to_stdout(self.data.as_mut_bytes()[byte_index]);
-      crate::debug::log_to_stdout_with_newline("");
     } else {
-      crate::debug::log_byte_to_stdout(self.data.as_mut_bytes()[byte_index]);
-      crate::debug::log_to_stdout(" to ");
       self.data.as_mut_bytes()[byte_index] &= !(1u8 << (7 - bit_index));
-      crate::debug::log_byte_to_stdout(self.data.as_mut_bytes()[byte_index]);
-      crate::debug::log_to_stdout_with_newline("");
     }
   }
 }
