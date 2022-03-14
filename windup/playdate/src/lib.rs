@@ -22,6 +22,8 @@ mod ctypes_enums;
 mod debug;
 mod executor;
 mod graphics;
+mod string;
+
 #[doc(hidden)]
 pub mod macro_helpers;
 
@@ -29,6 +31,7 @@ pub use api::*;
 pub use cstring::{CStr, CString};
 pub use ctypes_enums::*;
 pub use graphics::*;
+pub use string::String;
 
 #[global_allocator]
 pub static GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();

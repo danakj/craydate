@@ -107,23 +107,23 @@ impl Default for CString {
 
 impl Borrow<CStr> for CString {
   fn borrow(&self) -> &CStr {
-    unsafe { CStr::from_bytes_with_nul_unchecked(self.as_bytes()) }
+    self
   }
 }
 impl BorrowMut<CStr> for CString {
   fn borrow_mut(&mut self) -> &mut CStr {
-    unsafe { CStr::from_bytes_with_nul_unchecked_mut(self.as_mut_bytes()) }
+    self
   }
 }
 impl Deref for CString {
   type Target = CStr;
   fn deref(&self) -> &Self::Target {
-    self.as_ref()
+    unsafe { CStr::from_bytes_with_nul_unchecked(self.as_bytes()) }
   }
 }
 impl DerefMut for CString {
   fn deref_mut(&mut self) -> &mut Self::Target {
-    self.as_mut()
+    unsafe { CStr::from_bytes_with_nul_unchecked_mut(self.as_mut_bytes()) }
   }
 }
 impl AsRef<CStr> for CString {
