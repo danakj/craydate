@@ -1,10 +1,10 @@
-use alloc::rc::Rc;
 use core::cell::Cell;
 use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
 use crate::capi_state::CApiState;
+use crate::ctypes_enums::*;
 use crate::executor::Executor;
 use crate::graphics::Graphics;
 use crate::time::{HighResolutionTimer, TimeTicks, WallClockTime};
@@ -13,12 +13,14 @@ use crate::time::{HighResolutionTimer, TimeTicks, WallClockTime};
 pub struct Api {
   pub system: System,
   pub graphics: Graphics,
+  pub input: Input,
 }
 impl Api {
   pub(crate) fn new(state: &'static CApiState) -> Api {
     Api {
       system: System::new(state),
       graphics: Graphics::new(state),
+      input: Input::new(state),
     }
   }
 }
@@ -178,4 +180,25 @@ impl Future for FrameWatcherFuture {
       Poll::Pending
     }
   }
+}
+
+#[derive(Debug)]
+pub struct Input {
+  pub(crate) state: &'static CApiState,
+}
+impl Input {
+  fn new(state: &'static CApiState) -> Self {
+    Input { state }
+  }
+
+  /// To use a peripheral, it must first be enabled via this function.
+  ///
+  /// By default, the accelerometer is disabled to save (a small amount of) power. Once enabled,
+  /// accelerometer data is not available until the next frame, which is signalled by
+  /// `FrameWatcher::next()` completing.
+  pub fn enable_peripherals(&self, which: PDPeripherals) {
+    unsafe { self.state.csystem.setPeripheralsEnabled.unwrap()(which) }
+  }
+
+
 }
