@@ -39,7 +39,8 @@ async fn main(api: playdate::Api) -> ! {
   ));
   let fw = system.frame_watcher();
   loop {
+    let inputs = fw.next().await;
+
     graphics.draw_fps(400 - 15, 0);
-    fw.next().await;
   }
 }

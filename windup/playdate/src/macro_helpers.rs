@@ -73,6 +73,12 @@ extern "C" fn update_callback(capi_ptr: *mut c_void) -> i32 {
   let capi = unsafe { &*(capi_ptr as *const CApiState) };
   let exec_ptr = capi.executor.as_ptr();
 
+  // We poll any pending futures before the frame number moves to the next frame. This allows them
+  // to await the FrameWatcher and immediately be woken instead of having to skip a frame. In
+  // particular this allows the main function to wait for the next frame at the top of its main loop
+  // without missing the first frame.
+  Executor::poll_futures(exec_ptr);
+
   capi.frame_number.set(capi.frame_number.get() + 1);
 
   let exec: &mut Executor = unsafe { &mut *(exec_ptr) };
@@ -84,12 +90,6 @@ extern "C" fn update_callback(capi_ptr: *mut c_void) -> i32 {
     // executor, so we have dropped our reference to the Executor first.
     w.wake()
   }
-
-  // This happens _after_ waking wakers looking for the update_callback(), because otherwise they would
-  // immediately hear that the next update happened, but they wouldn't actually be able to observe it. The
-  // other option would be to poll pending futures before updating the frame number, as if they ran just
-  // before the current frame.
-  Executor::poll_futures(exec_ptr);
 
   1 // Returning 0 will pause the simulator.
 }
