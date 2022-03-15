@@ -361,7 +361,8 @@ impl Buttons {
 
   pub fn all_events(&self) -> impl Iterator<Item = (Button, ButtonEvent)> + '_ {
     self
-      .up_events().map(|e| (Button::Up, e))
+      .up_events()
+      .map(|e| (Button::Up, e))
       .chain(self.down_events().map(|e| (Button::Down, e)))
       .chain(self.left_events().map(|e| (Button::Left, e)))
       .chain(self.right_events().map(|e| (Button::Right, e)))

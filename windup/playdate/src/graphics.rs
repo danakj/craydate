@@ -17,11 +17,15 @@ pub enum LCDColor<'a> {
 }
 
 impl From<LCDSolidColor> for LCDColor<'_> {
-  fn from(color: LCDSolidColor) -> Self { LCDColor::Solid(color) }
+  fn from(color: LCDSolidColor) -> Self {
+    LCDColor::Solid(color)
+  }
 }
 
 impl<'a> From<&'a LCDPattern> for LCDColor<'a> {
-  fn from(pattern: &'a LCDPattern) -> Self { LCDColor::Pattern(&pattern) }
+  fn from(pattern: &'a LCDPattern) -> Self {
+    LCDColor::Pattern(&pattern)
+  }
 }
 
 impl LCDColor<'_> {
@@ -176,7 +180,8 @@ impl Graphics {
   }
 
   pub fn clear<'a, C>(&self, color: C)
-  where C: Into<LCDColor<'a>>
+  where
+    C: Into<LCDColor<'a>>,
   {
     unsafe {
       self.state.cgraphics.clear.unwrap()(color.into().to_c_color());
@@ -189,10 +194,12 @@ impl Graphics {
 
   // FIXME: for some reason, patterns don't appear to work here, but do work with a C example.
   pub fn new_bitmap<'a, C>(&self, width: i32, height: i32, bg_color: C) -> LCDBitmap
-  where C: Into<LCDColor<'a>>
+  where
+    C: Into<LCDColor<'a>>,
   {
-    let bitmap_ptr =
-      unsafe { self.state.cgraphics.newBitmap.unwrap()(width, height, bg_color.into().to_c_color()) };
+    let bitmap_ptr = unsafe {
+      self.state.cgraphics.newBitmap.unwrap()(width, height, bg_color.into().to_c_color())
+    };
     LCDBitmap {
       bitmap_ptr,
       state: self.state,
@@ -214,7 +221,7 @@ impl Graphics {
     let bitmap_ptr = unsafe { self.state.cgraphics.loadBitmap.unwrap()(path, &mut out_err) };
 
     if bitmap_ptr.is_null() {
-       if !out_err.is_null() {
+      if !out_err.is_null() {
         unsafe {
           let result = crate::null_terminated::parse_null_terminated_utf8(out_err);
           if let Ok(out_err) = result {

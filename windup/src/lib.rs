@@ -57,10 +57,18 @@ async fn main(api: playdate::Api) -> ! {
     for (button, event) in inputs.buttons().all_events() {
       match event {
         playdate::ButtonEvent::Push => {
-          system.log(format!("{:?} pushed on frame {}", button, inputs.frame_number()));
+          system.log(format!(
+            "{:?} pushed on frame {}",
+            button,
+            inputs.frame_number()
+          ));
         }
         playdate::ButtonEvent::Release => {
-          system.log(format!("{:?} released on frame {}", button, inputs.frame_number()));
+          system.log(format!(
+            "{:?} released on frame {}",
+            button,
+            inputs.frame_number()
+          ));
         }
       }
     }
