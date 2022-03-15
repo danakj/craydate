@@ -14,6 +14,7 @@ pub struct CApiState {
   pub executor: NonNull<Executor>,
 
   pub frame_number: Cell<u64>,
+  pub peripherals_enabled: Cell<PDPeripherals>,
 }
 impl CApiState {
   pub fn new(capi: &'static CApi) -> CApiState {
@@ -23,6 +24,7 @@ impl CApiState {
       capi,
       executor: unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(Executor::new()))) },
       frame_number: Cell::new(0),
+      peripherals_enabled: Cell::new(PDPeripherals::kNone),
     }
   }
 }

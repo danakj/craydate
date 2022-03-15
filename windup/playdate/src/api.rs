@@ -6,6 +6,7 @@ use core::task::{Context, Poll};
 use crate::capi_state::CApiState;
 use crate::ctypes_enums::*;
 use crate::executor::Executor;
+use crate::geometry::Vector3;
 use crate::graphics::Graphics;
 use crate::time::{HighResolutionTimer, TimeTicks, WallClockTime};
 
@@ -13,14 +14,12 @@ use crate::time::{HighResolutionTimer, TimeTicks, WallClockTime};
 pub struct Api {
   pub system: System,
   pub graphics: Graphics,
-  pub input: Input,
 }
 impl Api {
   pub(crate) fn new(state: &'static CApiState) -> Api {
     Api {
       system: System::new(state),
       graphics: Graphics::new(state),
-      input: Input::new(state),
     }
   }
 }
@@ -137,6 +136,16 @@ impl System {
   pub fn clear_menu_image(&mut self) {
     unsafe { self.state.csystem.setMenuImage.unwrap()(core::ptr::null_mut(), 0) }
   }
+
+  /// To use a peripheral, it must first be enabled via this function.
+  ///
+  /// By default, the accelerometer is disabled to save (a small amount of) power. Once enabled,
+  /// accelerometer data is not available until the next frame, and will be accessible from the
+  /// output of `FrameWatcher::next()`.
+  pub fn enable_peripherals(&mut self, which: PDPeripherals) {
+    self.state.peripherals_enabled.set(which);
+    unsafe { self.state.csystem.setPeripheralsEnabled.unwrap()(which) }
+  }
 }
 
 #[derive(Debug)]
@@ -148,7 +157,7 @@ impl FrameWatcher {
   ///
   /// This function returns after the Playdate device calls the "update callback" to signify that
   /// the game should perform updates for the next frame to be displayed.
-  pub async fn next(&self) -> u64 {
+  pub async fn next(&self) -> Inputs {
     self.next_impl().await
   }
   fn next_impl(&self) -> FrameWatcherFuture {
@@ -166,13 +175,17 @@ struct FrameWatcherFuture {
 }
 
 impl Future for FrameWatcherFuture {
-  type Output = u64;
+  type Output = Inputs;
 
-  fn poll(self: Pin<&mut Self>, ctxt: &mut Context<'_>) -> Poll<u64> {
+  fn poll(self: Pin<&mut Self>, ctxt: &mut Context<'_>) -> Poll<Inputs> {
     let frame = self.state.frame_number.get();
 
     if frame > self.seen_frame {
-      Poll::Ready(frame)
+      Poll::Ready(Inputs {
+        state: self.state,
+        frame_number: frame,
+        peripherals_enabled: self.state.peripherals_enabled.get(),
+      })
     } else {
       // Register the waker to be woken when the frame changes. We will observe that it has
       // indeed changed and return Ready since we have saved the current frame at construction.
@@ -183,22 +196,29 @@ impl Future for FrameWatcherFuture {
 }
 
 #[derive(Debug)]
-pub struct Input {
-  pub(crate) state: &'static CApiState,
+pub struct Inputs {
+  state: &'static CApiState,
+  frame_number: u64,
+  peripherals_enabled: PDPeripherals,
 }
-impl Input {
-  fn new(state: &'static CApiState) -> Self {
-    Input { state }
+impl Inputs {
+  /// The current frame number, which is monotonically increasing after the return of each call to
+  /// `FrameWatcher::next()`
+  pub fn frame_number(&self) -> u64 {
+    self.frame_number
   }
 
-  /// To use a peripheral, it must first be enabled via this function.
+  /// Returns the last read values from the accelerometor.
   ///
-  /// By default, the accelerometer is disabled to save (a small amount of) power. Once enabled,
-  /// accelerometer data is not available until the next frame, which is signalled by
-  /// `FrameWatcher::next()` completing.
-  pub fn enable_peripherals(&self, which: PDPeripherals) {
-    unsafe { self.state.csystem.setPeripheralsEnabled.unwrap()(which) }
+  /// These values are only present if the accelerometer is enabled via `System::enable_devices()`,
+  /// otherwise it returns None.
+  pub fn accelerometer(&self) -> Option<Vector3<f32>> {
+    if self.peripherals_enabled.0 & PDPeripherals::kAccelerometer.0 != 0 {
+      let mut v = Vector3::default();
+      unsafe { self.state.csystem.getAccelerometer.unwrap()(&mut v.x, &mut v.y, &mut v.z) }
+      Some(v)
+    } else {
+      None
+    }
   }
-
-
 }

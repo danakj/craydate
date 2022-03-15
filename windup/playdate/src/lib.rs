@@ -20,6 +20,7 @@ mod ctypes;
 mod ctypes_enums;
 mod debug;
 mod executor;
+mod geometry;
 mod graphics;
 mod null_terminated;
 mod time;
@@ -29,6 +30,7 @@ pub mod macro_helpers;
 
 pub use api::*;
 pub use ctypes_enums::*;
+pub use geometry::*;
 pub use graphics::*;
 pub use time::{TimeDelta, TimeTicks};
 
