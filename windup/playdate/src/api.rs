@@ -125,7 +125,7 @@ impl System {
   /// would be visible instead of the left 200 pixels while the menu is open.
   ///
   /// The bitmap will be copied, so the reference is not held.
-  pub fn set_menu_image(&self, bitmap: &crate::graphics::LCDBitmap, xoffset: i32) {
+  pub fn set_menu_image(&mut self, bitmap: &crate::graphics::LCDBitmap, xoffset: i32) {
     // SAFETY: Playdate makes a copy from the given pointer, so we can pass it in and then drop the
     // reference on `bitmap` when we leave the function.
     let ptr = unsafe { bitmap.get_mut_ptr() };
@@ -134,7 +134,7 @@ impl System {
 
   /// Removes the user-specified bitmap from beside the system menu. The default image is displayed
   /// instead.
-  pub fn clear_menu_image(&self) {
+  pub fn clear_menu_image(&mut self) {
     unsafe { self.state.csystem.setMenuImage.unwrap()(core::ptr::null_mut(), 0) }
   }
 }
