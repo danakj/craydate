@@ -9,6 +9,7 @@ use crate::executor::Executor;
 #[derive(Debug)]
 pub struct CApiState {
   pub capi: &'static CApi,
+  pub cdisplay: &'static CDisplay,
   pub csystem: &'static CSystem,
   pub cgraphics: &'static CGraphics,
   pub executor: NonNull<Executor>,
@@ -23,6 +24,7 @@ impl CApiState {
     CApiState {
       cgraphics: unsafe { &*capi.graphics },
       csystem: unsafe { &*capi.system },
+      cdisplay: unsafe { &*capi.display },
       capi,
       executor: unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(Executor::new()))) },
       frame_number: Cell::new(0),

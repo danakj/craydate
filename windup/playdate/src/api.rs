@@ -6,6 +6,7 @@ use core::task::{Context, Poll};
 
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
+use crate::display::Display;
 use crate::executor::Executor;
 use crate::geometry::Vector3;
 use crate::graphics::Graphics;
@@ -15,12 +16,14 @@ use crate::String;
 #[derive(Debug)]
 pub struct Api {
   pub system: System,
+  pub display: Display,
   pub graphics: Graphics,
 }
 impl Api {
   pub(crate) fn new(state: &'static CApiState) -> Api {
     Api {
       system: System::new(state),
+      display: Display::new(state),
       graphics: Graphics::new(state),
     }
   }

@@ -8,6 +8,7 @@ use playdate::{format, LCDBitmapFlip, LCDColor, LCDPattern, LCDSolidColor, PDStr
 async fn main(api: playdate::Api) -> ! {
   let system = &api.system;
   let graphics = &api.graphics;
+  let display = &api.display;
 
   let grey50: LCDPattern = [
     // Bitmap
@@ -46,6 +47,10 @@ async fn main(api: playdate::Api) -> ! {
   if let Err(error) = load {
     system.log(error);
   }
+
+  display.set_inverted(true);
+  display.set_flipped(true, false);
+  display.set_scale(2);
 
   system.log(format!(
     "Entering main loop at time {}",

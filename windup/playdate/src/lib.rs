@@ -19,6 +19,7 @@ mod capi_state;
 mod ctypes;
 mod ctypes_enums;
 mod debug;
+mod display;
 mod executor;
 mod geometry;
 mod graphics;
@@ -35,6 +36,7 @@ pub use alloc::{format, string::String};
 
 pub use api::*;
 pub use ctypes_enums::*;
+pub use display::*;
 pub use geometry::*;
 pub use graphics::*;
 pub use time::{TimeDelta, TimeTicks};
