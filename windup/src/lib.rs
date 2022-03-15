@@ -15,9 +15,9 @@ async fn main(api: playdate::Api) -> ! {
     // Mask
     0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111,
   ];
-  graphics.clear(LCDColor::Pattern(&grey50));
+  graphics.clear(&grey50);
 
-  let bmp = graphics.new_bitmap(100, 40, LCDColor::Solid(LCDSolidColor::kColorWhite));
+  let bmp = graphics.new_bitmap(100, 40, LCDSolidColor::kColorWhite);
   graphics.draw_bitmap(&bmp, 5, 9, LCDBitmapFlip::kBitmapUnflipped);
   drop(bmp);
 

@@ -16,6 +16,14 @@ pub enum LCDColor<'a> {
   Pattern(&'a LCDPattern),
 }
 
+impl From<LCDSolidColor> for LCDColor<'_> {
+  fn from(color: LCDSolidColor) -> Self { LCDColor::Solid(color) }
+}
+
+impl<'a> From<&'a LCDPattern> for LCDColor<'a> {
+  fn from(pattern: &'a LCDPattern) -> Self { LCDColor::Pattern(&pattern) }
+}
+
 impl LCDColor<'_> {
   /// Returns a usize representation of an LCDColor which can be passed to the Playdate C Api.
   ///
@@ -167,9 +175,11 @@ impl Graphics {
     Graphics { state }
   }
 
-  pub fn clear<'a>(&self, color: LCDColor<'a>) {
+  pub fn clear<'a, C>(&self, color: C)
+  where C: Into<LCDColor<'a>>
+  {
     unsafe {
-      self.state.cgraphics.clear.unwrap()(color.to_c_color());
+      self.state.cgraphics.clear.unwrap()(color.into().to_c_color());
     }
   }
 
@@ -178,9 +188,11 @@ impl Graphics {
   }
 
   // FIXME: for some reason, patterns don't appear to work here, but do work with a C example.
-  pub fn new_bitmap(&self, width: i32, height: i32, bg_color: LCDColor) -> LCDBitmap {
+  pub fn new_bitmap<'a, C>(&self, width: i32, height: i32, bg_color: C) -> LCDBitmap
+  where C: Into<LCDColor<'a>>
+  {
     let bitmap_ptr =
-      unsafe { self.state.cgraphics.newBitmap.unwrap()(width, height, bg_color.to_c_color()) };
+      unsafe { self.state.cgraphics.newBitmap.unwrap()(width, height, bg_color.into().to_c_color()) };
     LCDBitmap {
       bitmap_ptr,
       state: self.state,
