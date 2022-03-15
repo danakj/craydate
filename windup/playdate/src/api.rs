@@ -148,6 +148,11 @@ impl System {
     self.state.peripherals_enabled.set(which);
     unsafe { self.state.csystem.setPeripheralsEnabled.unwrap()(which) }
   }
+
+  /// Returns the current language of the system.
+  pub fn get_language(&self) -> PDLanguage {
+    unsafe { self.state.csystem.getLanguage.unwrap()() }
+  }
 }
 
 #[derive(Debug)]

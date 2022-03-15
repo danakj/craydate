@@ -179,6 +179,7 @@ impl Graphics {
     Graphics { state }
   }
 
+  /// Clears the entire display, filling it with `color`.
   pub fn clear<'a, C>(&self, color: C)
   where
     C: Into<LCDColor<'a>>,
@@ -188,22 +189,132 @@ impl Graphics {
     }
   }
 
-  pub fn set_draw_mode(&self, mode: LCDBitmapDrawMode) {
-    unsafe { self.state.cgraphics.setDrawMode.unwrap()(mode) }
+  /// Sets the background color shown when the display is offset or for clearing dirty areas
+  /// in the sprite system.
+  pub fn set_background_color(&self, color: LCDSolidColor) {
+    unsafe {
+      self.state.cgraphics.setBackgroundColor.unwrap()(color);
+    }
   }
 
-  // FIXME: for some reason, patterns don't appear to work here, but do work with a C example.
-  pub fn new_bitmap<'a, C>(&self, width: i32, height: i32, bg_color: C) -> LCDBitmap
-  where
-    C: Into<LCDColor<'a>>,
-  {
-    let bitmap_ptr = unsafe {
-      self.state.cgraphics.newBitmap.unwrap()(width, height, bg_color.into().to_c_color())
-    };
+  /// Manually flushes the current frame buffer out to the display. This function is automatically
+  /// called after each pass through the run loop, so there shouldn’t be any need to call it
+  /// yourself.
+  pub fn display(&self) {
+    unsafe {
+      self.state.cgraphics.display.unwrap()();
+    }
+  }
+
+  // TODO: getDebugBitmap
+  // TODO: getDisplayFrame
+  // TODO: getDisplayFrameBitmap
+  // TODO: getFrame
+
+  /// Returns a copy the contents of the working frame buffer as a bitmap.
+  pub fn copy_frame_buffer_bitmap(&self) -> LCDBitmap {
+    let bitmap_ptr = unsafe { self.state.cgraphics.copyFrameBufferBitmap.unwrap()() };
     LCDBitmap {
       bitmap_ptr,
       state: self.state,
     }
+  }
+
+  /// After updating pixels in the buffer returned by `get_frame()`, you must tell the graphics
+  /// system which rows were updated. This function marks a contiguous range of rows as updated
+  /// (e.g., `mark_updated_rows(0, LCD_ROWS - 1)` tells the system to update the entire display).
+  /// Both "start" and "end" are included in the range.
+  pub fn mark_updated_rows(&self, start: i32, end: i32) {
+    unsafe { self.state.cgraphics.markUpdatedRows.unwrap()(start, end) }
+  }
+
+  /// Offsets the origin point for all drawing calls to x, y (can be negative).
+  pub fn set_draw_offset(&self, dx: i32, dy: i32) {
+    unsafe { self.state.cgraphics.setDrawOffset.unwrap()(dx, dy) }
+  }
+
+  // TODO: setSpriteDrawFunction
+  // TODO: setColorToPattern
+  // TODO: all the graphics->video functions
+  // TODO: pushContext/popContext
+  //       do these funcs need to borrow the LCDBitmap while it's "on the stack"??
+  // TODO: setStencil: what's the lifetime with the stencil bitmap???
+
+  /// Sets the mode used for drawing bitmaps. Note that text drawing uses bitmaps, so this
+  /// affects how fonts are displayed as well.
+  pub fn set_draw_mode(&self, mode: LCDBitmapDrawMode) {
+    unsafe { self.state.cgraphics.setDrawMode.unwrap()(mode) }
+  }
+
+  /// Clears `bitmap`, filling with the given `bgcolor`.
+  pub fn clear_bitmap<'a, C>(&self, bitmap: &LCDBitmap, bgcolor: C)
+  where
+    C: Into<LCDColor<'a>>,
+  {
+    unsafe {
+      self.state.cgraphics.clearBitmap.unwrap()(bitmap.bitmap_ptr, bgcolor.into().to_c_color());
+    }
+  }
+
+  /// Returns a new `LCDBitmap` that is an exact copy of `bitmap`.
+  pub fn copy_bitmap(&self, bitmap: &LCDBitmap) -> LCDBitmap {
+    LCDBitmap {
+      bitmap_ptr: unsafe { self.state.cgraphics.copyBitmap.unwrap()(bitmap.bitmap_ptr) },
+      state: self.state,
+    }
+  }
+
+  // TODO: checkMaskCollision
+
+  /// Draws the bitmap with its upper-left corner at location (`x`, `y`), using the given `flip`
+  /// orientation.
+  pub fn draw_bitmap(&self, bitmap: &LCDBitmap, x: i32, y: i32, flip: LCDBitmapFlip) {
+    unsafe { self.state.cgraphics.drawBitmap.unwrap()(bitmap.bitmap_ptr, x, y, flip) }
+  }
+
+  /// Draws the bitmap scaled to `xscale` and `yscale` with its upper-left corner at location
+  /// (`x`, `y`). Note that flip is not available when drawing scaled bitmaps but negative scale
+  /// values will achieve the same effect.
+  pub fn draw_scaled_bitmap(&self, bitmap: &LCDBitmap, x: i32, y: i32, xscale: f32, yscale: f32) {
+    unsafe {
+      self.state.cgraphics.drawScaledBitmap.unwrap()(bitmap.bitmap_ptr, x, y, xscale, yscale)
+    }
+  }
+
+  /// Draws the bitmap scaled to `xscale` and `yscale` then rotated by `degrees` with its center
+  /// as given by proportions `centerx` and `centery` at (`x`, `y`); that is: if `centerx` and
+  /// `centery` are both 0.5 the center of the image is at (`x`, `y`), if `centerx` and `centery`
+  /// are both 0 the top left corner of the image (before rotation) is at (`x`, `y`), etc.
+  pub fn draw_rotated_bitmap(
+    &self,
+    bitmap: &LCDBitmap,
+    x: i32,
+    y: i32,
+    degrees: f32,
+    centerx: f32,
+    centery: f32,
+    xscale: f32,
+    yscale: f32,
+  ) {
+    unsafe {
+      self.state.cgraphics.drawRotatedBitmap.unwrap()(
+        bitmap.bitmap_ptr,
+        x,
+        y,
+        degrees,
+        centerx,
+        centery,
+        xscale,
+        yscale,
+      )
+    }
+  }
+
+  /// Get `LCDBitmapData` containing info about `bitmap` such as `width`, `height`, and raw pixel
+  /// data.
+  pub fn get_bitmap_data<'a>(&self, bitmap: &'a LCDBitmap) -> LCDBitmapData<'a> {
+    // This exists to match the API.
+    bitmap.data()
   }
 
   pub fn load_bitmap<S>(&self, path: S) -> Result<LCDBitmap, Error>
@@ -239,14 +350,71 @@ impl Graphics {
     })
   }
 
-  pub fn get_bitmap_data<'a>(&self, bitmap: &'a LCDBitmap) -> LCDBitmapData<'a> {
-    // This exists to match the API.
-    bitmap.data()
+  // TODO: loadIntoBitmap (what happens if image doesn't exist?)
+
+  /// Allocates and returns a new `width` by `height` `LCDBitmap` filled with `bg_color`.
+  pub fn new_bitmap<'a, C>(&self, width: i32, height: i32, bg_color: C) -> LCDBitmap
+  where
+    C: Into<LCDColor<'a>>,
+  {
+    // FIXME: for some reason, patterns don't appear to work here, but do work with a C example.
+    let bitmap_ptr = unsafe {
+      self.state.cgraphics.newBitmap.unwrap()(width, height, bg_color.into().to_c_color())
+    };
+    LCDBitmap {
+      bitmap_ptr,
+      state: self.state,
+    }
   }
 
-  pub fn draw_bitmap(&self, bitmap: &LCDBitmap, x: i32, y: i32, flip: LCDBitmapFlip) {
-    unsafe { self.state.cgraphics.drawBitmap.unwrap()(bitmap.bitmap_ptr, x, y, flip) }
+  /// Draws the bitmap with its upper-left corner at location (`x`, `y`) tiled inside a
+  /// `width` by `height` rectangle.
+  pub fn tile_bitmap(
+    &self,
+    bitmap: &LCDBitmap,
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+    flip: LCDBitmapFlip,
+  ) {
+    unsafe {
+      self.state.cgraphics.tileBitmap.unwrap()(bitmap.bitmap_ptr, x, y, width, height, flip)
+    }
   }
+
+  /// Returns a new, rotated and scaled LCDBitmap based on the given `bitmap`.
+  pub fn rotated_bitmap(
+    &self,
+    bitmap: &LCDBitmap,
+    rotation: f32,
+    xscale: f32,
+    yscale: f32,
+  ) -> LCDBitmap {
+    // This function could grow the bitmap by rotating and so it (conveniently?) also returns the
+    // alloced size of the new bitmap.  You can get this off the bitmap data more or less if needed.
+    let mut _alloced_size: i32 = 0;
+    LCDBitmap {
+      bitmap_ptr: unsafe {
+        self.state.cgraphics.rotatedBitmap.unwrap()(
+          bitmap.bitmap_ptr,
+          rotation,
+          xscale,
+          yscale,
+          &mut _alloced_size,
+        )
+      },
+      state: self.state,
+    }
+  }
+
+  // TODO: setBitmapMask
+  // TODO: getBitmapMask
+
+  // TODO: getTableBitmap
+  // TODO: loadBitmapTable
+  // TODO: loadIntoBitmapTable
+  // TODO: newBitmapTable
 
   pub fn draw_text<S>(&self, text: S, encoding: PDStringEncoding, x: i32, y: i32)
   where
@@ -257,14 +425,6 @@ impl Graphics {
     let ptr = null_term.as_ptr() as *const c_void;
     let len = null_term.len() as u64;
     unsafe { self.state.cgraphics.drawText.unwrap()(ptr, len, encoding, x, y) }; // TODO: Return the int from Playdate?
-  }
-
-  pub fn copy_frame_buffer_bitmap(&self) -> LCDBitmap {
-    let bitmap_ptr = unsafe { self.state.cgraphics.copyFrameBufferBitmap.unwrap()() };
-    LCDBitmap {
-      bitmap_ptr,
-      state: self.state,
-    }
   }
 
   /// Draws the current FPS on the screen at the given (`x`, `y`) coordinates.
