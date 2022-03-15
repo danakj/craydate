@@ -47,6 +47,9 @@ unsafe fn strlen(s: *const u8) -> usize {
 ///
 /// This function assigns a lifetime to the returned `&str` and the caller must verify that
 /// the chosen lifetime is correct.
+///
+/// For strings coming from "const char** outerr" in the playdate api, these strings appear to be
+/// written into a fixed static buffer where future errors will overwrite the first.
 pub unsafe fn parse_null_terminated_utf8<'a>(
   p: *const u8,
 ) -> Result<&'a str, core::str::Utf8Error> {

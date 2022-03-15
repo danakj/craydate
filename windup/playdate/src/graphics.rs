@@ -195,17 +195,23 @@ impl Graphics {
     let path = path.as_ref().to_null_terminated_utf8().as_ptr();
     let mut out_err: *const u8 = core::ptr::null_mut();
 
+    // UNCLEAR: out_err is not a fixed string (it contains the name of the image).
+    // However, future calls will overwrite the previous out_err and trying to free it
+    // via system->realloc crashes (likely because the pointer wasn't alloc'd by us).
+    // This probably (hopefully??) means that we don't need to free it.
     let bitmap_ptr = unsafe { self.state.cgraphics.loadBitmap.unwrap()(path, &mut out_err) };
 
     if bitmap_ptr.is_null() {
-      if out_err.is_null() {
-        return Err(Error(String::from("LoadBitmap: unknown error")));
+       if !out_err.is_null() {
+        unsafe {
+          let result = crate::null_terminated::parse_null_terminated_utf8(out_err);
+          if let Ok(out_err) = result {
+            return Err(Error(String::from("LoadBitmap: ") + &out_err));
+          }
+        }
       }
 
-      // TODO: turn out_err into a String, using magic.
-      return Err(Error(String::from(
-        "LoadBitmap: (do something with out_err here)",
-      )));
+      return Err(Error(String::from("LoadBitmap: unknown error")));
     }
 
     Ok(LCDBitmap {
