@@ -1,10 +1,11 @@
+use alloc::vec::Vec;
 use core::cell::Cell;
 use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
 use crate::capi_state::CApiState;
-use crate::ctypes_enums::*;
+use crate::ctypes::*;
 use crate::executor::Executor;
 use crate::geometry::Vector3;
 use crate::graphics::Graphics;
@@ -175,6 +176,40 @@ struct FrameWatcherFuture {
   seen_frame: u64,
 }
 
+impl FrameWatcherFuture {
+  fn record_button_state_per_frame(self: &Pin<&mut Self>) -> [PDButtonsSet; 2] {
+    let button_set = unsafe {
+      let mut set = PDButtonsSet {
+        current: PDButtons(0),
+        pushed: PDButtons(0),
+        released: PDButtons(0),
+      };
+      self.state.csystem.getButtonState.unwrap()(
+        &mut set.current,
+        &mut set.pushed,
+        &mut set.released,
+      );
+      set
+    };
+
+    let mut buttons = self.state.button_state_per_frame.take();
+    // On the first frame, we push a duplicate frame.
+    if let None = buttons[0] {
+      buttons[0] = Some(button_set);
+    }
+    // Move the "current" slot to the "last frame" slot.
+    buttons[1] = buttons[0];
+    // Save the current frame.
+    buttons[0] = Some(button_set);
+
+    let unwrapped = [buttons[0].unwrap(), buttons[1].unwrap()];
+
+    self.state.button_state_per_frame.set(buttons);
+
+    unwrapped
+  }
+}
+
 impl Future for FrameWatcherFuture {
   type Output = Inputs;
 
@@ -182,10 +217,13 @@ impl Future for FrameWatcherFuture {
     let frame = self.state.frame_number.get();
 
     if frame > self.seen_frame {
+      let button_state_per_frame = self.record_button_state_per_frame();
+
       Poll::Ready(Inputs {
         state: self.state,
         frame_number: frame,
         peripherals_enabled: self.state.peripherals_enabled.get(),
+        button_state_per_frame,
       })
     } else {
       // Register the waker to be woken when the frame changes. We will observe that it has
@@ -196,11 +234,187 @@ impl Future for FrameWatcherFuture {
   }
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum Button {
+  Up,
+  Down,
+  Left,
+  Right,
+  B,
+  A,
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum ButtonState {
+  Pushed,
+  Released,
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum ButtonEvent {
+  Push,
+  Release,
+}
+
+/// The state of all buttons, along with changes since the last frame.
+pub struct Buttons {
+  current: PDButtons,
+  up_events: [Option<ButtonEvent>; 3],
+  down_events: [Option<ButtonEvent>; 3],
+  left_events: [Option<ButtonEvent>; 3],
+  right_events: [Option<ButtonEvent>; 3],
+  b_events: [Option<ButtonEvent>; 3],
+  a_events: [Option<ButtonEvent>; 3],
+}
+impl Buttons {
+  fn new(button_state_per_frame: &[PDButtonsSet; 2]) -> Self {
+    Buttons {
+      current: button_state_per_frame[0].current,
+      up_events: Self::compute_events(&button_state_per_frame, PDButtons::kButtonUp),
+      down_events: Self::compute_events(&button_state_per_frame, PDButtons::kButtonDown),
+      left_events: Self::compute_events(&button_state_per_frame, PDButtons::kButtonLeft),
+      right_events: Self::compute_events(&button_state_per_frame, PDButtons::kButtonRight),
+      b_events: Self::compute_events(&button_state_per_frame, PDButtons::kButtonB),
+      a_events: Self::compute_events(&button_state_per_frame, PDButtons::kButtonA),
+    }
+  }
+
+  /// Infer a sequence of events for a button between 2 frames by combining the button's last pushed
+  /// state, current pushed state, and whether a push and/or release happened in between frames.
+  fn compute_events(frames: &[PDButtonsSet; 2], button: PDButtons) -> [Option<ButtonEvent>; 3] {
+    // Last frame: pushed.
+    if frames[1].current & button == button {
+      // Last frame: pushed. || Current frame: [released].
+      if frames[0].current & button != button {
+        // Was pushed between frames.
+        if frames[0].pushed & button == button {
+          // pushed || released -> pushed -> [released]
+          [
+            Some(ButtonEvent::Release),
+            Some(ButtonEvent::Push),
+            Some(ButtonEvent::Release),
+          ]
+        }
+        // Was not pushed between frames.
+        else {
+          // pushed || [released]
+          [Some(ButtonEvent::Release), None, None]
+        }
+      }
+      // Last frame: pushed. || Current frame: [pushed].
+      else {
+        // Was pushed between frames.
+        if frames[0].pushed & button == button {
+          // pushed || released -> [pushed]
+          [Some(ButtonEvent::Release), Some(ButtonEvent::Push), None]
+        }
+        // Was not pushed between frames.
+        else {
+          // [pushed] ||
+          [None, None, None]
+        }
+      }
+    }
+    // Last frame: released.
+    else {
+      // Last frame: released. || Current frame: [pushed]
+      if frames[0].current & button == button {
+        // Was released between frames.
+        if frames[0].released & button == button {
+          // released || pushed -> released -> [pushed]
+          [
+            Some(ButtonEvent::Push),
+            Some(ButtonEvent::Release),
+            Some(ButtonEvent::Push),
+          ]
+        }
+        // Was not released between frames.
+        else {
+          // released || pushed
+          [Some(ButtonEvent::Push), None, None]
+        }
+      }
+      // Last frame: released. || Current frame: [released].
+      else {
+        // Was released between frames.
+        if frames[0].released & button == button {
+          // released || pushed -> [released]
+          [Some(ButtonEvent::Push), Some(ButtonEvent::Release), None]
+        }
+        // Was not released between frames.
+        else {
+          // [released] ||
+          [None, None, None]
+        }
+      }
+    }
+  }
+
+  #[inline]
+  fn current_state(&self, button: PDButtons) -> ButtonState {
+    if self.current & button != PDButtons(0) {
+      ButtonState::Pushed
+    } else {
+      ButtonState::Released
+    }
+  }
+
+  pub fn all_events(&self) -> impl Iterator<Item = (Button, ButtonEvent)> + '_ {
+    self
+      .up_events().map(|e| (Button::Up, e))
+      .chain(self.down_events().map(|e| (Button::Down, e)))
+      .chain(self.left_events().map(|e| (Button::Left, e)))
+      .chain(self.right_events().map(|e| (Button::Right, e)))
+      .chain(self.b_events().map(|e| (Button::B, e)))
+      .chain(self.a_events().map(|e| (Button::A, e)))
+  }
+
+  pub fn up_events(&self) -> impl Iterator<Item = ButtonEvent> + '_ {
+    self.up_events.iter().filter_map(move |o| *o)
+  }
+  pub fn down_events(&self) -> impl Iterator<Item = ButtonEvent> + '_ {
+    self.down_events.iter().filter_map(move |o| *o)
+  }
+  pub fn left_events(&self) -> impl Iterator<Item = ButtonEvent> + '_ {
+    self.left_events.iter().filter_map(move |o| *o)
+  }
+  pub fn right_events(&self) -> impl Iterator<Item = ButtonEvent> + '_ {
+    self.right_events.iter().filter_map(move |o| *o)
+  }
+  pub fn b_events(&self) -> impl Iterator<Item = ButtonEvent> + '_ {
+    self.b_events.iter().filter_map(move |o| *o)
+  }
+  pub fn a_events(&self) -> impl Iterator<Item = ButtonEvent> + '_ {
+    self.a_events.iter().filter_map(move |o| *o)
+  }
+
+  pub fn up_state(&self) -> ButtonState {
+    self.current_state(PDButtons::kButtonUp)
+  }
+  pub fn down_state(&self) -> ButtonState {
+    self.current_state(PDButtons::kButtonDown)
+  }
+  pub fn left_state(&self) -> ButtonState {
+    self.current_state(PDButtons::kButtonLeft)
+  }
+  pub fn right_state(&self) -> ButtonState {
+    self.current_state(PDButtons::kButtonRight)
+  }
+  pub fn b_state(&self) -> ButtonState {
+    self.current_state(PDButtons::kButtonB)
+  }
+  pub fn a_state(&self) -> ButtonState {
+    self.current_state(PDButtons::kButtonA)
+  }
+}
+
 #[derive(Debug)]
 pub struct Inputs {
   state: &'static CApiState,
   frame_number: u64,
   peripherals_enabled: PDPeripherals,
+  // The button state for the current and previous frame, respectively.
+  button_state_per_frame: [PDButtonsSet; 2],
 }
 impl Inputs {
   /// The current frame number, which is monotonically increasing after the return of each call to
@@ -214,13 +428,17 @@ impl Inputs {
   /// These values are only present if the accelerometer is enabled via `System::enable_devices()`,
   /// otherwise it returns None.
   pub fn accelerometer(&self) -> Option<Vector3<f32>> {
-    if self.peripherals_enabled.0 & PDPeripherals::kAccelerometer.0 != 0 {
+    if self.peripherals_enabled & PDPeripherals::kAccelerometer == PDPeripherals::kAccelerometer {
       let mut v = Vector3::default();
       unsafe { self.state.csystem.getAccelerometer.unwrap()(&mut v.x, &mut v.y, &mut v.z) }
       Some(v)
     } else {
       None
     }
+  }
+
+  pub fn buttons(&self) -> Buttons {
+    Buttons::new(&self.button_state_per_frame)
   }
 }
 pub struct Error(pub String);

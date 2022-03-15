@@ -43,7 +43,7 @@ fn main() {
     .newtype_enum("PDStringEncoding")
     .newtype_enum("LCDPolygonFillRule")
     .newtype_enum("PDLanguage")
-    .newtype_enum("PDPeripherals")
+    .bitfield_enum("PDPeripherals")
     .newtype_enum("SpriteCollisionResponseType")
     .newtype_enum("SoundFormat")
     .newtype_enum("LFOType")

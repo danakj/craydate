@@ -15,6 +15,8 @@ pub struct CApiState {
 
   pub frame_number: Cell<u64>,
   pub peripherals_enabled: Cell<PDPeripherals>,
+  // Tracks the button state for the current and previous frame respectively.
+  pub button_state_per_frame: Cell<[Option<PDButtonsSet>; 2]>,
 }
 impl CApiState {
   pub fn new(capi: &'static CApi) -> CApiState {
@@ -25,6 +27,7 @@ impl CApiState {
       executor: unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(Executor::new()))) },
       frame_number: Cell::new(0),
       peripherals_enabled: Cell::new(PDPeripherals::kNone),
+      button_state_per_frame: Cell::new([None, None]),
     }
   }
 }

@@ -1,4 +1,5 @@
 //! This module re-exports playdate_sys types with more consistent names.
+pub use crate::ctypes_enums::*;
 
 pub use playdate_sys::playdate_graphics as CGraphics;
 pub use playdate_sys::playdate_sys as CSystem;
@@ -8,4 +9,14 @@ pub use playdate_sys::LCDVideoPlayer as CVideoPlayer;
 pub use playdate_sys::PDSystemEvent as CSystemEvent;
 pub use playdate_sys::PlaydateAPI as CApi;
 
-pub use crate::ctypes_enums::*;
+// Bitflags.
+pub use playdate_sys::PDPeripherals;
+pub use playdate_sys::PDButtons;
+
+/// PDButtons come in groups of 3, so this is a convenience grouping of them.
+#[derive(Debug, Copy, Clone)]
+pub struct PDButtonsSet {
+  pub current: PDButtons,
+  pub pushed: PDButtons,
+  pub released: PDButtons,
+}
