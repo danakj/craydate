@@ -12,7 +12,7 @@ pub fn initialize(system: &'static CSystem) {
 }
 
 /// Log a string to the Playdate console, and to stdout.
-/// 
+///
 /// Note that this function may allocate, so must not be called before Playdate initialization.
 #[allow(dead_code)]
 pub fn log<S: AsRef<str>>(s: S) {
@@ -30,7 +30,7 @@ pub fn log<S: AsRef<str>>(s: S) {
 
 /// Log a string to the Playdate console denoted as an error, and pauses the simulator. Also
 /// writes the string to stdout.
-/// 
+///
 /// Note that this function may allocate, so must not be called before Playdate initialization.
 #[allow(dead_code)]
 pub fn error<S: AsRef<str>>(s: S) {

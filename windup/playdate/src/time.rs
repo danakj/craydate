@@ -1,5 +1,6 @@
-use crate::ctypes::*;
 use core::cell::Cell;
+
+use crate::ctypes::*;
 
 /// Represents the current device time, which is a monotonically increasing value.
 ///
@@ -136,12 +137,15 @@ impl core::fmt::Display for TimeDelta {
 /// The timer is meant for measuring short times, and the longer it runs the more lossy it becomes.
 pub struct HighResolutionTimer<'a> {
   csystem: &'static CSystem,
-  active_marker: &'a Cell<bool>
+  active_marker: &'a Cell<bool>,
 }
 impl<'a> HighResolutionTimer<'a> {
   pub(crate) fn new(csystem: &'static CSystem, active_marker: &'a Cell<bool>) -> Self {
     active_marker.set(true);
-    HighResolutionTimer { csystem, active_marker }
+    HighResolutionTimer {
+      csystem,
+      active_marker,
+    }
   }
 
   fn elapsed(&self) -> f32 {
@@ -175,24 +179,24 @@ impl<'a> HighResolutionTimer<'a> {
 }
 
 impl Drop for HighResolutionTimer<'_> {
-    fn drop(&mut self) {
-        self.active_marker.set(false)
-    }
+  fn drop(&mut self) {
+    self.active_marker.set(false)
+  }
 }
 
 /// Represents a wall-clock time.
-/// 
+///
 /// The time can be affected by changing the clock on the device, or by clock drift. As such this
 /// time is not guaranteed to increase monotonically. This can be useful for displaying a clock, if
 /// combined with timezone data, but should not be used for tracking elapsed time. `TimeTicks`
 /// should be used for that instead.
-/// 
+///
 /// Similar to the standard library type `std::time::SystemTime`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct WallClockTime(pub(crate) u32);
 impl WallClockTime {
   /// The epoch represents the time at midnight (hour 0), January 1, 2000.
-  /// 
+  ///
   /// Note that this is different from the well-known unix epoch which is 1970.
   #[allow(dead_code)]
   pub const PLAYDATE_EPOCH: WallClockTime = WallClockTime(0);
