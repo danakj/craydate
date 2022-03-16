@@ -5,10 +5,9 @@
 use playdate::{format, LCDBitmapFlip, LCDPattern, LCDSolidColor, PDStringEncoding};
 
 #[playdate::main]
-async fn main(api: playdate::Api) -> ! {
+async fn main(mut api: playdate::Api) -> ! {
   let system = &api.system;
   let graphics = &api.graphics;
-  let display = &api.display;
 
   let grey50: LCDPattern = [
     // Bitmap
@@ -48,6 +47,7 @@ async fn main(api: playdate::Api) -> ! {
     system.log(error);
   }
 
+  let display = &mut api.display;
   display.set_inverted(true);
   display.set_flipped(true, false);
   display.set_scale(2);
@@ -62,14 +62,14 @@ async fn main(api: playdate::Api) -> ! {
     for (button, event) in inputs.buttons().all_events() {
       match event {
         playdate::ButtonEvent::Push => {
-          system.log(format!(
+          api.system.log(format!(
             "{:?} pushed on frame {}",
             button,
             inputs.frame_number()
           ));
         }
         playdate::ButtonEvent::Release => {
-          system.log(format!(
+          api.system.log(format!(
             "{:?} released on frame {}",
             button,
             inputs.frame_number()
@@ -78,6 +78,6 @@ async fn main(api: playdate::Api) -> ! {
       }
     }
 
-    graphics.draw_fps(400 - 15, 0);
+    api.graphics.draw_fps(400 - 15, 0);
   }
 }
