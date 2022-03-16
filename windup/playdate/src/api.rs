@@ -197,16 +197,12 @@ impl Future for FrameWatcherFuture {
           if this occurs it's a surprising bug.",
         )
       }
-      let button_state_per_frame = {
-        let buttons = self.state.button_state_per_frame.get();
-        [buttons[0].unwrap(), buttons[1].unwrap()]
-      };
 
       Poll::Ready(crate::inputs::Inputs::new(
         self.state,
         frame,
         self.state.peripherals_enabled.get(),
-        button_state_per_frame,
+        &self.state.button_state_per_frame.get().map(|b| b.unwrap()),
       ))
     } else {
       // Register the waker to be woken when the frame changes. We will observe that it has

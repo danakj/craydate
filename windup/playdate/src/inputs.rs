@@ -7,21 +7,34 @@ pub struct Inputs {
   state: &'static CApiState,
   frame_number: u64,
   peripherals_enabled: PDPeripherals,
-  // The button state for the current and previous frame, respectively.
-  button_state_per_frame: [PDButtonsSet; 2],
+  buttons: Buttons,
+  crank: Crank,
 }
 impl Inputs {
+  // Button states are cached from the previous frame in order to infer button events that
+  // happened between frames. So they are passed in to Inputs from the cache instead of pulled
+  // from the device here.
   pub(crate) fn new(
     state: &'static CApiState,
     frame_number: u64,
     peripherals_enabled: PDPeripherals,
-    button_state_per_frame: [PDButtonsSet; 2],
+    button_state_per_frame: &[PDButtonsSet; 2],
   ) -> Self {
+    let crank = if unsafe { state.csystem.isCrankDocked.unwrap()() != 0 } {
+      Crank::Docked
+    } else {
+      Crank::Undocked {
+        angle: unsafe { state.csystem.getCrankAngle.unwrap()() },
+        change: unsafe { state.csystem.getCrankChange.unwrap()() },
+      }
+    };
+
     Inputs {
       state,
       frame_number,
       peripherals_enabled,
-      button_state_per_frame,
+      buttons: Buttons::new(button_state_per_frame),
+      crank,
     }
   }
   /// The current frame number, which is monotonically increasing after the return of each call to
@@ -44,34 +57,72 @@ impl Inputs {
     }
   }
 
-  pub fn buttons(&self) -> Buttons {
-    Buttons::new(&self.button_state_per_frame)
+  /// Returns the state of and events that occured since the last frame for all buttons.
+  pub fn buttons(&self) -> &Buttons {
+    &self.buttons
+  }
+
+  /// Returns the state of and change that occured since the last frame for the crank.
+  pub fn crank(&self) -> &Crank {
+    &self.crank
   }
 }
 
+/// The status of the crank input device.
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum Crank {
+  /// When docked, the crank can not be used and as no position.
+  Docked,
+  Undocked {
+    /// The position of the crank in degrees. The angle increases when moved clockwise.
+    angle: f32,
+    /// The change in position of the crank, in degrees, since the last frame. The angle increases
+    /// when moved clockwise, so the change will be negative when moved counter-clockwise.
+    change: f32,
+  },
+}
+
+/// The set of input buttons.
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum Button {
+  /// The up arrow on the directional pad.
   Up,
+  /// The down arrow on the directional pad.
   Down,
+  /// The left arrow on the directional pad.
   Left,
+  /// The right arrow on the directional pad.
   Right,
+  /// The B button.
   B,
+  /// The A button.
   A,
 }
 
+/// The current state of a button, which indicates if the player is holding the button down or not.
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum ButtonState {
+  /// The button is being pressed. The active state of a button.
   Pushed,
+  /// The button is not being pressed. The neutral state of a button.
   Released,
 }
 
+/// Events which describe changes in state for a button.
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum ButtonEvent {
+  /// The button was pressed.
+  ///
+  /// It moved from a `Released` to a `Pushed` state.
   Push,
+  /// The button stopped being pressed
+  ///
+  /// It moved from a `Pushed` to a `Released` state.
   Release,
 }
 
 /// The state of all buttons, along with changes since the last frame.
+#[derive(Debug)]
 pub struct Buttons {
   current: PDButtons,
   up_events: [Option<ButtonEvent>; 3],
@@ -165,6 +216,8 @@ impl Buttons {
     }
   }
 
+  /// Helper function to convert the Playdate API bitmask to the ButtonState enum for a single
+  /// button.
   #[inline]
   fn current_state(&self, button: PDButtons) -> ButtonState {
     if self.current & button != PDButtons(0) {
@@ -174,6 +227,11 @@ impl Buttons {
     }
   }
 
+  /// Returns an iterator over all button events that occured since the last frame.
+  ///
+  /// This reports any buttons which were pressed or released. The device does not report the order
+  /// in which buttons were interacted with, so the order of events across buttons is arbitrary.
+  /// Events for a single button are in an accurate order.
   pub fn all_events(&self) -> impl Iterator<Item = (Button, ButtonEvent)> + '_ {
     self
       .up_events()
@@ -185,40 +243,76 @@ impl Buttons {
       .chain(self.a_events().map(|e| (Button::A, e)))
   }
 
+  /// Returns an iterator over all button events, on the `Up` button, that occred since the last
+  /// frame.
   pub fn up_events(&self) -> impl Iterator<Item = ButtonEvent> + '_ {
     self.up_events.iter().filter_map(move |o| *o)
   }
+  /// Returns an iterator over all button events, on the `Down` button, that occred since the last
+  /// frame.
   pub fn down_events(&self) -> impl Iterator<Item = ButtonEvent> + '_ {
     self.down_events.iter().filter_map(move |o| *o)
   }
+  /// Returns an iterator over all button events, on the `Left` button, that occred since the last
+  /// frame.
   pub fn left_events(&self) -> impl Iterator<Item = ButtonEvent> + '_ {
     self.left_events.iter().filter_map(move |o| *o)
   }
+  /// Returns an iterator over all button events, on the `Right` button, that occred since the last
+  /// frame.
   pub fn right_events(&self) -> impl Iterator<Item = ButtonEvent> + '_ {
     self.right_events.iter().filter_map(move |o| *o)
   }
+  /// Returns an iterator over all button events, on the `B` button, that occred since the last
+  /// frame.
   pub fn b_events(&self) -> impl Iterator<Item = ButtonEvent> + '_ {
     self.b_events.iter().filter_map(move |o| *o)
   }
+  /// Returns an iterator over all button events, on the `A` button, that occred since the last
+  /// frame.
   pub fn a_events(&self) -> impl Iterator<Item = ButtonEvent> + '_ {
     self.a_events.iter().filter_map(move |o| *o)
   }
 
+  /// Returns the current state of the `Up` button.
+  ///
+  /// Prefer to use the events functions to track button press and release, as this function would
+  /// miss push+release sequences that are faster than a single frame.
   pub fn up_state(&self) -> ButtonState {
     self.current_state(PDButtons::kButtonUp)
   }
+  /// Returns the current state of the `Down` button.
+  ///
+  /// Prefer to use the events functions to track button press and release, as this function would
+  /// miss push+release sequences that are faster than a single frame.
   pub fn down_state(&self) -> ButtonState {
     self.current_state(PDButtons::kButtonDown)
   }
+  /// Returns the current state of the `Left` button.
+  ///
+  /// Prefer to use the events functions to track button press and release, as this function would
+  /// miss push+release sequences that are faster than a single frame.
   pub fn left_state(&self) -> ButtonState {
     self.current_state(PDButtons::kButtonLeft)
   }
+  /// Returns the current state of the `Right` button.
+  ///
+  /// Prefer to use the events functions to track button press and release, as this function would
+  /// miss push+release sequences that are faster than a single frame.
   pub fn right_state(&self) -> ButtonState {
     self.current_state(PDButtons::kButtonRight)
   }
+  /// Returns the current state of the `B` button.
+  ///
+  /// Prefer to use the events functions to track button press and release, as this function would
+  /// miss push+release sequences that are faster than a single frame.
   pub fn b_state(&self) -> ButtonState {
     self.current_state(PDButtons::kButtonB)
   }
+  /// Returns the current state of the `A` button.
+  ///
+  /// Prefer to use the events functions to track button press and release, as this function would
+  /// miss push+release sequences that are faster than a single frame.
   pub fn a_state(&self) -> ButtonState {
     self.current_state(PDButtons::kButtonA)
   }
