@@ -190,6 +190,14 @@ impl Future for FrameWatcherFuture {
     let frame = self.state.frame_number.get();
 
     if frame > self.seen_frame {
+      if frame > self.seen_frame + 1 {
+        crate::debug::log(
+          "WARNING: FrameWatcher missed a frame. This could happen if an async function was called 
+          and `await`ed without also waiting for the FrameWatcher via select(). Currently only one
+          async function can run (we don't support a spawn()) and thus we don't have a select(). So 
+          if this occurs it's a surprising bug.",
+        )
+      }
       let button_state_per_frame = {
         let buttons = self.state.button_state_per_frame.get();
         [buttons[0].unwrap(), buttons[1].unwrap()]
