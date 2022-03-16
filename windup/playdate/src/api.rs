@@ -1,4 +1,3 @@
-use alloc::vec::Vec;
 use core::cell::Cell;
 use core::future::Future;
 use core::pin::Pin;
@@ -184,40 +183,6 @@ struct FrameWatcherFuture {
   seen_frame: u64,
 }
 
-impl FrameWatcherFuture {
-  fn record_button_state_per_frame(self: &Pin<&mut Self>) -> [PDButtonsSet; 2] {
-    let button_set = unsafe {
-      let mut set = PDButtonsSet {
-        current: PDButtons(0),
-        pushed: PDButtons(0),
-        released: PDButtons(0),
-      };
-      self.state.csystem.getButtonState.unwrap()(
-        &mut set.current,
-        &mut set.pushed,
-        &mut set.released,
-      );
-      set
-    };
-
-    let mut buttons = self.state.button_state_per_frame.take();
-    // On the first frame, we push a duplicate frame.
-    if let None = buttons[0] {
-      buttons[0] = Some(button_set);
-    }
-    // Move the "current" slot to the "last frame" slot.
-    buttons[1] = buttons[0];
-    // Save the current frame.
-    buttons[0] = Some(button_set);
-
-    let unwrapped = [buttons[0].unwrap(), buttons[1].unwrap()];
-
-    self.state.button_state_per_frame.set(buttons);
-
-    unwrapped
-  }
-}
-
 impl Future for FrameWatcherFuture {
   type Output = Inputs;
 
@@ -225,7 +190,10 @@ impl Future for FrameWatcherFuture {
     let frame = self.state.frame_number.get();
 
     if frame > self.seen_frame {
-      let button_state_per_frame = self.record_button_state_per_frame();
+      let button_state_per_frame = {
+        let buttons = self.state.button_state_per_frame.get();
+        [buttons[0].unwrap(), buttons[1].unwrap()]
+      };
 
       Poll::Ready(Inputs {
         state: self.state,

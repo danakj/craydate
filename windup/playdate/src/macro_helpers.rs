@@ -81,6 +81,24 @@ extern "C" fn update_callback(capi_ptr: *mut c_void) -> i32 {
 
   capi.frame_number.set(capi.frame_number.get() + 1);
 
+  // Capture input state which will be returned from any futures waiting for the update_callback().
+  // So this must happen before we wake those futures.
+
+  let buttons_set = unsafe {
+    let mut set = PDButtonsSet {
+      current: PDButtons(0),
+      pushed: PDButtons(0),
+      released: PDButtons(0),
+    };
+    capi.csystem.getButtonState.unwrap()(
+      &mut set.current,
+      &mut set.pushed,
+      &mut set.released,
+    );
+    set
+  };
+  capi.set_current_frame_button_state(buttons_set);
+
   let exec: &mut Executor = unsafe { &mut *(exec_ptr) };
   let mut wakers = core::mem::replace(&mut exec.wakers_for_update_callback, Vec::with_capacity(1));
   drop(exec);

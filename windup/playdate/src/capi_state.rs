@@ -32,4 +32,19 @@ impl CApiState {
       button_state_per_frame: Cell::new([None, None]),
     }
   }
+
+  /// Stores the current frame's button states, and moves the previous frames' states into the
+  /// next position.
+  pub fn set_current_frame_button_state(&self, buttons_set: PDButtonsSet) {
+    let mut buttons = self.button_state_per_frame.take();
+    // On the first frame, we push a duplicate frame.
+    if let None = buttons[0] {
+      buttons[0] = Some(buttons_set);
+    }
+    // Move the "current" slot to the "last frame" slot.
+    buttons[1] = buttons[0];
+    // Save the current frame.
+    buttons[0] = Some(buttons_set);
+    self.button_state_per_frame.set(buttons);
+  }
 }
