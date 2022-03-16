@@ -23,6 +23,7 @@ mod display;
 mod executor;
 mod geometry;
 mod graphics;
+mod inputs;
 mod null_terminated;
 mod time;
 
@@ -39,6 +40,7 @@ pub use ctypes_enums::*;
 pub use display::*;
 pub use geometry::*;
 pub use graphics::*;
+pub use inputs::*;
 pub use time::{TimeDelta, TimeTicks};
 
 #[global_allocator]
