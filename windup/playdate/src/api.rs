@@ -41,10 +41,12 @@ impl System {
     }
   }
 
-  // System Api notes. Everything in the "Utility" and "Device Auto Lock" api sections is exposed
-  // here in a Rusty way except:
+  // System Api notes. Everything in the "Utility", "Device Auto Lock", and "System Sounds" api
+  // sections is exposed here in a Rusty way except:
   // - formatString() is not exposed, as the format!() macro replaces it in Rust.
-  // - setUpdateCallback() is not exposed, as it is used internally.
+  // - setUpdateCallback() is not exposed, as it is used internally. The ability to wait for the
+  //   next update (i.e. frame) is instead done through `frame_watcher()` that provides an async
+  //   function that returns when the next update happens.
   // - drawFPS() is moved to the Graphics api.
   // - getLanguage() from Graphics > Miscellaneous is moved to here.
   // - TODO: All system menu interaction functions.
@@ -165,12 +167,34 @@ impl System {
   /// interaction to continue to function, it is possible to manually disable the auto lock feature.
   /// Note that when disabling the timeout, developers should take care to re-enable the timeout
   /// when appropiate.
-  pub fn set_auto_lock(&mut self, a: AutoLock) {
-    let disabled = match a {
+  pub fn set_auto_lock(&mut self, val: AutoLock) {
+    let disabled = match val {
       AutoLock::Disabled => 1,
       AutoLock::Enabled => 0,
     };
     unsafe { self.state.csystem.setAutoLockDisabled.unwrap()(disabled) }
+  }
+
+  /// Disables or enables sound effects when the crank is docked or undocked.
+  ///
+  /// Playdate 0.12 adds sound effects for various system events, such as the menu opening or
+  /// closing, USB cable plugged or unplugged, and the crank docked or undocked. Since games can
+  /// receive notification of the crank docking and undocking, and may incorporate this into the
+  /// game, Playdate provides a function for muting the default sounds for these events.
+  /// 
+  /// # Return
+  ///
+  /// The function returns the previous value for this setting.
+  pub fn set_crank_sounds(&mut self, val: CrankSounds) -> CrankSounds {
+    let disabled = match val {
+      CrankSounds::Silent => 1,
+      CrankSounds::DockingSounds => 0,
+    };
+    let previous = unsafe { self.state.csystem.setCrankSoundsDisabled.unwrap()(disabled) };
+    match previous {
+      0 => CrankSounds::DockingSounds,
+      _ => CrankSounds::Silent,
+    }
   }
 }
 
@@ -181,6 +205,15 @@ pub enum AutoLock {
   Disabled,
   /// The auto-lock is enabled, and will lock when idle.
   Enabled,
+}
+
+/// Whether using the crank makes sounds when docked or undocked.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum CrankSounds {
+  /// The crank is silent, in case the application wishes to provide their own sound effects.
+  Silent,
+  /// The crank makes sounds when docked or undocked.
+  DockingSounds,
 }
 
 #[derive(Debug)]
