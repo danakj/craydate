@@ -2,7 +2,7 @@
 #![deny(clippy::all)]
 #![feature(never_type)]
 
-use playdate::{format, LCDBitmapFlip, LCDColor, LCDPattern, LCDSolidColor, PDStringEncoding};
+use playdate::{format, LCDBitmapFlip, LCDPattern, LCDSolidColor, PDStringEncoding};
 
 #[playdate::main]
 async fn main(api: playdate::Api) -> ! {
