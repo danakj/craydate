@@ -41,10 +41,12 @@ impl System {
     }
   }
 
-  // System Api notes. Everything in the CSystem Api is exposed here in a Rusty way except:
+  // System Api notes. Everything in the "Utility" and "Device Auto Lock" api sections is exposed
+  // here in a Rusty way except:
   // - formatString() is not exposed, as the format!() macro replaces it in Rust.
   // - setUpdateCallback() is not exposed, as it is used internally.
   // - drawFPS() is moved to the Graphics api.
+  // - getLanguage() from Graphics > Miscellaneous is moved to here.
   // - TODO: All system menu interaction functions.
 
   /// A watcher that lets you `await` for the next frame update from the Playdate device.
@@ -154,6 +156,31 @@ impl System {
   pub fn get_language(&self) -> PDLanguage {
     unsafe { self.state.csystem.getLanguage.unwrap()() }
   }
+
+  /// Disables or enables the 60 second auto-lock feature. When enabled, the timer is reset to 60
+  /// seconds.
+  ///
+  /// As of 0.10.3, the device will automatically lock if the user doesn’t press any buttons or use
+  /// the crank for more than 60 seconds. In order for games that expect longer periods without
+  /// interaction to continue to function, it is possible to manually disable the auto lock feature.
+  /// Note that when disabling the timeout, developers should take care to re-enable the timeout
+  /// when appropiate.
+  pub fn set_auto_lock(&mut self, a: AutoLock) {
+    let disabled = match a {
+      AutoLock::Disabled => 1,
+      AutoLock::Enabled => 0,
+    };
+    unsafe { self.state.csystem.setAutoLockDisabled.unwrap()(disabled) }
+  }
+}
+
+/// The state of the auto-lock system.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum AutoLock {
+  /// The auto-lock is disabled. The device will not lock when idle.
+  Disabled,
+  /// The auto-lock is enabled, and will lock when idle.
+  Enabled,
 }
 
 #[derive(Debug)]
