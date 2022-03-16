@@ -336,12 +336,12 @@ impl Graphics {
         unsafe {
           let result = crate::null_terminated::parse_null_terminated_utf8(out_err);
           if let Ok(out_err) = result {
-            return Err(Error(String::from("LoadBitmap: ") + &out_err));
+            return Err(String::from("LoadBitmap: ") + &out_err)?;
           }
         }
       }
 
-      return Err(Error(String::from("LoadBitmap: unknown error")));
+      return Err("LoadBitmap: unknown error")?;
     }
 
     Ok(LCDBitmap {

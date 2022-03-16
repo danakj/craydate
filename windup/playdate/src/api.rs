@@ -433,3 +433,18 @@ impl AsRef<str> for Error {
     &self.0
   }
 }
+impl From<String> for Error {
+    fn from(s: String) -> Self {
+        Error(s)
+    }
+}
+impl From<&str> for Error {
+    fn from(s: &str) -> Self {
+        Error(s.into())
+    }
+}
+impl From<&mut str> for Error {
+  fn from(s: &mut str) -> Self {
+      Error(s.into())
+  }
+}
