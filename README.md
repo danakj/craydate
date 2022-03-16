@@ -12,7 +12,7 @@
 [Api](https://sdk.play.date/1.9.1/Inside%20Playdate%20with%20C.html#_api_reference) coverage:
 - 6.1 Utility **[ DONE ]**
 - 6.2 Audio
-- 6.3 Display **[ IN PROGRESS ]**
+- 6.3 Display **[ DONE ]**
 - 6.4 Filesystem
 - 6.5 Graphics **[ IN PROGRESS ]**
 - 6.6 Video
