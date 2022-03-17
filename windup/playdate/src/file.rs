@@ -1,10 +1,10 @@
 use alloc::format;
-use crate::null_terminated::ToNullTerminatedString;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::ffi::c_void;
 
 use crate::capi_state::CApiState;
+use crate::null_terminated::ToNullTerminatedString;
 use crate::Error;
 
 #[derive(Debug)]
@@ -28,8 +28,10 @@ impl File {
     }
   }
 
-  /// Returns an iterator with every file at `path`. Subfolders are indicated by a trailing slash
-  /// '/' in filename. list_files() does not recurse into subfolders.
+  /// Returns an iterator with every file at `path`.
+  ///
+  /// Subfolders are indicated by a trailing slash '/' in filename. list_files() does not recurse
+  /// into subfolders.
   pub fn list_files(&self, path: &str) -> Result<ListFilesIterator, Error> {
     ListFilesIterator::new(self.state, path)
       .or_else(|e| Err(format!("{} (Playdate: {})", e, self.last_err()).into()))
