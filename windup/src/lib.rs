@@ -52,6 +52,18 @@ async fn main(mut api: playdate::Api) -> ! {
   display.set_flipped(true, false);
   display.set_scale(2);
 
+  match api.file.list_files("images") {
+    Ok(files) => {
+      api.system.log("images/ files");
+      for fname in files {
+        api.system.log(format!("file: {:?}", fname))
+      }
+    }
+    Err(e) => {
+      api.system.log(format!("ERROR: {}", e))
+    }
+  }
+
   system.log(format!(
     "Entering main loop at time {}",
     api.system.current_time()

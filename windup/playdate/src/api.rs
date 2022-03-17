@@ -7,6 +7,7 @@ use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::display::Display;
 use crate::executor::Executor;
+use crate::file::File;
 use crate::graphics::Graphics;
 use crate::time::{HighResolutionTimer, TimeTicks, WallClockTime};
 use crate::String;
@@ -16,6 +17,7 @@ pub struct Api {
   pub system: System,
   pub display: Display,
   pub graphics: Graphics,
+  pub file: File,
 }
 impl Api {
   pub(crate) fn new(state: &'static CApiState) -> Api {
@@ -23,6 +25,7 @@ impl Api {
       system: System::new(state),
       display: Display::new(state),
       graphics: Graphics::new(state),
+      file: File::new(state),
     }
   }
 }
@@ -181,7 +184,7 @@ impl System {
   /// closing, USB cable plugged or unplugged, and the crank docked or undocked. Since games can
   /// receive notification of the crank docking and undocking, and may incorporate this into the
   /// game, Playdate provides a function for muting the default sounds for these events.
-  /// 
+  ///
   /// # Return
   ///
   /// The function returns the previous value for this setting.
@@ -294,4 +297,9 @@ impl From<&mut str> for Error {
   fn from(s: &mut str) -> Self {
     Error(s.into())
   }
+}
+impl core::fmt::Display for Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
