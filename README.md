@@ -13,7 +13,7 @@
 - 6.1 Utility **[ DONE ]**
 - 6.2 Audio
 - 6.3 Display **[ DONE ]**
-- 6.4 Filesystem
+- 6.4 Filesystem **[ IN PROGRESS ]**
 - 6.5 Graphics **[ IN PROGRESS ]**
 - 6.6 Video
 - 6.7 Input **[ DONE ]**
