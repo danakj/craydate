@@ -2,9 +2,13 @@
 #![deny(clippy::all)]
 #![feature(never_type)]
 
+mod gameloop;
 mod playground;
 
 #[playdate::main]
-async fn main(mut api: playdate::Api) -> ! {
-  playground::run(api).await
+async fn main(api: playdate::Api) -> ! {
+  // TODO: could we use a different build target for this??
+  // playground::run(api).await
+
+  gameloop::run(api).await
 }
