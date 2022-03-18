@@ -40,7 +40,7 @@ impl Display {
   }
 
   /// Sets the nominal refresh rate in frames per second.
-  /// 
+  ///
   /// Default is 20 fps, the maximum rate supported by the hardware for full-frame updates. Note
   /// that the simulator may have a different default refresh rate.
   pub fn set_refresh_rate(&mut self, rate: f32) {
@@ -48,7 +48,7 @@ impl Display {
   }
 
   /// Sets the display scale factor. Valid values for scale are 1, 2, 4, and 8.
-  /// 
+  ///
   /// The top-left corner of the frame buffer is scaled up to fill the display;
   /// e.g. if the scale is set to 4, the pixels in rectangle [0,100] x [0,60] are drawn on the
   /// screen as 4 x 4 squares.
@@ -58,7 +58,7 @@ impl Display {
   }
 
   /// Offsets the display by the given amount.
-  /// 
+  ///
   /// Areas outside of the displayed area are filled with the current background color.
   pub fn set_offset(&mut self, dx: i32, dy: i32) {
     unsafe { self.state.cdisplay.setOffset.unwrap()(dx, dy) }

@@ -300,11 +300,11 @@ impl From<&mut str> for Error {
 }
 impl core::fmt::Debug for Error {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-      write!(f, "Error({})", self.0)
+    write!(f, "Error({})", self.0)
   }
 }
 impl core::fmt::Display for Error {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.0)
-    }
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    write!(f, "{}", self.0)
+  }
 }

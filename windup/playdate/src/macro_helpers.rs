@@ -90,11 +90,7 @@ extern "C" fn update_callback(capi_ptr: *mut c_void) -> i32 {
       pushed: PDButtons(0),
       released: PDButtons(0),
     };
-    capi.csystem.getButtonState.unwrap()(
-      &mut set.current,
-      &mut set.pushed,
-      &mut set.released,
-    );
+    capi.csystem.getButtonState.unwrap()(&mut set.current, &mut set.pushed, &mut set.released);
     set
   };
   capi.set_current_frame_button_state(buttons_set);

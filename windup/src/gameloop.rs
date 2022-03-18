@@ -1,8 +1,8 @@
-use playdate::*;
-
 use core::cmp;
+
 use float_ord::FloatOrd;
 use num_traits::float::FloatCore;
+use playdate::*;
 
 const INITIAL_X: i32 = 150;
 const MIN_X: i32 = 0;
@@ -38,7 +38,7 @@ pub struct GameObj {
 impl GameObj {
   // FIXME: this is really the player's update
   pub fn update(&mut self, inputs: &Inputs) {
-    if let &Crank::Undocked{angle: _, change} = inputs.crank() {
+    if let &Crank::Undocked { angle: _, change } = inputs.crank() {
       self.crank_accum += change;
       self.crank_accum = fmax(fmin(self.crank_accum, CRANK_MAX), -CRANK_MAX);
     }
@@ -89,7 +89,12 @@ impl GameObj {
   }
 
   fn draw(&self, g: &mut Graphics) {
-    g.draw_bitmap(&self.bitmap, self.pos.min_x(), self.pos.min_y(), LCDBitmapFlip::kBitmapUnflipped);
+    g.draw_bitmap(
+      &self.bitmap,
+      self.pos.min_x(),
+      self.pos.min_y(),
+      LCDBitmapFlip::kBitmapUnflipped,
+    );
   }
 }
 
@@ -109,8 +114,8 @@ pub async fn run(mut api: playdate::Api) -> ! {
 
   let fw = system.frame_watcher();
   loop {
-    let inputs = fw.next().await;    
-    
+    let inputs = fw.next().await;
+
     // TODO: probably need a more efficient drawing mechanism than full redraw
     graphics.clear(LCDSolidColor::kColorWhite);
 
@@ -124,7 +129,12 @@ pub async fn run(mut api: playdate::Api) -> ! {
 
     let hacky_intrusive_crank_value = objs[0].crank_accum;
 
-    graphics.draw_text("turn crank, hit up to jump", PDStringEncoding::kASCIIEncoding, 5, 0);
+    graphics.draw_text(
+      "turn crank, hit up to jump",
+      PDStringEncoding::kASCIIEncoding,
+      5,
+      0,
+    );
     graphics.draw_text("hit A to reset", PDStringEncoding::kASCIIEncoding, 5, 15);
 
     let crank_str = format!("{:.1}", hacky_intrusive_crank_value);
