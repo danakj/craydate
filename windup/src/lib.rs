@@ -2,7 +2,7 @@
 #![deny(clippy::all)]
 #![feature(never_type)]
 
-use playdate::{format, LCDBitmapFlip, LCDPattern, LCDSolidColor, PDStringEncoding};
+use playdate::{format, LCDBitmapFlip, LCDPattern, LCDSolidColor, PDStringEncoding, String};
 
 #[playdate::main]
 async fn main(mut api: playdate::Api) -> ! {
@@ -52,17 +52,59 @@ async fn main(mut api: playdate::Api) -> ! {
   display.set_flipped(true, false);
   display.set_scale(2);
 
-  match api.file.list_files("images") {
+  let list_files_in = |path: &str| match api.file.list_files(path) {
     Ok(files) => {
-      api.system.log("images/ files");
+      api.system.log(format!("{}/ files:", path));
       for fname in files {
-        api.system.log(format!("file: {:?}", fname))
+        api.system.log(format!("  {:?}", fname))
       }
     }
-    Err(e) => {
-      api.system.log(format!("ERROR: {}", e))
+    Err(e) => api.system.log(format!("ERROR: {}", e)),
+  };
+  let make_dir = |path: &str| match api.file.make_folder(path) {
+    Ok(()) => system.log(format!("mkdir {}", path)),
+    Err(e) => system.log(e),
+  };
+  let rename = |from: &str, to: &str| match api.file.rename(from, to) {
+    Ok(()) => {
+      system.log(format!("renamed {} to {}", from, to));
+      list_files_in("myfolder");
     }
-  }
+    Err(e) => system.log(e),
+  };
+  let delete_recursive = |path: &str| match api.file.delete_recursive(path) {
+    Ok(()) => system.log(format!("deleted {} recursive", path)),
+    Err(e) => system.log(e),
+  };
+  let stat = |path: &str| match api.file.stat(path) {
+    Ok(stats) => system.log(format!("stat {}: {:?}", path, stats)),
+    Err(e) => system.log(e),
+  };
+  let write_file = |path: &str, stuff: &[u8]| match api.file.write_file(path, stuff) {
+    Ok(()) => system.log(format!("wrote {}", path)),
+    Err(e) => system.log(e),
+  };
+  let read_file = |path: &str| match api.file.read_file(path) {
+    Ok(content) => system.log(format!("read {}: {:?}", path, String::from_utf8(content))),
+    Err(e) => system.log(e),
+  };
+
+  list_files_in("images");
+
+  make_dir("myfolder");
+  make_dir("myfolder/two");
+  list_files_in("myfolder");
+  list_files_in("myfolder/two");
+
+  rename("myfolder/two", "myfolder/three");
+  stat("myfolder/three");
+
+  write_file("myfolder/three", b"bees\n");
+  write_file("myfolder/three/bears.txt", b"want honey\n");
+  read_file("myfolder/three/bears.txt");
+  read_file("myfolder/three/no_bears.txt");
+
+  delete_recursive("myfolder");
 
   system.log(format!(
     "Entering main loop at time {}",
