@@ -53,6 +53,15 @@ pub struct LCDBitmap {
   state: &'static CApiState,
 }
 
+impl Clone for LCDBitmap {
+  fn clone(&self) -> Self {
+    LCDBitmap {
+      bitmap_ptr: unsafe { self.state.cgraphics.copyBitmap.unwrap()(self.bitmap_ptr) },
+      state: self.state,
+    }
+  }
+}
+
 impl Drop for LCDBitmap {
   fn drop(&mut self) {
     unsafe {
@@ -62,13 +71,12 @@ impl Drop for LCDBitmap {
 }
 
 impl LCDBitmap {
-  /// Get access to the bitmap's data, including its pixels.
-  pub fn data(&self) -> LCDBitmapData {
-    let mut width: i32 = 0;
-    let mut height: i32 = 0;
-    let mut rowbytes: i32 = 0;
-    let mut hasmask: i32 = 0;
-    let mut data: *mut u8 = core::ptr::null_mut();
+  fn data_and_pixels_ptr(&self) -> (LCDBitmapData, *mut u8) {
+    let mut width = 0;
+    let mut height = 0;
+    let mut rowbytes = 0;
+    let mut hasmask = 0;
+    let mut pixels = core::ptr::null_mut();
     unsafe {
       self.state.cgraphics.getBitmapData.unwrap()(
         self.bitmap_ptr,
@@ -76,35 +84,83 @@ impl LCDBitmap {
         &mut height,
         &mut rowbytes,
         &mut hasmask,
-        &mut data,
+        &mut pixels,
       )
     };
-    LCDBitmapData {
+    let data = LCDBitmapData {
       width,
       height,
       rowbytes,
       hasmask,
+    };
+    (data, pixels)
+  }
+
+  /// Get access to the bitmap's data.
+  pub fn data(&self) -> LCDBitmapData {
+    let (data, _) = self.data_and_pixels_ptr();
+    data
+  }
+
+  /// Gives read acccess to the pixels of the bitmap as an array of bytes. Each byte represents 8 pixels,
+  /// where each pixel is a bit. The highest bit is the leftmost pixel, and lowest bit is the rightmost.
+  pub fn as_bytes(&self) -> &[u8] {
+    let (data, pixels) = self.data_and_pixels_ptr();
+    unsafe { core::slice::from_raw_parts(pixels, (data.rowbytes * data.height) as usize) }
+  }
+  /// Gives read-write acccess to the pixels of the bitmap as an array of bytes. Each byte represents 8 pixels,
+  /// where each pixel is a bit. The highest bit is the leftmost pixel, and lowest bit is the rightmost.
+  pub fn as_mut_bytes(&mut self) -> &mut [u8] {
+    let (data, pixels) = self.data_and_pixels_ptr();
+    unsafe { core::slice::from_raw_parts_mut(pixels, (data.rowbytes * data.height) as usize) }
+  }
+  /// Gives read acccess to the individual pixels of the bitmap.
+  pub fn pixels(&self) -> LCDBitmapPixels {
+    let (data, pixels) = self.data_and_pixels_ptr();
+    let slice =
+      unsafe { core::slice::from_raw_parts(pixels, (data.rowbytes * data.height) as usize) };
+    LCDBitmapPixels {
       data,
-      phantom: PhantomData,
+      pixels: slice,
+    }
+  }
+  /// Gives read-write acccess to the individual pixels of the bitmap.
+  pub fn pixels_mut(&mut self) -> LCDBitmapPixelsMut {
+    let (data, pixels) = self.data_and_pixels_ptr();
+    let slice =
+      unsafe { core::slice::from_raw_parts_mut(pixels, (data.rowbytes * data.height) as usize) };
+    LCDBitmapPixelsMut {
+      data,
+      pixels: slice,
     }
   }
 
-  pub(crate) unsafe fn get_mut_ptr(&self) -> *mut CLCDBitmap {
+  /// Clears the bitmap, filling with the given `bgcolor`.
+  pub fn clear<'a, C>(&mut self, bgcolor: C)
+  where
+    LCDColor<'a>: From<C>,
+  {
+    unsafe {
+      self.state.cgraphics.clearBitmap.unwrap()(
+        self.bitmap_ptr,
+        LCDColor::<'a>::from(bgcolor).to_c_color(),
+      );
+    }
+  }
+
+  pub(crate) unsafe fn get_bitmap_ptr(&self) -> *const CLCDBitmap {
     self.bitmap_ptr
   }
 }
 
-pub struct LCDBitmapData<'bitmap> {
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct LCDBitmapData {
   width: i32,
   height: i32,
   rowbytes: i32,
   hasmask: i32,
-  // TODO: direct access into the bitmap, so does not need to be freed?
-  data: *mut u8,
-  // Share lifetime of LCDBitmap that generated this.
-  phantom: PhantomData<&'bitmap ()>,
 }
-impl<'bitmap> LCDBitmapData<'bitmap> {
+impl LCDBitmapData {
   pub fn width(&self) -> i32 {
     self.width
   }
@@ -118,54 +174,41 @@ impl<'bitmap> LCDBitmapData<'bitmap> {
   pub fn hasmask(&self) -> i32 {
     self.hasmask
   }
-  /// Gives read acccess to the pixels of the bitmap as an array of bytes. Each byte represents 8 pixels,
-  /// where each pixel is a bit. The highest bit is the leftmost pixel, and lowest bit is the rightmost.
-  pub fn as_bytes(&self) -> &[u8] {
-    unsafe { core::slice::from_raw_parts(self.data, (self.rowbytes * self.height) as usize) }
-  }
-  /// Gives read-write acccess to the pixels of the bitmap as an array of bytes. Each byte represents 8 pixels,
-  /// where each pixel is a bit. The highest bit is the leftmost pixel, and lowest bit is the rightmost.
-  pub fn as_mut_bytes(&mut self) -> &mut [u8] {
-    unsafe { core::slice::from_raw_parts_mut(self.data, (self.rowbytes * self.height) as usize) }
-  }
-  /// Gives read acccess to the individual pixels of the bitmap.
-  pub fn pixels<'data>(&'data self) -> LCDBitmapPixels<'bitmap, 'data> {
-    LCDBitmapPixels { data: &self }
-  }
-  pub fn pixels_mut<'data>(&'data mut self) -> LCDBitmapPixelsMut<'bitmap, 'data> {
-    LCDBitmapPixelsMut { data: self }
-  }
 }
 
-/// Provide shared access to the pixels in an LCDBitmap, through its LCDBitmapData.
-pub struct LCDBitmapPixels<'bitmap, 'data> {
-  data: &'data LCDBitmapData<'bitmap>,
+/// Provide readonly access to the pixels in an LCDBitmap, through its LCDBitmapData.
+pub struct LCDBitmapPixels<'bitmap> {
+  data: LCDBitmapData,
+  pixels: &'bitmap [u8],
 }
-// An impl when LCDBitmapPixels holds a shared reference to LCDBitmapData.
-impl LCDBitmapPixels<'_, '_> {
+impl LCDBitmapPixels<'_> {
   pub fn get(&self, x: usize, y: usize) -> bool {
     let byte_index = self.data.rowbytes as usize * y + x / 8;
     let bit_index = x % 8;
-    (self.data.as_bytes()[byte_index] >> (7 - bit_index)) & 0x1 != 0
+    (self.pixels[byte_index] >> (7 - bit_index)) & 0x1 != 0
   }
 }
 
-/// Provide exclusive access to the pixels in an LCDBitmap, through its LCDBitmapData.
-pub struct LCDBitmapPixelsMut<'bitmap, 'data> {
-  data: &'data mut LCDBitmapData<'bitmap>,
+/// Provide mutable access to the pixels in an LCDBitmap, through its LCDBitmapData.
+pub struct LCDBitmapPixelsMut<'bitmap> {
+  data: LCDBitmapData,
+  pixels: &'bitmap mut [u8],
 }
-// An impl when LCDBitmapPixels holds a mutable reference to LCDBitmapData.
-impl LCDBitmapPixelsMut<'_, '_> {
+impl LCDBitmapPixelsMut<'_> {
   pub fn get(&self, x: usize, y: usize) -> bool {
-    LCDBitmapPixels { data: self.data }.get(x, y)
+    LCDBitmapPixels {
+      data: self.data,
+      pixels: self.pixels,
+    }
+    .get(x, y)
   }
   pub fn set(&mut self, x: usize, y: usize, new_value: bool) {
     let byte_index = self.data.rowbytes as usize * y + x / 8;
     let bit_index = x % 8;
     if new_value {
-      self.data.as_mut_bytes()[byte_index] |= 1u8 << (7 - bit_index);
+      self.pixels[byte_index] |= 1u8 << (7 - bit_index);
     } else {
-      self.data.as_mut_bytes()[byte_index] &= !(1u8 << (7 - bit_index));
+      self.pixels[byte_index] &= !(1u8 << (7 - bit_index));
     }
   }
 }
@@ -180,18 +223,18 @@ impl Graphics {
   }
 
   /// Clears the entire display, filling it with `color`.
-  pub fn clear<'a, C>(&self, color: C)
+  pub fn clear<'a, C>(&mut self, color: C)
   where
-    C: Into<LCDColor<'a>>,
+    LCDColor<'a>: From<C>,
   {
     unsafe {
-      self.state.cgraphics.clear.unwrap()(color.into().to_c_color());
+      self.state.cgraphics.clear.unwrap()(LCDColor::<'a>::from(color).to_c_color());
     }
   }
 
   /// Sets the background color shown when the display is offset or for clearing dirty areas
   /// in the sprite system.
-  pub fn set_background_color(&self, color: LCDSolidColor) {
+  pub fn set_background_color(&mut self, color: LCDSolidColor) {
     unsafe {
       self.state.cgraphics.setBackgroundColor.unwrap()(color);
     }
@@ -200,7 +243,7 @@ impl Graphics {
   /// Manually flushes the current frame buffer out to the display. This function is automatically
   /// called after each pass through the run loop, so there shouldn’t be any need to call it
   /// yourself.
-  pub fn display(&self) {
+  pub fn display(&mut self) {
     unsafe {
       self.state.cgraphics.display.unwrap()();
     }
@@ -224,12 +267,12 @@ impl Graphics {
   /// system which rows were updated. This function marks a contiguous range of rows as updated
   /// (e.g., `mark_updated_rows(0, LCD_ROWS - 1)` tells the system to update the entire display).
   /// Both "start" and "end" are included in the range.
-  pub fn mark_updated_rows(&self, start: i32, end: i32) {
+  pub fn mark_updated_rows(&mut self, start: i32, end: i32) {
     unsafe { self.state.cgraphics.markUpdatedRows.unwrap()(start, end) }
   }
 
   /// Offsets the origin point for all drawing calls to x, y (can be negative).
-  pub fn set_draw_offset(&self, dx: i32, dy: i32) {
+  pub fn set_draw_offset(&mut self, dx: i32, dy: i32) {
     unsafe { self.state.cgraphics.setDrawOffset.unwrap()(dx, dy) }
   }
 
@@ -242,51 +285,44 @@ impl Graphics {
 
   /// Sets the mode used for drawing bitmaps. Note that text drawing uses bitmaps, so this
   /// affects how fonts are displayed as well.
-  pub fn set_draw_mode(&self, mode: LCDBitmapDrawMode) {
+  pub fn set_draw_mode(&mut self, mode: LCDBitmapDrawMode) {
     unsafe { self.state.cgraphics.setDrawMode.unwrap()(mode) }
-  }
-
-  /// Clears `bitmap`, filling with the given `bgcolor`.
-  pub fn clear_bitmap<'a, C>(&self, bitmap: &LCDBitmap, bgcolor: C)
-  where
-    C: Into<LCDColor<'a>>,
-  {
-    unsafe {
-      self.state.cgraphics.clearBitmap.unwrap()(bitmap.bitmap_ptr, bgcolor.into().to_c_color());
-    }
-  }
-
-  /// Returns a new `LCDBitmap` that is an exact copy of `bitmap`.
-  pub fn copy_bitmap(&self, bitmap: &LCDBitmap) -> LCDBitmap {
-    LCDBitmap {
-      bitmap_ptr: unsafe { self.state.cgraphics.copyBitmap.unwrap()(bitmap.bitmap_ptr) },
-      state: self.state,
-    }
   }
 
   // TODO: checkMaskCollision
 
-  /// Draws the bitmap with its upper-left corner at location (`x`, `y`), using the given `flip`
-  /// orientation.
-  pub fn draw_bitmap(&self, bitmap: &LCDBitmap, x: i32, y: i32, flip: LCDBitmapFlip) {
+  /// Draws the bitmap to the screen.
+  ///
+  /// The bitmap's upper-left corner is positioned at location (`x`, `y`), and the contents have
+  /// the `flip` orientation applied.
+  pub fn draw_bitmap(&mut self, bitmap: &LCDBitmap, x: i32, y: i32, flip: LCDBitmapFlip) {
     unsafe { self.state.cgraphics.drawBitmap.unwrap()(bitmap.bitmap_ptr, x, y, flip) }
   }
 
-  /// Draws the bitmap scaled to `xscale` and `yscale` with its upper-left corner at location
-  /// (`x`, `y`). Note that flip is not available when drawing scaled bitmaps but negative scale
-  /// values will achieve the same effect.
-  pub fn draw_scaled_bitmap(&self, bitmap: &LCDBitmap, x: i32, y: i32, xscale: f32, yscale: f32) {
+  /// Draws the bitmap to the screen, scaled by `xscale` and `yscale`.
+  ///
+  /// /// The bitmap's upper-left corner is positioned at location (`x`, `y`). Note that flip is not
+  /// available when drawing scaled bitmaps but negative scale values will achieve the same effect.
+  pub fn draw_scaled_bitmap(
+    &mut self,
+    bitmap: &LCDBitmap,
+    x: i32,
+    y: i32,
+    xscale: f32,
+    yscale: f32,
+  ) {
     unsafe {
       self.state.cgraphics.drawScaledBitmap.unwrap()(bitmap.bitmap_ptr, x, y, xscale, yscale)
     }
   }
 
-  /// Draws the bitmap scaled to `xscale` and `yscale` then rotated by `degrees` with its center
-  /// as given by proportions `centerx` and `centery` at (`x`, `y`); that is: if `centerx` and
-  /// `centery` are both 0.5 the center of the image is at (`x`, `y`), if `centerx` and `centery`
-  /// are both 0 the top left corner of the image (before rotation) is at (`x`, `y`), etc.
+  /// Draws the bitmap to the screen, scaled by `xscale` and `yscale` then rotated by `degrees` with
+  /// its center as given by proportions `centerx` and `centery` at (`x`, `y`); that is: if
+  /// `centerx` and `centery` are both 0.5 the center of the image is at (`x`, `y`), if `centerx`
+  /// and `centery` are both 0 the top left corner of the image (before rotation) is at (`x`, `y`),
+  /// etc.
   pub fn draw_rotated_bitmap(
-    &self,
+    &mut self,
     bitmap: &LCDBitmap,
     x: i32,
     y: i32,
@@ -310,19 +346,25 @@ impl Graphics {
     }
   }
 
-  /// Get `LCDBitmapData` containing info about `bitmap` such as `width`, `height`, and raw pixel
-  /// data.
-  pub fn get_bitmap_data<'a>(&self, bitmap: &'a LCDBitmap) -> LCDBitmapData<'a> {
-    // This exists to match the API.
-    bitmap.data()
+  /// Draws the bitmap to the screen with its upper-left corner at location (`x`, `y`) tiled inside
+  /// a `width` by `height` rectangle.
+  pub fn draw_tiled_bitmap(
+    &mut self,
+    bitmap: &LCDBitmap,
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+    flip: LCDBitmapFlip,
+  ) {
+    unsafe {
+      self.state.cgraphics.tileBitmap.unwrap()(bitmap.bitmap_ptr, x, y, width, height, flip)
+    }
   }
 
-  pub fn load_bitmap<S>(&self, path: S) -> Result<LCDBitmap, Error>
-  where
-    S: AsRef<str>,
-  {
+  pub fn load_bitmap(&self, path: &str) -> Result<LCDBitmap, Error> {
     use crate::null_terminated::ToNullTerminatedString;
-    let path = path.as_ref().to_null_terminated_utf8().as_ptr();
+    let path = path.to_null_terminated_utf8().as_ptr();
     let mut out_err: *const u8 = core::ptr::null_mut();
 
     // UNCLEAR: out_err is not a fixed string (it contains the name of the image).
@@ -355,11 +397,15 @@ impl Graphics {
   /// Allocates and returns a new `width` by `height` `LCDBitmap` filled with `bg_color`.
   pub fn new_bitmap<'a, C>(&self, width: i32, height: i32, bg_color: C) -> LCDBitmap
   where
-    C: Into<LCDColor<'a>>,
+    LCDColor<'a>: From<C>,
   {
     // FIXME: for some reason, patterns don't appear to work here, but do work with a C example.
     let bitmap_ptr = unsafe {
-      self.state.cgraphics.newBitmap.unwrap()(width, height, bg_color.into().to_c_color())
+      self.state.cgraphics.newBitmap.unwrap()(
+        width,
+        height,
+        LCDColor::<'a>::from(bg_color).to_c_color(),
+      )
     };
     LCDBitmap {
       bitmap_ptr,
@@ -367,24 +413,8 @@ impl Graphics {
     }
   }
 
-  /// Draws the bitmap with its upper-left corner at location (`x`, `y`) tiled inside a
-  /// `width` by `height` rectangle.
-  pub fn tile_bitmap(
-    &self,
-    bitmap: &LCDBitmap,
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
-    flip: LCDBitmapFlip,
-  ) {
-    unsafe {
-      self.state.cgraphics.tileBitmap.unwrap()(bitmap.bitmap_ptr, x, y, width, height, flip)
-    }
-  }
-
   /// Returns a new, rotated and scaled LCDBitmap based on the given `bitmap`.
-  pub fn rotated_bitmap(
+  pub fn new_rotated_bitmap(
     &self,
     bitmap: &LCDBitmap,
     rotation: f32,
@@ -416,19 +446,16 @@ impl Graphics {
   // TODO: loadIntoBitmapTable
   // TODO: newBitmapTable
 
-  pub fn draw_text<S>(&self, text: S, encoding: PDStringEncoding, x: i32, y: i32)
-  where
-    S: AsRef<str>,
-  {
+  pub fn draw_text(&mut self, text: &str, encoding: PDStringEncoding, x: i32, y: i32) {
     use crate::null_terminated::ToNullTerminatedString;
-    let null_term = text.as_ref().to_null_terminated_utf8();
+    let null_term = text.to_null_terminated_utf8();
     let ptr = null_term.as_ptr() as *const c_void;
     let len = null_term.len() as u64;
     unsafe { self.state.cgraphics.drawText.unwrap()(ptr, len, encoding, x, y) }; // TODO: Return the int from Playdate?
   }
 
   /// Draws the current FPS on the screen at the given (`x`, `y`) coordinates.
-  pub fn draw_fps(&self, x: i32, y: i32) {
+  pub fn draw_fps(&mut self, x: i32, y: i32) {
     // This function is part of Playdate CSystem, not CGraphics, but it's a function that draws
     // something to the screen, so its behaviour is more clear when part of the Graphics type.
     unsafe { self.state.csystem.drawFPS.unwrap()(x, y) }

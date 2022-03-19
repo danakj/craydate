@@ -137,8 +137,11 @@ impl System {
   pub fn set_menu_image(&mut self, bitmap: &crate::graphics::LCDBitmap, xoffset: i32) {
     // SAFETY: Playdate makes a copy from the given pointer, so we can pass it in and then drop the
     // reference on `bitmap` when we leave the function.
-    let ptr = unsafe { bitmap.get_mut_ptr() };
-    unsafe { self.state.csystem.setMenuImage.unwrap()(ptr, xoffset.clamp(0, 200)) }
+    let ptr = unsafe { bitmap.get_bitmap_ptr() };
+    unsafe {
+      // setMenuImage() takes a mut pointer argument, but does not mutate the bitmap.
+      self.state.csystem.setMenuImage.unwrap()(ptr as *mut CLCDBitmap, xoffset.clamp(0, 200))
+    }
   }
 
   /// Removes the user-specified bitmap from beside the system menu. The default image is displayed

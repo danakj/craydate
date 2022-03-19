@@ -3,7 +3,7 @@ use playdate::*;
 /// A testing function to dump new functionality into for manual verification.
 pub async fn run(mut api: playdate::Api) -> ! {
   let system = &api.system;
-  let graphics = &api.graphics;
+  let graphics = &mut api.graphics;
 
   let grey50: LCDPattern = [
     // Bitmap
@@ -19,12 +19,11 @@ pub async fn run(mut api: playdate::Api) -> ! {
 
   graphics.draw_text("Bloop", PDStringEncoding::kASCIIEncoding, 30, 20);
 
-  let copy = graphics.copy_frame_buffer_bitmap();
+  let mut copy = graphics.copy_frame_buffer_bitmap();
 
-  let mut data = copy.data();
   for y in 20..30 {
     for x in 10..20 {
-      data.pixels_mut().set(x, y, false);
+      copy.pixels_mut().set(x, y, false);
     }
   }
   graphics.draw_bitmap(&copy, 0, 30, LCDBitmapFlip::kBitmapUnflipped);

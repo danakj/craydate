@@ -138,7 +138,7 @@ pub async fn run(mut api: playdate::Api) -> ! {
     graphics.draw_text("hit A to reset", PDStringEncoding::kASCIIEncoding, 5, 15);
 
     let crank_str = format!("{:.1}", hacky_intrusive_crank_value);
-    graphics.draw_text(crank_str, PDStringEncoding::kASCIIEncoding, 5, 30);
+    graphics.draw_text(&crank_str, PDStringEncoding::kASCIIEncoding, 5, 30);
     graphics.draw_fps(400 - 15, 0);
   }
 }
