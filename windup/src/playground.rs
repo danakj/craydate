@@ -1,7 +1,7 @@
 use playdate::*;
 
 /// A testing function to dump new functionality into for manual verification.
-pub async fn run(mut api: playdate::Api) -> ! {
+pub async fn _run(mut api: playdate::Api) -> ! {
   let system = &api.system;
   let graphics = &mut api.graphics;
 
