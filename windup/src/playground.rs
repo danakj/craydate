@@ -13,7 +13,13 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   ];
   graphics.clear(&grey50);
 
-  let bmp = graphics.new_bitmap(100, 40, LCDSolidColor::kColorWhite);
+  let mut bmp = graphics.new_bitmap(100, 40, LCDSolidColor::kColorWhite);
+  let mask = graphics.new_bitmap(100, 40, LCDSolidColor::kColorWhite);
+  let _ = bmp.set_mask_bitmap(&mask);
+  let mask2 = bmp.mask_bitmap();
+  api.system.log(format!("has mask {}", mask2.is_some()));
+  mask2.unwrap().clear(LCDSolidColor::kColorBlack);
+
   graphics.draw_bitmap(&bmp, 5, 9, LCDBitmapFlip::kBitmapUnflipped);
   drop(bmp);
 
