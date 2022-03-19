@@ -102,14 +102,18 @@ impl LCDBitmap {
     data
   }
 
-  /// Gives read acccess to the pixels of the bitmap as an array of bytes. Each byte represents 8 pixels,
-  /// where each pixel is a bit. The highest bit is the leftmost pixel, and lowest bit is the rightmost.
+  /// Gives read acccess to the pixels of the bitmap as an array of bytes.
+  /// 
+  /// Each byte represents 8 pixels, where each pixel is a bit. The highest bit is the leftmost
+  /// pixel, and lowest bit is the rightmost.
   pub fn as_bytes(&self) -> &[u8] {
     let (data, pixels) = self.data_and_pixels_ptr();
     unsafe { core::slice::from_raw_parts(pixels, (data.rowbytes * data.height) as usize) }
   }
-  /// Gives read-write acccess to the pixels of the bitmap as an array of bytes. Each byte represents 8 pixels,
-  /// where each pixel is a bit. The highest bit is the leftmost pixel, and lowest bit is the rightmost.
+  /// Gives read-write acccess to the pixels of the bitmap as an array of bytes.
+  /// 
+  /// Each byte represents 8 pixels, where each pixel is a bit. The highest bit is the leftmost
+  /// pixel, and lowest bit is the rightmost.
   pub fn as_mut_bytes(&mut self) -> &mut [u8] {
     let (data, pixels) = self.data_and_pixels_ptr();
     unsafe { core::slice::from_raw_parts_mut(pixels, (data.rowbytes * data.height) as usize) }
