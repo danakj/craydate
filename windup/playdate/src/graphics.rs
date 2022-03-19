@@ -43,9 +43,10 @@ impl LCDColor<'_> {
   }
 }
 
-/// An opaque handle for a bitmap, which frees the bitmap memory when dropped.
+/// A bitmap image.
 ///
-/// Get access to the bitmap's data through the `data()` method.
+/// The bitmap can be cloned which will make a clone of the pixels as well. The bitmap's pixels
+/// data is freed when the bitmap is dropped.
 #[derive(Debug)]
 pub struct LCDBitmap {
   bitmap_ptr: *mut CLCDBitmap,
