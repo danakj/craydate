@@ -1,5 +1,4 @@
 use core::ffi::c_void;
-use core::marker::PhantomData;
 
 use crate::api::Error;
 use crate::capi_state::CApiState;
