@@ -96,7 +96,7 @@ impl LCDBitmap {
     (data, pixels)
   }
 
-  /// Get access to the bitmap's data.
+  /// Returns the bitmap's metadata such as its width and height.
   pub fn data(&self) -> LCDBitmapData {
     let (data, _) = self.data_and_pixels_ptr();
     data
