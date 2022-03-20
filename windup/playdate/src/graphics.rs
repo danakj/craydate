@@ -433,16 +433,14 @@ impl Graphics {
     }
   }
 
-  /// Only valid in the simulator, returns the debug framebuffer as a bitmap.
+  /// Returns the debug framebuffer as a bitmap.
   ///
-  /// Returns None on a device.
-  pub fn debug_frame_bitmap(&self) -> Option<SharedLCDBitmapRef<'static>> {
+  /// Only valid in the simulator, so not compiled for device builds.
+  #[cfg(not(all(target_arch = "arm", target_os = "none")))]
+  pub fn debug_frame_bitmap(&self) -> SharedLCDBitmapRef<'static> {
     let bitmap_ptr = unsafe { self.state.cgraphics.getDebugBitmap.unwrap()() };
-    if bitmap_ptr.is_null() {
-      None
-    } else {
-      Some(SharedLCDBitmapRef::from_ptr(bitmap_ptr, self.state))
-    }
+    assert!(!bitmap_ptr.is_null());
+    SharedLCDBitmapRef::from_ptr(bitmap_ptr, self.state)
   }
 
   // TODO: getDisplayFrame
