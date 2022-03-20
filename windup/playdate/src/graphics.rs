@@ -47,7 +47,7 @@ impl LCDColor<'_> {
 ///
 /// The bitmap can be cloned which will make a clone of the pixels as well. The bitmap's pixels data
 /// is freed when the bitmap is dropped.
-/// 
+///
 /// An `LCDBitmap` is borrowed as an `&LCDBitmapRef` and all methods of that type are available for
 /// `LCDBitmap as well.
 #[derive(Debug)]
@@ -92,7 +92,7 @@ pub struct SharedLCDBitmapRef<'a> {
 
 impl SharedLCDBitmapRef<'_> {
   /// Construct a SharedLCDBitmapRef from a non-owning pointer.
-  /// 
+  ///
   /// Requires being told the lifetime of the LCDBitmap this is making a reference to.
   fn from_ptr<'a>(
     bitmap_ptr: *mut CLCDBitmap,
@@ -220,7 +220,7 @@ impl LCDBitmapRef {
   }
 
   /// The mask bitmap attached to this bitmap.
-  /// 
+  ///
   /// Returns the mask bitmap, if one has been attached with `set_mask_bitmap()`, or None.
   pub fn mask_bitmap(&self) -> Option<SharedLCDBitmapRef> {
     let mask = unsafe {
@@ -340,7 +340,7 @@ pub struct LCDBitmapData {
 }
 impl LCDBitmapData {
   /// The number of pixels (or, columns) per row of the bitmap.
-  /// 
+  ///
   /// Each pixel is a single bit, and there may be more bytes (as determined by `row_bytes()`) in a
   /// row than required to hold all the pixels.
   pub fn width(&self) -> i32 {
@@ -433,25 +433,25 @@ impl Graphics {
     }
   }
 
-  // TODO: getDebugBitmap
+  /// Only valid in the simulator, returns the debug framebuffer as a bitmap.
+  ///
+  /// Returns None on a device.
+  pub fn debug_frame_bitmap(&self) -> Option<SharedLCDBitmapRef<'static>> {
+    let bitmap_ptr = unsafe { self.state.cgraphics.getDebugBitmap.unwrap()() };
+    if bitmap_ptr.is_null() {
+      None
+    } else {
+      Some(SharedLCDBitmapRef::from_ptr(bitmap_ptr, self.state))
+    }
+  }
+
   // TODO: getDisplayFrame
   // TODO: getFrame
 
   /// Returns a reference to the bitmap containing the contents of the display buffer.
-  pub fn display_frame_bitmap(&self) -> &'static LCDBitmapRef {
-    static mut DISPLAY_FRAME_BITMAP: Option<SharedLCDBitmapRef<'static>> = None;
-    // SAFETY: Since we're handing out a `&'static` reference to StaticLCDBitmap's contents, we must
-    // only construct it once, then never move or drop it.
-    unsafe {
-      match DISPLAY_FRAME_BITMAP {
-        None => {
-          let bitmap_ptr = self.state.cgraphics.getDisplayBufferBitmap.unwrap()();
-          DISPLAY_FRAME_BITMAP = Some(SharedLCDBitmapRef::from_ptr(bitmap_ptr, self.state));
-          DISPLAY_FRAME_BITMAP.as_ref().unwrap_unchecked().as_ref()
-        }
-        Some(ref static_bitmap) => static_bitmap.as_ref(),
-      }
-    }
+  pub fn display_frame_bitmap(&self) -> SharedLCDBitmapRef<'static> {
+    let bitmap_ptr = unsafe { self.state.cgraphics.getDisplayBufferBitmap.unwrap()() };
+    SharedLCDBitmapRef::from_ptr(bitmap_ptr, self.state)
   }
 
   /// Returns a copy the contents of the working frame buffer as a bitmap.
