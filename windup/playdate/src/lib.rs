@@ -34,7 +34,7 @@ pub mod macro_helpers;
 /// Reexport some of alloc, since things in alloc are not guaranteed to work in `no_std` as it all
 /// depends on our global allocator. This makes it clear they can be used, and avoids the need for
 /// `export mod alloc` elsewhere.
-pub use alloc::{format, string::String};
+pub use alloc::{borrow::ToOwned as ToOwned, format, string::String as String};
 
 pub use api::*;
 pub use ctypes_enums::*;
