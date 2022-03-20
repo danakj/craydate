@@ -444,7 +444,7 @@ impl Graphics {
   }
 
   /// Returns a copy of the contents of the display front buffer.
-  /// 
+  ///
   /// The Playdate device is double-buffered, and this returns the currently displayed frame.
   pub fn display_frame_bitmap(&self) -> LCDBitmap {
     let bitmap_ptr = unsafe { self.state.cgraphics.getDisplayBufferBitmap.unwrap()() };
@@ -453,7 +453,7 @@ impl Graphics {
   }
 
   /// Returns a copy the contents of the working frame buffer as a bitmap.
-  /// 
+  ///
   /// The Playdate device is double-buffered, and this returns the buffer that will be displayed
   /// next frame.
   pub fn working_frame_bitmap(&self) -> LCDBitmap {
