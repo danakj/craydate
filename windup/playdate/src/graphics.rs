@@ -219,6 +219,9 @@ impl LCDBitmapRef {
     }
   }
 
+  /// The mask bitmap attached to this bitmap.
+  /// 
+  /// Returns the mask bitmap, if one has been attached with `set_mask_bitmap()`, or None.
   pub fn mask_bitmap<'a>(&'a self) -> Option<SharedLCDBitmapRef<'a>> {
     let mask = unsafe {
       // Playdate owns the mask bitmap, and reference a pointer to it. Playdate would free the mask
