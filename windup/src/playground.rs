@@ -15,18 +15,14 @@ pub async fn _run(mut api: playdate::Api) -> ! {
 
   let mut bmp = graphics.new_bitmap(100, 40, LCDSolidColor::kColorWhite);
   let mask = graphics.new_bitmap(100, 40, LCDSolidColor::kColorWhite);
-  let _ = bmp.set_mask_bitmap(&mask);
-  let mask2 = bmp.mask_bitmap();
-  api.system.log(format!("has mask {}", bmp.data().has_mask()));
-  api.system.log(format!("has mask {}", mask2.is_some()));
-  mask2.unwrap().clear(LCDSolidColor::kColorBlack);
+  bmp.set_mask_bitmap(&mask).expect("mask problems");
 
   graphics.draw_bitmap(&bmp, 5, 9, LCDBitmapFlip::kBitmapUnflipped);
   drop(bmp);
 
   graphics.draw_text("Bloop", PDStringEncoding::kASCIIEncoding, 30, 20);
 
-  let mut copy = graphics.copy_frame_buffer_bitmap();
+  let mut copy = graphics.working_frame_bitmap();
 
   for y in 20..30 {
     for x in 10..20 {

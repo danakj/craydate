@@ -443,17 +443,20 @@ impl Graphics {
     SharedLCDBitmapRef::from_ptr(bitmap_ptr, self.state)
   }
 
-  // TODO: getDisplayFrame
-  // TODO: getFrame
-
-  /// Returns a reference to the bitmap containing the contents of the display buffer.
-  pub fn display_frame_bitmap(&self) -> SharedLCDBitmapRef<'static> {
+  /// Returns a copy of the contents of the display front buffer.
+  /// 
+  /// The Playdate device is double-buffered, and this returns the currently displayed frame.
+  pub fn display_frame_bitmap(&self) -> LCDBitmap {
     let bitmap_ptr = unsafe { self.state.cgraphics.getDisplayBufferBitmap.unwrap()() };
-    SharedLCDBitmapRef::from_ptr(bitmap_ptr, self.state)
+    use alloc::borrow::ToOwned;
+    LCDBitmapRef::from_ptr(bitmap_ptr, self.state).to_owned()
   }
 
   /// Returns a copy the contents of the working frame buffer as a bitmap.
-  pub fn copy_frame_buffer_bitmap(&self) -> LCDBitmap {
+  /// 
+  /// The Playdate device is double-buffered, and this returns the buffer that will be displayed
+  /// next frame.
+  pub fn working_frame_bitmap(&self) -> LCDBitmap {
     let bitmap_ptr = unsafe { self.state.cgraphics.copyFrameBufferBitmap.unwrap()() };
     LCDBitmap::from_owned_ptr(bitmap_ptr, self.state)
   }
