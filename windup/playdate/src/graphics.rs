@@ -341,12 +341,11 @@ impl LCDBitmapData {
   pub fn height(&self) -> i32 {
     self.height
   }
-  pub fn rowbytes(&self) -> i32 {
+  pub fn row_bytes(&self) -> i32 {
     self.rowbytes
   }
-  // TODO: is hasmask logically a boolean?
-  pub fn hasmask(&self) -> i32 {
-    self.hasmask
+  pub fn has_mask(&self) -> bool {
+    self.hasmask != 0
   }
 }
 

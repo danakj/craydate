@@ -17,6 +17,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   let mask = graphics.new_bitmap(100, 40, LCDSolidColor::kColorWhite);
   let _ = bmp.set_mask_bitmap(&mask);
   let mask2 = bmp.mask_bitmap();
+  api.system.log(format!("has mask {}", bmp.data().has_mask()));
   api.system.log(format!("has mask {}", mask2.is_some()));
   mask2.unwrap().clear(LCDSolidColor::kColorBlack);
 
