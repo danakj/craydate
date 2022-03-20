@@ -45,13 +45,19 @@ impl LCDColor<'_> {
 
 /// A bitmap image.
 ///
-/// The bitmap can be cloned which will make a clone of the pixels as well. The bitmap's pixels
-/// data is freed when the bitmap is dropped.
+/// The bitmap can be cloned which will make a clone of the pixels as well. The bitmap's pixels data
+/// is freed when the bitmap is dropped.
+/// 
+/// An `LCDBitmap` is borrowed as an `&LCDBitmapRef` and all methods of that type are available for
+/// `LCDBitmap as well.
 #[derive(Debug)]
 pub struct LCDBitmap {
+  /// While LCDBitmapRef is a non-owning pointer, the LCDBitmap will act as the owner of the bitmap
+  /// found within.
   owned: LCDBitmapRef,
 }
 impl LCDBitmap {
+  /// Construct an LCDBitmap from an owning pointer.
   fn from_owned_ptr(bitmap_ptr: *mut CLCDBitmap, state: &'static CApiState) -> Self {
     LCDBitmap {
       owned: LCDBitmapRef::from_ptr(bitmap_ptr, state),
@@ -76,14 +82,18 @@ impl Drop for LCDBitmap {
   }
 }
 
-/// A LCDBitmapRef which has a lifetime tied to a different LCDBitmap (or LCDBitmapRef) with
-/// lifetime `'a`.
+/// A reference to an `LCDBitmap`, which has a lifetime tied to a different `LCDBitmap` (or
+/// `LCDBitmapRef`) with a lifetime `'a`.
 #[derive(Debug)]
 pub struct SharedLCDBitmapRef<'a> {
   bref: LCDBitmapRef,
   _marker: core::marker::PhantomData<&'a LCDBitmap>,
 }
+
 impl SharedLCDBitmapRef<'_> {
+  /// Construct a SharedLCDBitmapRef from a non-owning pointer.
+  /// 
+  /// Requires being told the lifetime of the LCDBitmap this is making a reference to.
   fn from_ptr<'a>(
     bitmap_ptr: *mut CLCDBitmap,
     state: &'static CApiState,
@@ -95,27 +105,22 @@ impl SharedLCDBitmapRef<'_> {
   }
 }
 
+/// A borrow of an LCDBitmap (or SharedLCDBitmap) is held as this type.
+///
+/// LCDBitmapRef exposes most of the method of an LCDBitmap, allowing them to be used on an owned or
+/// borrowed bitmap.
+///
+/// Intentionally not `Copy` as `LCDBitmapRef` can only be referred to as a reference.
 #[derive(Debug)]
 pub struct LCDBitmapRef {
   bitmap_ptr: *mut CLCDBitmap,
   state: &'static CApiState,
 }
 
-impl Clone for LCDBitmapRef {
-  fn clone(&self) -> Self {
-    Self {
-      bitmap_ptr: self.bitmap_ptr.clone(),
-      state: self.state.clone(),
-    }
-  }
-}
-
 impl LCDBitmapRef {
+  /// Construct an LCDBitmapRef from a non-owning pointer.
   fn from_ptr(bitmap_ptr: *mut CLCDBitmap, state: &'static CApiState) -> Self {
-    LCDBitmapRef {
-      bitmap_ptr,
-      state,
-    }
+    LCDBitmapRef { bitmap_ptr, state }
   }
 
   fn data_and_pixels_ptr(&self) -> (LCDBitmapData, *mut u8) {
@@ -253,6 +258,17 @@ impl core::borrow::Borrow<LCDBitmapRef> for LCDBitmap {
 impl core::borrow::BorrowMut<LCDBitmapRef> for LCDBitmap {
   fn borrow_mut(&mut self) -> &mut LCDBitmapRef {
     self // This calls DerefMut.
+  }
+}
+
+impl alloc::borrow::ToOwned for LCDBitmapRef {
+  type Owned = LCDBitmap;
+
+  fn to_owned(&self) -> Self::Owned {
+    LCDBitmap::from_owned_ptr(
+      unsafe { self.state.cgraphics.copyBitmap.unwrap()(self.bitmap_ptr) },
+      self.state,
+    )
   }
 }
 
