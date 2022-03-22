@@ -38,7 +38,7 @@ impl LCDColor<'_> {
   pub(crate) unsafe fn to_c_color(&self) -> usize {
     match self {
       LCDColor::Solid(solid) => solid.0 as usize,
-      LCDColor::Pattern(&pattern) => pattern.as_ptr() as usize,
+      LCDColor::Pattern(pattern) => pattern.as_ptr() as usize,
     }
   }
 }
