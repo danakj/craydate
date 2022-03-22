@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use core::cmp;
 
 use float_ord::FloatOrd;
@@ -40,6 +41,8 @@ impl AccumInputs {
 
 pub struct World {
   player: GameObj,
+  blocks: Vec<[i32; 2]>,
+  block_bmp: LCDBitmap,
   // TODO: add other stuff in the world
 }
 impl World {
@@ -95,6 +98,9 @@ impl World {
   }
 
   pub fn draw(&self, g: &mut Graphics) {
+    for block in &self.blocks {
+      g.draw_bitmap(&self.block_bmp, block[0] * 32, block[1] * 32, LCDBitmapFlip::kBitmapUnflipped);
+    }
     // TODO: draw other stuff in world
     self.player.draw(g);
   }
@@ -129,6 +135,13 @@ pub async fn run(mut api: playdate::Api) -> ! {
       pos_remainder: euclid::vec2(0.0, 0.0),
       vel: euclid::vec2(0.0, 0.0),
     },
+    blocks: Vec::from([
+      [0, 6],
+      [1, 6],
+      [2, 6],
+      [3, 6],
+    ]),
+    block_bmp: graphics.load_bitmap("images/box").unwrap(),
   };
 
   let mut accum = AccumInputs { crank_accum: 0.0 };
