@@ -5,7 +5,7 @@ use float_ord::FloatOrd;
 use num_traits::float::FloatCore;
 use playdate::*;
 
-const INITIAL_X: i32 = 150;
+const INITIAL_X: i32 = 50;
 const MIN_X: i32 = 0;
 const MAX_X: i32 = 400 - 32;
 const FLOOR_Y: i32 = 200;
@@ -99,7 +99,12 @@ impl World {
 
   pub fn draw(&self, g: &mut Graphics) {
     for block in &self.blocks {
-      g.draw_bitmap(&self.block_bmp, block[0] * 32, block[1] * 32, LCDBitmapFlip::kBitmapUnflipped);
+      g.draw_bitmap(
+        &self.block_bmp,
+        block[0],
+        block[1],
+        LCDBitmapFlip::kBitmapUnflipped,
+      );
     }
     // TODO: draw other stuff in world
     self.player.draw(g);
@@ -135,12 +140,31 @@ pub async fn run(mut api: playdate::Api) -> ! {
       pos_remainder: euclid::vec2(0.0, 0.0),
       vel: euclid::vec2(0.0, 0.0),
     },
-    blocks: Vec::from([
-      [0, 6],
-      [1, 6],
-      [2, 6],
-      [3, 6],
-    ]),
+    blocks: Vec::from(
+      [
+        // the floor
+        [0, 6],
+        [1, 6],
+        [2, 6],
+        [3, 6],
+        [4, 6],
+        [5, 6],
+        [6, 6],
+        [7, 6],
+        [8, 6],
+        [9, 6],
+        [10, 6],
+        [11, 6],
+        [12, 6],
+        // small bump
+        [4, 5],
+        // large bump
+        [7, 5],
+        [7, 4],
+        [7, 3],
+      ]
+      .map(|[x, y]| [x * 32, y * 32]),
+    ),
     block_bmp: graphics.load_bitmap("images/box").unwrap(),
   };
 
