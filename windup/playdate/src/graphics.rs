@@ -5,6 +5,31 @@ use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::String;
 
+const PATTERN_SIZE: usize = 16;
+
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct LCDPattern(CLCDPattern);
+impl LCDPattern {
+  pub fn new(arr: [u8; PATTERN_SIZE]) -> LCDPattern {
+    LCDPattern(arr)
+  }
+  pub fn from_bitmap(bitmap: &LCDBitmapRef, x: i32, y: i32) -> LCDPattern {
+    let mut arr = [0; PATTERN_SIZE];
+
+    let mut c_color: CLCDColor = 0;
+    unsafe {
+      // The setColorToPattern function wants a `*mut CLCDBitmap`, but it only reads from the bitmap
+      // to make a pattern, so we can cast to that from a shared reference to the bitmap.
+      let ptr = bitmap.get_bitmap_ptr() as *mut CLCDBitmap;
+      bitmap.state.cgraphics.setColorToPattern.unwrap()(&mut c_color, ptr, x, y);
+      core::ptr::copy_nonoverlapping(c_color as *const u8, arr.as_mut_ptr(), PATTERN_SIZE)
+    }
+
+    LCDPattern(arr)
+  }
+}
+
 /// Represents a method for drawing to the display or a bitmap. Similar to a SkPaint in Skia.
 #[derive(Debug)]
 pub enum LCDColor<'a> {
@@ -38,7 +63,7 @@ impl LCDColor<'_> {
   pub(crate) unsafe fn to_c_color(&self) -> usize {
     match self {
       LCDColor::Solid(solid) => solid.0 as usize,
-      LCDColor::Pattern(pattern) => pattern.as_ptr() as usize,
+      LCDColor::Pattern(pattern) => pattern.0.as_ptr() as usize,
     }
   }
 }
@@ -474,7 +499,6 @@ impl Graphics {
     unsafe { self.state.cgraphics.setDrawOffset.unwrap()(dx, dy) }
   }
 
-  // TODO: setColorToPattern
   // TODO: all the graphics->video functions
   // TODO: pushContext/popContext
   //       do these funcs need to borrow the LCDBitmap while it's "on the stack"??

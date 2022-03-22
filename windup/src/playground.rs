@@ -5,12 +5,15 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   let system = &api.system;
   let graphics = &mut api.graphics;
 
-  let grey50: LCDPattern = [
-    // Bitmap
-    0b10101010, 0b01010101, 0b10101010, 0b01010101, 0b10101010, 0b01010101, 0b10101010, 0b01010101,
-    // Mask
-    0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111, 0b11111111,
-  ];
+  let mut grey50 = graphics.new_bitmap(8, 8, LCDSolidColor::kColorBlack);
+  for x in (0..8).step_by(2) {
+    for y in 0..8 {
+      let xwrite = x + y % 2;
+      let ywrite = y;
+      grey50.pixels_mut().set(xwrite, ywrite, true)
+    }
+  }
+  let grey50 = LCDPattern::from_bitmap(&grey50, 0, 0);
   graphics.clear(&grey50);
 
   let mut bmp = graphics.new_bitmap(100, 40, LCDSolidColor::kColorWhite);
