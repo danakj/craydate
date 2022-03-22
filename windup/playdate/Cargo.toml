@@ -7,3 +7,7 @@ version = "0.1.0"
 playdate-sys = {path = "../playdate-sys"}
 static_assertions = "1"
 playdate-macro = {path = "../playdate-macro"}
+
+[dependencies.euclid]
+version = "0.22"
+default-features = false

@@ -21,7 +21,6 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   bmp.set_mask_bitmap(&mask).expect("mask problems");
 
   graphics.draw_bitmap(&bmp, 5, 9, LCDBitmapFlip::kBitmapUnflipped);
-  drop(bmp);
 
   graphics.draw_text("Bloop", PDStringEncoding::kASCIIEncoding, 30, 20);
 
@@ -33,6 +32,23 @@ pub async fn _run(mut api: playdate::Api) -> ! {
     }
   }
   graphics.draw_bitmap(&copy, 0, 30, LCDBitmapFlip::kBitmapUnflipped);
+
+  let c = graphics.bitmaps_collide(
+    BitmapCollider {
+      bitmap: &bmp,
+      flipped: LCDBitmapFlip::kBitmapUnflipped,
+      x: 0,
+      y: 0,
+    },
+    BitmapCollider {
+      bitmap: &copy,
+      flipped: LCDBitmapFlip::kBitmapUnflipped,
+      x: 0,
+      y: 0,
+    },
+    euclid::rect(0, 0, 100, 100),
+  );
+  system.log(format!("collision: {}", c));
 
   // working image
   let yo_path = "images/yo";

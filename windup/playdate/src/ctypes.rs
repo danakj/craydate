@@ -8,6 +8,7 @@ pub use playdate_sys::FileStat as CFileStat;
 pub use playdate_sys::LCDBitmap as CLCDBitmap;
 pub use playdate_sys::LCDColor as CLCDColor;
 pub use playdate_sys::LCDPattern as CLCDPattern;
+pub use playdate_sys::LCDRect as CLCDRect;
 pub use playdate_sys::LCDVideoPlayer as CVideoPlayer;
 pub use playdate_sys::PDButtons;
 // Bitflags.

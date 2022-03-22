@@ -422,6 +422,13 @@ impl LCDBitmapPixelsMut<'_> {
   }
 }
 
+pub struct BitmapCollider<'a> {
+  pub bitmap: &'a LCDBitmapRef,
+  pub flipped: LCDBitmapFlip,
+  pub x: i32,
+  pub y: i32,
+}
+
 #[derive(Debug)]
 pub struct Graphics {
   pub(crate) state: &'static CApiState,
@@ -429,6 +436,29 @@ pub struct Graphics {
 impl Graphics {
   pub(crate) fn new(state: &'static CApiState) -> Self {
     Graphics { state }
+  }
+
+  pub fn bitmaps_collide(
+    &self,
+    a: BitmapCollider,
+    b: BitmapCollider,
+    in_rect: euclid::default::Rect<i32>,
+  ) -> bool {
+    unsafe {
+      // checkMaskCollision expects `*mut CLCDBitmap` but it only reads from the bitmaps to check
+      // for collision, so we can cast from a shared reference on LCDBitmap to a mut pointer.
+      self.state.cgraphics.checkMaskCollision.unwrap()(
+        a.bitmap.get_bitmap_ptr() as *mut CLCDBitmap,
+        a.x,
+        a.y,
+        a.flipped,
+        b.bitmap.get_bitmap_ptr() as *mut CLCDBitmap,
+        b.x,
+        b.y,
+        b.flipped,
+        playdate_rect_from_euclid(in_rect),
+      ) != 0
+    }
   }
 
   /// Clears the entire display, filling it with `color`.
@@ -509,8 +539,6 @@ impl Graphics {
   pub fn set_draw_mode(&mut self, mode: LCDBitmapDrawMode) {
     unsafe { self.state.cgraphics.setDrawMode.unwrap()(mode) }
   }
-
-  // TODO: checkMaskCollision
 
   /// Draws the bitmap to the screen.
   ///
@@ -669,5 +697,14 @@ impl Graphics {
     // This function is part of Playdate CSystem, not CGraphics, but it's a function that draws
     // something to the screen, so its behaviour is more clear when part of the Graphics type.
     unsafe { self.state.csystem.drawFPS.unwrap()(x, y) }
+  }
+}
+
+fn playdate_rect_from_euclid(e: euclid::default::Rect<i32>) -> CLCDRect {
+  CLCDRect {
+    left: e.origin.x,
+    top: e.origin.y,
+    right: e.origin.x + e.size.width - 1,
+    bottom: e.origin.y + e.size.height - 1,
   }
 }
