@@ -474,7 +474,6 @@ impl Graphics {
     unsafe { self.state.cgraphics.setDrawOffset.unwrap()(dx, dy) }
   }
 
-  // TODO: setSpriteDrawFunction
   // TODO: setColorToPattern
   // TODO: all the graphics->video functions
   // TODO: pushContext/popContext
