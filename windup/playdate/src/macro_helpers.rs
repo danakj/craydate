@@ -47,8 +47,9 @@ pub fn initialize(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3, co
 
     // We leak this pointer so it has 'static lifetime.
     let capi = Box::into_raw(Box::new(CApiState::new(api)));
-    // The CApiState is always accessed through a shared pointer.
-    let capi = unsafe { &*capi };
+    // The CApiState is always accessed through a shared pointer. And the CApiState is constructed
+    // in initialize() and then never destroyed, so references can be 'static lifetime.
+    let capi: &'static CApiState = unsafe { &*capi };
 
     // We start by running the main function. This gets the future for our single execution
     // of the main function. The main function can never return (its output is `!`), so the
@@ -70,8 +71,13 @@ pub fn initialize(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3, co
 }
 
 extern "C" fn update_callback(capi_ptr: *mut c_void) -> i32 {
-  let capi = unsafe { &*(capi_ptr as *const CApiState) };
+  // The CApiState is constructed in initialize() and then never destroyed, so references can be
+  // 'static lifetime.
+  let capi: &'static CApiState = unsafe { &*(capi_ptr as *const CApiState) };
   let exec_ptr = capi.executor.as_ptr();
+
+  // Drop any bitmaps from the previous frame off the ContextStack.
+  capi.reset_context_stack();
 
   // We poll any pending futures before the frame number moves to the next frame. This allows them
   // to await the FrameWatcher and immediately be woken instead of having to skip a frame. In

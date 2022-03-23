@@ -1,7 +1,7 @@
 use core::ffi::c_void;
 
 use crate::api::Error;
-use crate::capi_state::CApiState;
+use crate::capi_state::{CApiState, ContextStackId};
 use crate::ctypes::*;
 use crate::String;
 
@@ -261,6 +261,9 @@ impl LCDBitmapRef {
   }
 
   pub(crate) unsafe fn get_bitmap_ptr(&self) -> *const CLCDBitmap {
+    self.bitmap_ptr
+  }
+  pub(crate) unsafe fn get_bitmap_mut_ptr(&mut self) -> *mut CLCDBitmap {
     self.bitmap_ptr
   }
 }
@@ -527,6 +530,44 @@ impl Graphics {
   /// Offsets the origin point for all drawing calls to x, y (can be negative).
   pub fn set_draw_offset(&mut self, dx: i32, dy: i32) {
     unsafe { self.state.cgraphics.setDrawOffset.unwrap()(dx, dy) }
+  }
+
+  /// Push a new drawing context that targets the framebuffer.
+  /// 
+  /// Drawing functions use a context stack to select the drawing target, for setting a stencil,
+  /// changing the draw mode, etc. The stack is unwound at the beginning of each update cycle, with
+  /// drawing restored to target the display.
+  pub fn push_context(&mut self) {
+    self.state.stack.borrow_mut().push_framebuffer(self.state)
+  }
+  /// Push a drawing context that targets a bitmap.
+  /// 
+  /// Drawing functions use a context stack to select the drawing target, for setting a stencil,
+  /// changing the draw mode, etc. The stack is unwound at the beginning of each update cycle, with
+  /// drawing restored to target the display.
+  /// 
+  /// When the bitmap's drawing is popped, either by calling pop_context() or at the end of the
+  /// frame, it will be kept alive as long as the ContextStackId returned here (or a clone of it) is
+  /// kept alive.
+  pub fn push_context_bitmap(&mut self, bitmap: LCDBitmap) -> ContextStackId {
+    self.state.stack.borrow_mut().push_bitmap(self.state, bitmap)
+  }
+  /// Pop the top (most recently pushed, and not yet popped) drawing context from the stack.
+  /// 
+  /// Drawing functions use a context stack to select the drawing target, for setting a stencil,
+  /// changing the draw mode, etc. The stack is unwound at the beginning of each update cycle, with
+  /// drawing restored to target the display.
+  /// 
+  /// The returned ContextStackId, if present, can be used to get back the LCDBitmap that was drawn
+  /// into for the popped drawing context. A ContextStackId is not returned if the popped drawing
+  /// context was drawing into the framebuffer.
+  pub fn pop_context(&mut self) -> Option<ContextStackId> {
+    self.state.stack.borrow_mut().pop(self.state)
+  }
+  /// Retrieve an LCDBitmap that was pushed into a drawing context with push_context_bitmap() and
+  /// since popped off the stack, either with pop_context() or at the end of the frame.
+  pub fn take_popped_context_bitmap(&mut self, id: ContextStackId) -> Option<LCDBitmap> {
+    self.state.stack.borrow_mut().take_bitmap(id)
   }
 
   // TODO: all the graphics->video functions
