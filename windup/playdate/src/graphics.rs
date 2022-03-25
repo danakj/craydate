@@ -3,7 +3,8 @@ use core::ffi::c_void;
 use crate::api::Error;
 use crate::capi_state::{CApiState, ContextStackId};
 use crate::ctypes::*;
-use crate::String;
+use crate::format;
+use crate::null_terminated::ToNullTerminatedString;
 
 const PATTERN_SIZE: usize = 16;
 
@@ -670,33 +671,61 @@ impl Graphics {
   }
 
   pub fn load_bitmap(&self, path: &str) -> Result<LCDBitmap, Error> {
-    use crate::null_terminated::ToNullTerminatedString;
-    let path = path.to_null_terminated_utf8().as_ptr();
     let mut out_err: *const u8 = core::ptr::null_mut();
 
-    // UNCLEAR: out_err is not a fixed string (it contains the name of the image).
-    // However, future calls will overwrite the previous out_err and trying to free it
-    // via system->realloc crashes (likely because the pointer wasn't alloc'd by us).
-    // This probably (hopefully??) means that we don't need to free it.
-    let bitmap_ptr = unsafe { self.state.cgraphics.loadBitmap.unwrap()(path, &mut out_err) };
+    // UNCLEAR: out_err is not a fixed string (it contains the name of the image). However, future
+    // calls will overwrite the previous out_err and trying to free it via system->realloc crashes
+    // (likely because the pointer wasn't alloc'd by us). This probably (hopefully??) means that we
+    // don't need to free it.
+    let bitmap_ptr = unsafe {
+      self.state.cgraphics.loadBitmap.unwrap()(
+        path.to_null_terminated_utf8().as_ptr(),
+        &mut out_err,
+      )
+    };
 
-    if bitmap_ptr.is_null() {
-      if !out_err.is_null() {
-        unsafe {
-          let result = crate::null_terminated::parse_null_terminated_utf8(out_err);
-          if let Ok(out_err) = result {
-            return Err(String::from("LoadBitmap: ") + &out_err)?;
-          }
-        }
+    if !out_err.is_null() {
+      let result = unsafe { crate::null_terminated::parse_null_terminated_utf8(out_err) };
+      match result {
+        // A valid error string.
+        Ok(err) => Err(format!("load_bitmap: {}", err).into()),
+        // An invalid error string.
+        Err(err) => Err(format!("load_bitmap: unknown error ({})", err).into()),
       }
-
-      return Err("LoadBitmap: unknown error")?;
+    } else {
+      assert!(!bitmap_ptr.is_null());
+      Ok(LCDBitmap::from_owned_ptr(bitmap_ptr, self.state))
     }
-
-    Ok(LCDBitmap::from_owned_ptr(bitmap_ptr, self.state))
   }
 
-  // TODO: loadIntoBitmap (what happens if image doesn't exist?)
+  /// Loads the image at `path` into the previously allocated `bitmap`.
+  pub fn load_into_bitmap(&self, path: &str, bitmap: &mut LCDBitmapRef) -> Result<(), Error> {
+    let mut out_err: *const u8 = core::ptr::null_mut();
+
+    // UNCLEAR: out_err is not a fixed string (it contains the name of the image). However, future
+    // calls will overwrite the previous out_err and trying to free it via system->realloc crashes
+    // (likely because the pointer wasn't alloc'd by us). This probably (hopefully??) means that we
+    // don't need to free it.
+    unsafe {
+      self.state.cgraphics.loadIntoBitmap.unwrap()(
+        path.to_null_terminated_utf8().as_ptr(),
+        bitmap.get_bitmap_mut_ptr(),
+        &mut out_err,
+      )
+    };
+
+    if !out_err.is_null() {
+      let result = unsafe { crate::null_terminated::parse_null_terminated_utf8(out_err) };
+      match result {
+        // A valid error string.
+        Ok(err) => Err(format!("load_into_bitmap: {}", err).into()),
+        // An invalid error string.
+        Err(err) => Err(format!("load_into_bitmap: unknown error ({})", err).into()),
+      }
+    } else {
+      Ok(())
+    }
+  }
 
   /// Allocates and returns a new `width` by `height` `LCDBitmap` filled with `bg_color`.
   pub fn new_bitmap<'a, C>(&self, width: i32, height: i32, bg_color: C) -> LCDBitmap
@@ -743,7 +772,6 @@ impl Graphics {
   // TODO: newBitmapTable
 
   pub fn draw_text(&mut self, text: &str, encoding: PDStringEncoding, x: i32, y: i32) {
-    use crate::null_terminated::ToNullTerminatedString;
     let null_term = text.to_null_terminated_utf8();
     let ptr = null_term.as_ptr() as *const c_void;
     let len = null_term.len() as u64;
@@ -775,7 +803,9 @@ pub struct FramebufferStencilBitmap<'a> {
   bitmap: &'a LCDBitmapRef,
 }
 impl<'a> FramebufferStencilBitmap<'a> {
-  pub fn bitmap(&self) -> &'a LCDBitmapRef { self.bitmap }
+  pub fn bitmap(&self) -> &'a LCDBitmapRef {
+    self.bitmap
+  }
 }
 impl Drop for FramebufferStencilBitmap<'_> {
   fn drop(&mut self) {
