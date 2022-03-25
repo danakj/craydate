@@ -591,6 +591,34 @@ impl Graphics {
     }
   }
 
+  /// Sets the current clip rect, using world coordinates—​that is, the given rectangle will be
+  /// translated by the current drawing offset.
+  /// 
+  /// The clip rect is cleared at the beginning of each frame.
+  pub fn set_clip_rect(&mut self, rect: euclid::default::Rect<i32>) {
+    unsafe {
+      self.state.cgraphics.setClipRect.unwrap()(
+        rect.origin.x,
+        rect.origin.y,
+        rect.size.width,
+        rect.size.height,
+      )
+    }
+  }
+  /// Sets the current clip rect in screen coordinates.
+  /// 
+  /// The clip rect is cleared at the beginning of each frame.
+  pub fn set_screen_clip_rect(&mut self, rect: euclid::default::Rect<i32>) {
+    unsafe {
+      self.state.cgraphics.setScreenClipRect.unwrap()(
+        rect.origin.x,
+        rect.origin.y,
+        rect.size.width,
+        rect.size.height,
+      )
+    }
+  }
+
   // TODO: all the graphics->video functions
 
   /// Sets the mode used for drawing bitmaps. Note that text drawing uses bitmaps, so this
