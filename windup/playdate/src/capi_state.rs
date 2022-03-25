@@ -23,6 +23,8 @@ pub struct CApiState {
   // Tracks the button state for the current and previous frame respectively.
   pub button_state_per_frame: Cell<[Option<PDButtonsSet>; 2]>,
   pub stack: RefCell<ContextStack>,
+  // Tracks how many times the stencil was set.
+  pub stencil_generation: Cell<usize>,
 }
 impl CApiState {
   pub fn new(capi: &'static CApi) -> CApiState {
@@ -37,6 +39,7 @@ impl CApiState {
       peripherals_enabled: Cell::new(PDPeripherals::kNone),
       button_state_per_frame: Cell::new([None, None]),
       stack: RefCell::new(ContextStack::new()),
+      stencil_generation: Cell::new(0),
     }
   }
 

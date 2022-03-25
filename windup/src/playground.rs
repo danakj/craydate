@@ -22,7 +22,18 @@ pub async fn _run(mut api: playdate::Api) -> ! {
 
   graphics.draw_bitmap(&bmp, 5, 9, LCDBitmapFlip::kBitmapUnflipped);
 
-  graphics.draw_text("Bloop", PDStringEncoding::kASCIIEncoding, 30, 20);
+  let mut stencil = graphics.new_bitmap(64, 64, LCDSolidColor::kColorWhite);
+  for y in 0..64 as usize {
+    let c = y % 4 != 0;
+    for x in 0..64 as usize {
+      stencil.pixels_mut().set(x, y, c);
+    }
+  }
+
+  {
+    let _stencil_holder = graphics.set_stencil(&stencil);
+    graphics.draw_text("Bloop", PDStringEncoding::kASCIIEncoding, 30, 20);
+  }
 
   let mut copy = graphics.working_frame_bitmap();
 

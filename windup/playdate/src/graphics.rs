@@ -532,20 +532,20 @@ impl Graphics {
     unsafe { self.state.cgraphics.setDrawOffset.unwrap()(dx, dy) }
   }
 
-  /// Push a new drawing context that targets the framebuffer.
-  /// 
+  /// Push a new drawing context that targets the display framebuffer.
+  ///
   /// Drawing functions use a context stack to select the drawing target, for setting a stencil,
   /// changing the draw mode, etc. The stack is unwound at the beginning of each update cycle, with
-  /// drawing restored to target the display.
+  /// drawing restored to target the display framebuffer.
   pub fn push_context(&mut self) {
     self.state.stack.borrow_mut().push_framebuffer(self.state)
   }
   /// Push a drawing context that targets a bitmap.
-  /// 
+  ///
   /// Drawing functions use a context stack to select the drawing target, for setting a stencil,
   /// changing the draw mode, etc. The stack is unwound at the beginning of each update cycle, with
-  /// drawing restored to target the display.
-  /// 
+  /// drawing restored to target the display framebuffer.
+  ///
   /// When the bitmap's drawing is popped, either by calling pop_context() or at the end of the
   /// frame, it will be kept alive as long as the ContextStackId returned here (or a clone of it) is
   /// kept alive.
@@ -553,14 +553,14 @@ impl Graphics {
     self.state.stack.borrow_mut().push_bitmap(self.state, bitmap)
   }
   /// Pop the top (most recently pushed, and not yet popped) drawing context from the stack.
-  /// 
+  ///
   /// Drawing functions use a context stack to select the drawing target, for setting a stencil,
   /// changing the draw mode, etc. The stack is unwound at the beginning of each update cycle, with
-  /// drawing restored to target the display.
-  /// 
+  /// drawing restored to target the display framebuffer.
+  ///
   /// The returned ContextStackId, if present, can be used to get back the LCDBitmap that was drawn
   /// into for the popped drawing context. A ContextStackId is not returned if the popped drawing
-  /// context was drawing into the framebuffer.
+  /// context was drawing into the display framebuffer.
   pub fn pop_context(&mut self) -> Option<ContextStackId> {
     self.state.stack.borrow_mut().pop(self.state)
   }
@@ -570,10 +570,27 @@ impl Graphics {
     self.state.stack.borrow_mut().take_bitmap(id)
   }
 
+  /// Sets the stencil used for drawing.
+  ///
+  /// If the image is smaller than full screen, its width should be a multiple of 32 pixels.
+  /// Stencils smaller than full screen will be tiled.
+  ///
+  /// The bitmap will remain the stencil as long as the FramebufferStencilBitmap is not dropped, or another
+  /// call to set_stencil() is made.
+  pub fn set_stencil<'a>(&mut self, bitmap: &'a LCDBitmapRef) -> FramebufferStencilBitmap<'a> {
+    let gen = self.state.stencil_generation.get() + 1;
+    self.state.stencil_generation.set(gen);
+    unsafe { self.state.cgraphics.setStencil.unwrap()(bitmap.get_bitmap_ptr() as *mut CLCDBitmap) }
+    FramebufferStencilBitmap {
+      state: self.state,
+      // Track the generation number so as to only unset the stencil on drop if set_stencil() wasn't
+      // called again since.
+      generation: gen,
+      bitmap,
+    }
+  }
+
   // TODO: all the graphics->video functions
-  // TODO: pushContext/popContext
-  //       do these funcs need to borrow the LCDBitmap while it's "on the stack"??
-  // TODO: setStencil: what's the lifetime with the stencil bitmap???
 
   /// Sets the mode used for drawing bitmaps. Note that text drawing uses bitmaps, so this
   /// affects how fonts are displayed as well.
@@ -747,5 +764,23 @@ fn playdate_rect_from_euclid(e: euclid::default::Rect<i32>) -> CLCDRect {
     top: e.origin.y,
     right: e.origin.x + e.size.width - 1,
     bottom: e.origin.y + e.size.height - 1,
+  }
+}
+
+/// A sentinel that marks a bitmap acting as the stencil for drawing. Destroying this object will
+/// unset the bitmap as the stencil.
+pub struct FramebufferStencilBitmap<'a> {
+  state: &'static CApiState,
+  generation: usize,
+  bitmap: &'a LCDBitmapRef,
+}
+impl<'a> FramebufferStencilBitmap<'a> {
+  pub fn bitmap(&self) -> &'a LCDBitmapRef { self.bitmap }
+}
+impl Drop for FramebufferStencilBitmap<'_> {
+  fn drop(&mut self) {
+    if self.generation == self.state.stencil_generation.get() {
+      unsafe { self.state.cgraphics.setStencil.unwrap()(core::ptr::null_mut()) }
+    }
   }
 }
