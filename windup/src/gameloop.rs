@@ -42,7 +42,7 @@ impl AccumInputs {
 pub struct World {
   player: GameObj,
   blocks: Vec<[i32; 2]>,
-  block_bmp: LCDBitmap,
+  block_bmp: Bitmap,
   // TODO: add other stuff in the world
 }
 impl World {
@@ -103,7 +103,7 @@ impl World {
         &self.block_bmp,
         block[0],
         block[1],
-        LCDBitmapFlip::kBitmapUnflipped,
+        BitmapFlip::kBitmapUnflipped,
       );
     }
     // TODO: draw other stuff in world
@@ -112,7 +112,7 @@ impl World {
 }
 
 pub struct GameObj {
-  bitmap: LCDBitmap,
+  bitmap: Bitmap,
   pos: euclid::default::Rect<i32>,
   // stuff that doesn't fit into integer pos
   pos_remainder: euclid::default::Vector2D<f32>,
@@ -124,7 +124,7 @@ impl GameObj {
       &self.bitmap,
       self.pos.min_x(),
       self.pos.min_y(),
-      LCDBitmapFlip::kBitmapUnflipped,
+      BitmapFlip::kBitmapUnflipped,
     );
   }
 }
@@ -175,7 +175,7 @@ pub async fn run(mut api: playdate::Api) -> ! {
     let inputs = fw.next().await;
 
     // TODO: probably need a more efficient drawing mechanism than full redraw
-    graphics.clear(LCDSolidColor::kColorWhite);
+    graphics.clear(SolidColor::kColorWhite);
 
     accum.accumulate(&inputs);
     world.update(&inputs, &mut accum);
@@ -183,14 +183,14 @@ pub async fn run(mut api: playdate::Api) -> ! {
 
     graphics.draw_text(
       "turn crank, hit up to jump",
-      PDStringEncoding::kASCIIEncoding,
+      StringEncoding::kASCIIEncoding,
       5,
       0,
     );
-    graphics.draw_text("hit A to reset", PDStringEncoding::kASCIIEncoding, 5, 15);
+    graphics.draw_text("hit A to reset", StringEncoding::kASCIIEncoding, 5, 15);
 
     let crank_str = format!("{:.1}", accum.crank_accum);
-    graphics.draw_text(&crank_str, PDStringEncoding::kASCIIEncoding, 5, 30);
+    graphics.draw_text(&crank_str, StringEncoding::kASCIIEncoding, 5, 30);
     graphics.draw_fps(400 - 15, 0);
   }
 }

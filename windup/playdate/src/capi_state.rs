@@ -6,7 +6,7 @@ use core::ptr::NonNull;
 
 use crate::ctypes::*;
 use crate::executor::Executor;
-use crate::graphics::LCDBitmap;
+use crate::graphics::Bitmap;
 
 #[non_exhaustive]
 #[derive(Debug)]
@@ -63,8 +63,8 @@ impl CApiState {
   }
 }
 
-/// Holds a reference on an LCDBitmap that was placed into the context stack. The reference can
-/// be used to retrieve that LCDBitmap on a future frame, after it is released.
+/// Holds a reference on an Bitmap that was placed into the context stack. The reference can
+/// be used to retrieve that Bitmap on a future frame, after it is released.
 #[derive(Debug)]
 pub struct ContextStackId {
   state: &'static CApiState,
@@ -119,13 +119,13 @@ impl core::hash::Hash for ContextStackId {
 #[derive(Debug)]
 struct HeldBitmap {
   refs: usize,
-  bitmap: Option<LCDBitmap>,
+  bitmap: Option<Bitmap>,
 }
 
 #[derive(Debug)]
 struct StackBitmap {
   id: usize,
-  bitmap: LCDBitmap,
+  bitmap: Bitmap,
 }
 
 #[derive(Debug)]
@@ -154,7 +154,7 @@ impl ContextStack {
 
     self.stack.push(None)
   }
-  pub fn push_bitmap(&mut self, state: &'static CApiState, mut bitmap: LCDBitmap) -> ContextStackId {
+  pub fn push_bitmap(&mut self, state: &'static CApiState, mut bitmap: Bitmap) -> ContextStackId {
     unsafe { state.cgraphics.pushContext.unwrap()(bitmap.get_bitmap_mut_ptr()) };
 
     static mut NEXT_ID: usize = 1;
@@ -201,7 +201,7 @@ impl ContextStack {
       }
     })
   }
-  pub fn take_bitmap(&mut self, id: ContextStackId) -> Option<LCDBitmap> {
+  pub fn take_bitmap(&mut self, id: ContextStackId) -> Option<Bitmap> {
     self.holding.remove(&id.id).and_then(|held| held.bitmap)
   }
 

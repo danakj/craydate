@@ -10,12 +10,12 @@ const PATTERN_SIZE: usize = 16;
 
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct LCDPattern(CLCDPattern);
-impl LCDPattern {
-  pub fn new(arr: [u8; PATTERN_SIZE]) -> LCDPattern {
-    LCDPattern(arr)
+pub struct Pattern(CLCDPattern);
+impl Pattern {
+  pub fn new(arr: [u8; PATTERN_SIZE]) -> Pattern {
+    Pattern(arr)
   }
-  pub fn from_bitmap(bitmap: &LCDBitmapRef, x: i32, y: i32) -> LCDPattern {
+  pub fn from_bitmap(bitmap: &BitmapRef, x: i32, y: i32) -> Pattern {
     let mut arr = [0; PATTERN_SIZE];
 
     let mut c_color: CLCDColor = 0;
@@ -27,44 +27,44 @@ impl LCDPattern {
       core::ptr::copy_nonoverlapping(c_color as *const u8, arr.as_mut_ptr(), PATTERN_SIZE)
     }
 
-    LCDPattern(arr)
+    Pattern(arr)
   }
 }
 
 /// Represents a method for drawing to the display or a bitmap. Similar to a SkPaint in Skia.
 #[derive(Debug)]
-pub enum LCDColor<'a> {
-  /// A single color, which is one of `LCDSolidColor`.
-  Solid(LCDSolidColor),
+pub enum Color<'a> {
+  /// A single color, which is one of `SolidColor`.
+  Solid(SolidColor),
   /// A reference to a 16 byte buffer, the first 8 bytes are 8x8 pixels (each pixel is 1 bit) and the last
   /// 8 bytes are 8x8 masks (each mask is 1 bit) that each defines if the corresponding pixel is used.
-  Pattern(&'a LCDPattern),
+  Pattern(&'a Pattern),
 }
 
-impl From<LCDSolidColor> for LCDColor<'_> {
-  fn from(color: LCDSolidColor) -> Self {
-    LCDColor::Solid(color)
+impl From<SolidColor> for Color<'_> {
+  fn from(color: SolidColor) -> Self {
+    Color::Solid(color)
   }
 }
 
-impl<'a> From<&'a LCDPattern> for LCDColor<'a> {
-  fn from(pattern: &'a LCDPattern) -> Self {
-    LCDColor::Pattern(&pattern)
+impl<'a> From<&'a Pattern> for Color<'a> {
+  fn from(pattern: &'a Pattern) -> Self {
+    Color::Pattern(&pattern)
   }
 }
 
-impl LCDColor<'_> {
-  /// Returns a usize representation of an LCDColor which can be passed to the Playdate C Api.
+impl Color<'_> {
+  /// Returns a usize representation of an Color which can be passed to the Playdate C Api.
   ///
   /// # Safety
   ///
-  /// The returned usize for patterns is technically a raw pointer to the LCDPattern array itself. Thus
-  /// the caller must ensure that the LCDColor outlives the returned usize. Also, yes really, LCDColor can be
+  /// The returned usize for patterns is technically a raw pointer to the Pattern array itself. Thus
+  /// the caller must ensure that the Color outlives the returned usize. Also, yes really, Color can be
   /// both an enum and a pointer.
   pub(crate) unsafe fn to_c_color(&self) -> usize {
     match self {
-      LCDColor::Solid(solid) => solid.0 as usize,
-      LCDColor::Pattern(pattern) => pattern.0.as_ptr() as usize,
+      Color::Solid(solid) => solid.0 as usize,
+      Color::Pattern(pattern) => pattern.0.as_ptr() as usize,
     }
   }
 }
@@ -74,33 +74,33 @@ impl LCDColor<'_> {
 /// The bitmap can be cloned which will make a clone of the pixels as well. The bitmap's pixels data
 /// is freed when the bitmap is dropped.
 ///
-/// An `LCDBitmap` is borrowed as an `&LCDBitmapRef` and all methods of that type are available for
-/// `LCDBitmap as well.
+/// An `Bitmap` is borrowed as an `&BitmapRef` and all methods of that type are available for
+/// `Bitmap as well.
 #[derive(Debug)]
-pub struct LCDBitmap {
-  /// While LCDBitmapRef is a non-owning pointer, the LCDBitmap will act as the owner of the bitmap
+pub struct Bitmap {
+  /// While BitmapRef is a non-owning pointer, the Bitmap will act as the owner of the bitmap
   /// found within.
-  owned: LCDBitmapRef,
+  owned: BitmapRef,
 }
-impl LCDBitmap {
-  /// Construct an LCDBitmap from an owning pointer.
+impl Bitmap {
+  /// Construct an Bitmap from an owning pointer.
   fn from_owned_ptr(bitmap_ptr: *mut CLCDBitmap, state: &'static CApiState) -> Self {
-    LCDBitmap {
-      owned: LCDBitmapRef::from_ptr(bitmap_ptr, state),
+    Bitmap {
+      owned: BitmapRef::from_ptr(bitmap_ptr, state),
     }
   }
 }
 
-impl Clone for LCDBitmap {
+impl Clone for Bitmap {
   fn clone(&self) -> Self {
-    LCDBitmap::from_owned_ptr(
+    Bitmap::from_owned_ptr(
       unsafe { self.owned.state.cgraphics.copyBitmap.unwrap()(self.owned.bitmap_ptr) },
       self.owned.state,
     )
   }
 }
 
-impl Drop for LCDBitmap {
+impl Drop for Bitmap {
   fn drop(&mut self) {
     unsafe {
       self.owned.state.cgraphics.freeBitmap.unwrap()(self.owned.bitmap_ptr);
@@ -108,48 +108,48 @@ impl Drop for LCDBitmap {
   }
 }
 
-/// A reference to an `LCDBitmap`, which has a lifetime tied to a different `LCDBitmap` (or
-/// `LCDBitmapRef`) with a lifetime `'a`.
+/// A reference to an `Bitmap`, which has a lifetime tied to a different `Bitmap` (or
+/// `BitmapRef`) with a lifetime `'a`.
 #[derive(Debug)]
-pub struct SharedLCDBitmapRef<'a> {
-  bref: LCDBitmapRef,
-  _marker: core::marker::PhantomData<&'a LCDBitmap>,
+pub struct SharedBitmapRef<'a> {
+  bref: BitmapRef,
+  _marker: core::marker::PhantomData<&'a Bitmap>,
 }
 
-impl SharedLCDBitmapRef<'_> {
-  /// Construct a SharedLCDBitmapRef from a non-owning pointer.
+impl SharedBitmapRef<'_> {
+  /// Construct a SharedBitmapRef from a non-owning pointer.
   ///
-  /// Requires being told the lifetime of the LCDBitmap this is making a reference to.
+  /// Requires being told the lifetime of the Bitmap this is making a reference to.
   fn from_ptr<'a>(
     bitmap_ptr: *mut CLCDBitmap,
     state: &'static CApiState,
-  ) -> SharedLCDBitmapRef<'a> {
-    SharedLCDBitmapRef {
-      bref: LCDBitmapRef::from_ptr(bitmap_ptr, state),
+  ) -> SharedBitmapRef<'a> {
+    SharedBitmapRef {
+      bref: BitmapRef::from_ptr(bitmap_ptr, state),
       _marker: core::marker::PhantomData,
     }
   }
 }
 
-/// A borrow of an LCDBitmap (or SharedLCDBitmap) is held as this type.
+/// A borrow of an Bitmap (or SharedBitmap) is held as this type.
 ///
-/// LCDBitmapRef exposes most of the method of an LCDBitmap, allowing them to be used on an owned or
+/// BitmapRef exposes most of the method of an Bitmap, allowing them to be used on an owned or
 /// borrowed bitmap.
 ///
-/// Intentionally not `Copy` as `LCDBitmapRef` can only be referred to as a reference.
+/// Intentionally not `Copy` as `BitmapRef` can only be referred to as a reference.
 #[derive(Debug)]
-pub struct LCDBitmapRef {
+pub struct BitmapRef {
   bitmap_ptr: *mut CLCDBitmap,
   state: &'static CApiState,
 }
 
-impl LCDBitmapRef {
-  /// Construct an LCDBitmapRef from a non-owning pointer.
+impl BitmapRef {
+  /// Construct an BitmapRef from a non-owning pointer.
   fn from_ptr(bitmap_ptr: *mut CLCDBitmap, state: &'static CApiState) -> Self {
-    LCDBitmapRef { bitmap_ptr, state }
+    BitmapRef { bitmap_ptr, state }
   }
 
-  fn data_and_pixels_ptr(&self) -> (LCDBitmapData, *mut u8) {
+  fn data_and_pixels_ptr(&self) -> (BitmapData, *mut u8) {
     let mut width = 0;
     let mut height = 0;
     let mut rowbytes = 0;
@@ -165,7 +165,7 @@ impl LCDBitmapRef {
         &mut pixels,
       )
     };
-    let data = LCDBitmapData {
+    let data = BitmapData {
       width,
       height,
       rowbytes,
@@ -175,7 +175,7 @@ impl LCDBitmapRef {
   }
 
   /// Returns the bitmap's metadata such as its width and height.
-  pub fn data(&self) -> LCDBitmapData {
+  pub fn data(&self) -> BitmapData {
     let (data, _) = self.data_and_pixels_ptr();
     data
   }
@@ -197,21 +197,21 @@ impl LCDBitmapRef {
     unsafe { core::slice::from_raw_parts_mut(pixels, (data.rowbytes * data.height) as usize) }
   }
   /// Gives read acccess to the individual pixels of the bitmap.
-  pub fn pixels(&self) -> LCDBitmapPixels {
+  pub fn pixels(&self) -> BitmapPixels {
     let (data, pixels) = self.data_and_pixels_ptr();
     let slice =
       unsafe { core::slice::from_raw_parts(pixels, (data.rowbytes * data.height) as usize) };
-    LCDBitmapPixels {
+    BitmapPixels {
       data,
       pixels: slice,
     }
   }
   /// Gives read-write acccess to the individual pixels of the bitmap.
-  pub fn pixels_mut(&mut self) -> LCDBitmapPixelsMut {
+  pub fn pixels_mut(&mut self) -> BitmapPixelsMut {
     let (data, pixels) = self.data_and_pixels_ptr();
     let slice =
       unsafe { core::slice::from_raw_parts_mut(pixels, (data.rowbytes * data.height) as usize) };
-    LCDBitmapPixelsMut {
+    BitmapPixelsMut {
       data,
       pixels: slice,
     }
@@ -220,12 +220,12 @@ impl LCDBitmapRef {
   /// Clears the bitmap, filling with the given `bgcolor`.
   pub fn clear<'a, C>(&mut self, bgcolor: C)
   where
-    LCDColor<'a>: From<C>,
+    Color<'a>: From<C>,
   {
     unsafe {
       self.state.cgraphics.clearBitmap.unwrap()(
         self.bitmap_ptr,
-        LCDColor::<'a>::from(bgcolor).to_c_color(),
+        Color::<'a>::from(bgcolor).to_c_color(),
       );
     }
   }
@@ -234,7 +234,7 @@ impl LCDBitmapRef {
   /// bitmap.
   ///
   /// The mask bitmap is copied, so no reference is held to it.
-  pub fn set_mask_bitmap(&mut self, mask: &LCDBitmapRef) -> Result<(), Error> {
+  pub fn set_mask_bitmap(&mut self, mask: &BitmapRef) -> Result<(), Error> {
     // Playdate makes a copy of the mask bitmap.
     let result =
       unsafe { self.state.cgraphics.setBitmapMask.unwrap()(self.bitmap_ptr, mask.bitmap_ptr) };
@@ -248,14 +248,14 @@ impl LCDBitmapRef {
   /// The mask bitmap attached to this bitmap.
   ///
   /// Returns the mask bitmap, if one has been attached with `set_mask_bitmap()`, or None.
-  pub fn mask_bitmap(&self) -> Option<SharedLCDBitmapRef> {
+  pub fn mask_bitmap(&self) -> Option<SharedBitmapRef> {
     let mask = unsafe {
       // Playdate owns the mask bitmap, and reference a pointer to it. Playdate would free the mask
       // presumably when `self` is freed.
       self.state.cgraphics.getBitmapMask.unwrap()(self.bitmap_ptr)
     };
     if !mask.is_null() {
-      Some(SharedLCDBitmapRef::from_ptr(mask, self.state))
+      Some(SharedBitmapRef::from_ptr(mask, self.state))
     } else {
       None
     }
@@ -269,105 +269,105 @@ impl LCDBitmapRef {
   }
 }
 
-impl core::ops::Deref for LCDBitmap {
-  type Target = LCDBitmapRef;
+impl core::ops::Deref for Bitmap {
+  type Target = BitmapRef;
 
   fn deref(&self) -> &Self::Target {
     &self.owned
   }
 }
-impl core::ops::DerefMut for LCDBitmap {
+impl core::ops::DerefMut for Bitmap {
   fn deref_mut(&mut self) -> &mut Self::Target {
     &mut self.owned
   }
 }
 
-impl core::borrow::Borrow<LCDBitmapRef> for LCDBitmap {
-  fn borrow(&self) -> &LCDBitmapRef {
+impl core::borrow::Borrow<BitmapRef> for Bitmap {
+  fn borrow(&self) -> &BitmapRef {
     self // This calls Deref.
   }
 }
-impl core::borrow::BorrowMut<LCDBitmapRef> for LCDBitmap {
-  fn borrow_mut(&mut self) -> &mut LCDBitmapRef {
+impl core::borrow::BorrowMut<BitmapRef> for Bitmap {
+  fn borrow_mut(&mut self) -> &mut BitmapRef {
     self // This calls DerefMut.
   }
 }
 
-impl alloc::borrow::ToOwned for LCDBitmapRef {
-  type Owned = LCDBitmap;
+impl alloc::borrow::ToOwned for BitmapRef {
+  type Owned = Bitmap;
 
   fn to_owned(&self) -> Self::Owned {
-    LCDBitmap::from_owned_ptr(
+    Bitmap::from_owned_ptr(
       unsafe { self.state.cgraphics.copyBitmap.unwrap()(self.bitmap_ptr) },
       self.state,
     )
   }
 }
 
-impl core::ops::Deref for SharedLCDBitmapRef<'_> {
-  type Target = LCDBitmapRef;
+impl core::ops::Deref for SharedBitmapRef<'_> {
+  type Target = BitmapRef;
 
   fn deref(&self) -> &Self::Target {
     &self.bref
   }
 }
-impl core::ops::DerefMut for SharedLCDBitmapRef<'_> {
+impl core::ops::DerefMut for SharedBitmapRef<'_> {
   fn deref_mut(&mut self) -> &mut Self::Target {
     &mut self.bref
   }
 }
 
-impl core::borrow::Borrow<LCDBitmapRef> for SharedLCDBitmapRef<'_> {
-  fn borrow(&self) -> &LCDBitmapRef {
+impl core::borrow::Borrow<BitmapRef> for SharedBitmapRef<'_> {
+  fn borrow(&self) -> &BitmapRef {
     self // This calls Deref.
   }
 }
-impl core::borrow::BorrowMut<LCDBitmapRef> for SharedLCDBitmapRef<'_> {
-  fn borrow_mut(&mut self) -> &mut LCDBitmapRef {
+impl core::borrow::BorrowMut<BitmapRef> for SharedBitmapRef<'_> {
+  fn borrow_mut(&mut self) -> &mut BitmapRef {
     self // This calls DerefMut.
   }
 }
 
-impl AsRef<LCDBitmapRef> for LCDBitmap {
-  fn as_ref(&self) -> &LCDBitmapRef {
+impl AsRef<BitmapRef> for Bitmap {
+  fn as_ref(&self) -> &BitmapRef {
     self // This calls Deref.
   }
 }
-impl AsMut<LCDBitmapRef> for LCDBitmap {
-  fn as_mut(&mut self) -> &mut LCDBitmapRef {
+impl AsMut<BitmapRef> for Bitmap {
+  fn as_mut(&mut self) -> &mut BitmapRef {
     self // This calls DerefMut.
   }
 }
-impl AsRef<LCDBitmapRef> for SharedLCDBitmapRef<'_> {
-  fn as_ref(&self) -> &LCDBitmapRef {
+impl AsRef<BitmapRef> for SharedBitmapRef<'_> {
+  fn as_ref(&self) -> &BitmapRef {
     self // This calls Deref.
   }
 }
-impl AsMut<LCDBitmapRef> for SharedLCDBitmapRef<'_> {
-  fn as_mut(&mut self) -> &mut LCDBitmapRef {
+impl AsMut<BitmapRef> for SharedBitmapRef<'_> {
+  fn as_mut(&mut self) -> &mut BitmapRef {
     self // This calls DerefMut.
   }
 }
-impl AsRef<LCDBitmapRef> for LCDBitmapRef {
-  fn as_ref(&self) -> &LCDBitmapRef {
+impl AsRef<BitmapRef> for BitmapRef {
+  fn as_ref(&self) -> &BitmapRef {
     self
   }
 }
-impl AsMut<LCDBitmapRef> for LCDBitmapRef {
-  fn as_mut(&mut self) -> &mut LCDBitmapRef {
+impl AsMut<BitmapRef> for BitmapRef {
+  fn as_mut(&mut self) -> &mut BitmapRef {
     self
   }
 }
 
-/// Metadata for an `LCDBitmap`.
+/// Metadata for an `Bitmap`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct LCDBitmapData {
+pub struct BitmapData {
   width: i32,
   height: i32,
   rowbytes: i32,
   hasmask: i32,
 }
-impl LCDBitmapData {
+impl BitmapData {
   /// The number of pixels (or, columns) per row of the bitmap.
   ///
   /// Each pixel is a single bit, and there may be more bytes (as determined by `row_bytes()`) in a
@@ -389,12 +389,12 @@ impl LCDBitmapData {
   }
 }
 
-/// Provide readonly access to the pixels in an LCDBitmap, through its LCDBitmapData.
-pub struct LCDBitmapPixels<'bitmap> {
-  data: LCDBitmapData,
+/// Provide readonly access to the pixels in an Bitmap, through its BitmapData.
+pub struct BitmapPixels<'bitmap> {
+  data: BitmapData,
   pixels: &'bitmap [u8],
 }
-impl LCDBitmapPixels<'_> {
+impl BitmapPixels<'_> {
   pub fn get(&self, x: usize, y: usize) -> bool {
     let byte_index = self.data.rowbytes as usize * y + x / 8;
     let bit_index = x % 8;
@@ -402,14 +402,14 @@ impl LCDBitmapPixels<'_> {
   }
 }
 
-/// Provide mutable access to the pixels in an LCDBitmap, through its LCDBitmapData.
-pub struct LCDBitmapPixelsMut<'bitmap> {
-  data: LCDBitmapData,
+/// Provide mutable access to the pixels in an Bitmap, through its BitmapData.
+pub struct BitmapPixelsMut<'bitmap> {
+  data: BitmapData,
   pixels: &'bitmap mut [u8],
 }
-impl LCDBitmapPixelsMut<'_> {
+impl BitmapPixelsMut<'_> {
   pub fn get(&self, x: usize, y: usize) -> bool {
-    LCDBitmapPixels {
+    BitmapPixels {
       data: self.data,
       pixels: self.pixels,
     }
@@ -427,8 +427,8 @@ impl LCDBitmapPixelsMut<'_> {
 }
 
 pub struct BitmapCollider<'a> {
-  pub bitmap: &'a LCDBitmapRef,
-  pub flipped: LCDBitmapFlip,
+  pub bitmap: &'a BitmapRef,
+  pub flipped: BitmapFlip,
   pub x: i32,
   pub y: i32,
 }
@@ -450,7 +450,7 @@ impl Graphics {
   ) -> bool {
     unsafe {
       // checkMaskCollision expects `*mut CLCDBitmap` but it only reads from the bitmaps to check
-      // for collision, so we can cast from a shared reference on LCDBitmap to a mut pointer.
+      // for collision, so we can cast from a shared reference on Bitmap to a mut pointer.
       self.state.cgraphics.checkMaskCollision.unwrap()(
         a.bitmap.get_bitmap_ptr() as *mut CLCDBitmap,
         a.x,
@@ -468,16 +468,16 @@ impl Graphics {
   /// Clears the entire display, filling it with `color`.
   pub fn clear<'a, C>(&mut self, color: C)
   where
-    LCDColor<'a>: From<C>,
+    Color<'a>: From<C>,
   {
     unsafe {
-      self.state.cgraphics.clear.unwrap()(LCDColor::<'a>::from(color).to_c_color());
+      self.state.cgraphics.clear.unwrap()(Color::<'a>::from(color).to_c_color());
     }
   }
 
   /// Sets the background color shown when the display is offset or for clearing dirty areas
   /// in the sprite system.
-  pub fn set_background_color(&mut self, color: LCDSolidColor) {
+  pub fn set_background_color(&mut self, color: SolidColor) {
     unsafe {
       self.state.cgraphics.setBackgroundColor.unwrap()(color);
     }
@@ -496,28 +496,28 @@ impl Graphics {
   ///
   /// Only valid in the simulator, so not compiled for device builds.
   #[cfg(not(all(target_arch = "arm", target_os = "none")))]
-  pub fn debug_frame_bitmap(&self) -> SharedLCDBitmapRef<'static> {
+  pub fn debug_frame_bitmap(&self) -> SharedBitmapRef<'static> {
     let bitmap_ptr = unsafe { self.state.cgraphics.getDebugBitmap.unwrap()() };
     assert!(!bitmap_ptr.is_null());
-    SharedLCDBitmapRef::from_ptr(bitmap_ptr, self.state)
+    SharedBitmapRef::from_ptr(bitmap_ptr, self.state)
   }
 
   /// Returns a copy of the contents of the display front buffer.
   ///
   /// The Playdate device is double-buffered, and this returns the currently displayed frame.
-  pub fn display_frame_bitmap(&self) -> LCDBitmap {
+  pub fn display_frame_bitmap(&self) -> Bitmap {
     let bitmap_ptr = unsafe { self.state.cgraphics.getDisplayBufferBitmap.unwrap()() };
     use alloc::borrow::ToOwned;
-    LCDBitmapRef::from_ptr(bitmap_ptr, self.state).to_owned()
+    BitmapRef::from_ptr(bitmap_ptr, self.state).to_owned()
   }
 
   /// Returns a copy the contents of the working frame buffer as a bitmap.
   ///
   /// The Playdate device is double-buffered, and this returns the buffer that will be displayed
   /// next frame.
-  pub fn working_frame_bitmap(&self) -> LCDBitmap {
+  pub fn working_frame_bitmap(&self) -> Bitmap {
     let bitmap_ptr = unsafe { self.state.cgraphics.copyFrameBufferBitmap.unwrap()() };
-    LCDBitmap::from_owned_ptr(bitmap_ptr, self.state)
+    Bitmap::from_owned_ptr(bitmap_ptr, self.state)
   }
 
   /// After updating pixels in the buffer returned by `get_frame()`, you must tell the graphics
@@ -550,7 +550,7 @@ impl Graphics {
   /// When the bitmap's drawing is popped, either by calling pop_context() or at the end of the
   /// frame, it will be kept alive as long as the ContextStackId returned here (or a clone of it) is
   /// kept alive.
-  pub fn push_context_bitmap(&mut self, bitmap: LCDBitmap) -> ContextStackId {
+  pub fn push_context_bitmap(&mut self, bitmap: Bitmap) -> ContextStackId {
     self.state.stack.borrow_mut().push_bitmap(self.state, bitmap)
   }
   /// Pop the top (most recently pushed, and not yet popped) drawing context from the stack.
@@ -559,15 +559,15 @@ impl Graphics {
   /// changing the draw mode, etc. The stack is unwound at the beginning of each update cycle, with
   /// drawing restored to target the display framebuffer.
   ///
-  /// The returned ContextStackId, if present, can be used to get back the LCDBitmap that was drawn
+  /// The returned ContextStackId, if present, can be used to get back the Bitmap that was drawn
   /// into for the popped drawing context. A ContextStackId is not returned if the popped drawing
   /// context was drawing into the display framebuffer.
   pub fn pop_context(&mut self) -> Option<ContextStackId> {
     self.state.stack.borrow_mut().pop(self.state)
   }
-  /// Retrieve an LCDBitmap that was pushed into a drawing context with push_context_bitmap() and
+  /// Retrieve an Bitmap that was pushed into a drawing context with push_context_bitmap() and
   /// since popped off the stack, either with pop_context() or at the end of the frame.
-  pub fn take_popped_context_bitmap(&mut self, id: ContextStackId) -> Option<LCDBitmap> {
+  pub fn take_popped_context_bitmap(&mut self, id: ContextStackId) -> Option<Bitmap> {
     self.state.stack.borrow_mut().take_bitmap(id)
   }
 
@@ -578,7 +578,7 @@ impl Graphics {
   ///
   /// The bitmap will remain the stencil as long as the FramebufferStencilBitmap is not dropped, or another
   /// call to set_stencil() is made.
-  pub fn set_stencil<'a>(&mut self, bitmap: &'a LCDBitmapRef) -> FramebufferStencilBitmap<'a> {
+  pub fn set_stencil<'a>(&mut self, bitmap: &'a BitmapRef) -> FramebufferStencilBitmap<'a> {
     let gen = self.state.stencil_generation.get() + 1;
     self.state.stencil_generation.set(gen);
     unsafe { self.state.cgraphics.setStencil.unwrap()(bitmap.get_bitmap_ptr() as *mut CLCDBitmap) }
@@ -623,7 +623,7 @@ impl Graphics {
 
   /// Sets the mode used for drawing bitmaps. Note that text drawing uses bitmaps, so this
   /// affects how fonts are displayed as well.
-  pub fn set_draw_mode(&mut self, mode: LCDBitmapDrawMode) {
+  pub fn set_draw_mode(&mut self, mode: BitmapDrawMode) {
     unsafe { self.state.cgraphics.setDrawMode.unwrap()(mode) }
   }
 
@@ -631,7 +631,7 @@ impl Graphics {
   ///
   /// The bitmap's upper-left corner is positioned at location (`x`, `y`), and the contents have
   /// the `flip` orientation applied.
-  pub fn draw_bitmap(&mut self, bitmap: &LCDBitmapRef, x: i32, y: i32, flip: LCDBitmapFlip) {
+  pub fn draw_bitmap(&mut self, bitmap: &BitmapRef, x: i32, y: i32, flip: BitmapFlip) {
     unsafe { self.state.cgraphics.drawBitmap.unwrap()(bitmap.bitmap_ptr, x, y, flip) }
   }
 
@@ -641,7 +641,7 @@ impl Graphics {
   /// available when drawing scaled bitmaps but negative scale values will achieve the same effect.
   pub fn draw_scaled_bitmap(
     &mut self,
-    bitmap: &LCDBitmapRef,
+    bitmap: &BitmapRef,
     x: i32,
     y: i32,
     xscale: f32,
@@ -659,7 +659,7 @@ impl Graphics {
   /// etc.
   pub fn draw_rotated_bitmap(
     &mut self,
-    bitmap: &LCDBitmapRef,
+    bitmap: &BitmapRef,
     x: i32,
     y: i32,
     degrees: f32,
@@ -686,19 +686,19 @@ impl Graphics {
   /// a `width` by `height` rectangle.
   pub fn draw_tiled_bitmap(
     &mut self,
-    bitmap: &LCDBitmapRef,
+    bitmap: &BitmapRef,
     x: i32,
     y: i32,
     width: i32,
     height: i32,
-    flip: LCDBitmapFlip,
+    flip: BitmapFlip,
   ) {
     unsafe {
       self.state.cgraphics.tileBitmap.unwrap()(bitmap.bitmap_ptr, x, y, width, height, flip)
     }
   }
 
-  pub fn load_bitmap(&self, path: &str) -> Result<LCDBitmap, Error> {
+  pub fn load_bitmap(&self, path: &str) -> Result<Bitmap, Error> {
     let mut out_err: *const u8 = core::ptr::null_mut();
 
     // UNCLEAR: out_err is not a fixed string (it contains the name of the image). However, future
@@ -722,12 +722,12 @@ impl Graphics {
       }
     } else {
       assert!(!bitmap_ptr.is_null());
-      Ok(LCDBitmap::from_owned_ptr(bitmap_ptr, self.state))
+      Ok(Bitmap::from_owned_ptr(bitmap_ptr, self.state))
     }
   }
 
   /// Loads the image at `path` into the previously allocated `bitmap`.
-  pub fn load_into_bitmap(&self, path: &str, bitmap: &mut LCDBitmapRef) -> Result<(), Error> {
+  pub fn load_into_bitmap(&self, path: &str, bitmap: &mut BitmapRef) -> Result<(), Error> {
     let mut out_err: *const u8 = core::ptr::null_mut();
 
     // UNCLEAR: out_err is not a fixed string (it contains the name of the image). However, future
@@ -755,30 +755,30 @@ impl Graphics {
     }
   }
 
-  /// Allocates and returns a new `width` by `height` `LCDBitmap` filled with `bg_color`.
-  pub fn new_bitmap<'a, C>(&self, width: i32, height: i32, bg_color: C) -> LCDBitmap
+  /// Allocates and returns a new `width` by `height` `Bitmap` filled with `bg_color`.
+  pub fn new_bitmap<'a, C>(&self, width: i32, height: i32, bg_color: C) -> Bitmap
   where
-    LCDColor<'a>: From<C>,
+    Color<'a>: From<C>,
   {
     // FIXME: for some reason, patterns don't appear to work here, but do work with a C example.
     let bitmap_ptr = unsafe {
       self.state.cgraphics.newBitmap.unwrap()(
         width,
         height,
-        LCDColor::<'a>::from(bg_color).to_c_color(),
+        Color::<'a>::from(bg_color).to_c_color(),
       )
     };
-    LCDBitmap::from_owned_ptr(bitmap_ptr, self.state)
+    Bitmap::from_owned_ptr(bitmap_ptr, self.state)
   }
 
-  /// Returns a new, rotated and scaled LCDBitmap based on the given `bitmap`.
+  /// Returns a new, rotated and scaled Bitmap based on the given `bitmap`.
   pub fn new_rotated_bitmap(
     &self,
-    bitmap: &LCDBitmapRef,
+    bitmap: &BitmapRef,
     rotation: f32,
     xscale: f32,
     yscale: f32,
-  ) -> LCDBitmap {
+  ) -> Bitmap {
     // This function could grow the bitmap by rotating and so it (conveniently?) also returns the
     // alloced size of the new bitmap.  You can get this off the bitmap data more or less if needed.
     let mut _alloced_size: i32 = 0;
@@ -791,7 +791,7 @@ impl Graphics {
         &mut _alloced_size,
       )
     };
-    LCDBitmap::from_owned_ptr(bitmap_ptr, self.state)
+    Bitmap::from_owned_ptr(bitmap_ptr, self.state)
   }
 
   // TODO: getTableBitmap
@@ -799,7 +799,7 @@ impl Graphics {
   // TODO: loadIntoBitmapTable
   // TODO: newBitmapTable
 
-  pub fn draw_text(&mut self, text: &str, encoding: PDStringEncoding, x: i32, y: i32) {
+  pub fn draw_text(&mut self, text: &str, encoding: StringEncoding, x: i32, y: i32) {
     let null_term = text.to_null_terminated_utf8();
     let ptr = null_term.as_ptr() as *const c_void;
     let len = null_term.len() as u64;
@@ -823,7 +823,7 @@ impl Graphics {
     line_width: i32,
     start_deg: f32,
     end_deg: f32,
-    color: LCDColor<'a>,
+    color: Color<'a>,
   ) {
     unsafe {
       self.state.cgraphics.drawEllipse.unwrap()(
@@ -847,7 +847,7 @@ impl Graphics {
     rect: euclid::default::Rect<i32>,
     start_deg: f32,
     end_deg: f32,
-    color: LCDColor<'a>,
+    color: Color<'a>,
   ) {
     unsafe {
       self.state.cgraphics.fillEllipse.unwrap()(
@@ -867,14 +867,14 @@ impl Graphics {
     p1: euclid::default::Point2D<i32>,
     p2: euclid::default::Point2D<i32>,
     line_width: i32,
-    color: LCDColor<'a>,
+    color: Color<'a>,
   ) {
     unsafe {
       self.state.cgraphics.drawLine.unwrap()(p1.x, p1.y, p2.x, p2.y, line_width, color.to_c_color())
     }
   }
   /// Draws a `rect`.
-  pub fn draw_rect<'a>(&mut self, r: euclid::default::Rect<i32>, color: LCDColor<'a>) {
+  pub fn draw_rect<'a>(&mut self, r: euclid::default::Rect<i32>, color: Color<'a>) {
     unsafe {
       self.state.cgraphics.drawRect.unwrap()(
         r.origin.x,
@@ -886,7 +886,7 @@ impl Graphics {
     }
   }
   /// Draws a filled `rect`.
-  pub fn fill_rect<'a>(&mut self, r: euclid::default::Rect<i32>, color: LCDColor<'a>) {
+  pub fn fill_rect<'a>(&mut self, r: euclid::default::Rect<i32>, color: Color<'a>) {
     unsafe {
       self.state.cgraphics.fillRect.unwrap()(
         r.origin.x,
@@ -903,7 +903,7 @@ impl Graphics {
     p1: euclid::default::Point2D<i32>,
     p2: euclid::default::Point2D<i32>,
     p3: euclid::default::Point2D<i32>,
-    color: LCDColor<'a>,
+    color: Color<'a>,
   ) {
     unsafe {
       self.state.cgraphics.fillTriangle.unwrap()(
@@ -923,8 +923,8 @@ impl Graphics {
   pub fn fill_polygon<'a>(
     &mut self,
     points: &[euclid::default::Point2D<i32>],
-    color: LCDColor<'a>,
-    fill_rule: LCDPolygonFillRule,
+    color: Color<'a>,
+    fill_rule: PolygonFillRule,
   ) {
     // Point2D is a #[repr(C)] struct of x, y. It's alignment will be the same as i32, so an
     // array of Point2D can be treated as an array of i32 with x and y alternating.
@@ -954,10 +954,10 @@ fn playdate_rect_from_euclid(e: euclid::default::Rect<i32>) -> CLCDRect {
 pub struct FramebufferStencilBitmap<'a> {
   state: &'static CApiState,
   generation: usize,
-  bitmap: &'a LCDBitmapRef,
+  bitmap: &'a BitmapRef,
 }
 impl<'a> FramebufferStencilBitmap<'a> {
-  pub fn bitmap(&self) -> &'a LCDBitmapRef {
+  pub fn bitmap(&self) -> &'a BitmapRef {
     self.bitmap
   }
 }

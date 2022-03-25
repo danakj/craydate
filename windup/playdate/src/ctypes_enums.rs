@@ -1,12 +1,12 @@
 //! This module re-exports playdate_sys enums that are passed through directly.
 
-pub use playdate_sys::LCDBitmapDrawMode;
-pub use playdate_sys::LCDBitmapFlip;
-pub use playdate_sys::LCDPolygonFillRule;
-pub use playdate_sys::LCDSolidColor;
-pub use playdate_sys::PDLanguage;
-pub use playdate_sys::PDPeripherals;
-pub use playdate_sys::PDStringEncoding;
+pub use playdate_sys::LCDBitmapDrawMode as BitmapDrawMode;
+pub use playdate_sys::LCDBitmapFlip as BitmapFlip;
+pub use playdate_sys::LCDPolygonFillRule as PolygonFillRule;
+pub use playdate_sys::LCDSolidColor as SolidColor;
+pub use playdate_sys::PDLanguage as Language;
+pub use playdate_sys::PDPeripherals as Peripherals;
+pub use playdate_sys::PDStringEncoding as StringEncoding;
 
 pub const LCD_COLUMNS: u32 = playdate_sys::LCD_COLUMNS;
 pub const LCD_ROWS: u32 = playdate_sys::LCD_ROWS;

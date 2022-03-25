@@ -5,7 +5,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   let system = &api.system;
   let graphics = &mut api.graphics;
 
-  let mut grey50 = graphics.new_bitmap(8, 8, LCDSolidColor::kColorBlack);
+  let mut grey50 = graphics.new_bitmap(8, 8, SolidColor::kColorBlack);
   for x in (0..8).step_by(2) {
     for y in 0..8 {
       let xwrite = x + y % 2;
@@ -13,16 +13,16 @@ pub async fn _run(mut api: playdate::Api) -> ! {
       grey50.pixels_mut().set(xwrite, ywrite, true)
     }
   }
-  let grey50 = LCDPattern::from_bitmap(&grey50, 0, 0);
+  let grey50 = Pattern::from_bitmap(&grey50, 0, 0);
   graphics.clear(&grey50);
 
-  let mut bmp = graphics.new_bitmap(100, 40, LCDSolidColor::kColorWhite);
-  let mask = graphics.new_bitmap(100, 40, LCDSolidColor::kColorWhite);
+  let mut bmp = graphics.new_bitmap(100, 40, SolidColor::kColorWhite);
+  let mask = graphics.new_bitmap(100, 40, SolidColor::kColorWhite);
   bmp.set_mask_bitmap(&mask).expect("mask problems");
 
-  graphics.draw_bitmap(&bmp, 5, 9, LCDBitmapFlip::kBitmapUnflipped);
+  graphics.draw_bitmap(&bmp, 5, 9, BitmapFlip::kBitmapUnflipped);
 
-  let mut stencil = graphics.new_bitmap(64, 64, LCDSolidColor::kColorWhite);
+  let mut stencil = graphics.new_bitmap(64, 64, SolidColor::kColorWhite);
   for y in 0..64 as usize {
     let c = y % 4 != 0;
     for x in 0..64 as usize {
@@ -32,7 +32,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
 
   {
     let _stencil_holder = graphics.set_stencil(&stencil);
-    graphics.draw_text("Bloop", PDStringEncoding::kASCIIEncoding, 30, 20);
+    graphics.draw_text("Bloop", StringEncoding::kASCIIEncoding, 30, 20);
   }
 
   let mut copy = graphics.working_frame_bitmap();
@@ -42,7 +42,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
       copy.pixels_mut().set(x, y, false);
     }
   }
-  graphics.draw_bitmap(&copy, 0, 30, LCDBitmapFlip::kBitmapUnflipped);
+  graphics.draw_bitmap(&copy, 0, 30, BitmapFlip::kBitmapUnflipped);
 
   let points = [
     euclid::default::Point2D::new(10, 10),
@@ -52,20 +52,20 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   ];
   graphics.fill_polygon(
     &points,
-    LCDColor::Solid(LCDSolidColor::kColorBlack),
-    LCDPolygonFillRule::kPolygonFillEvenOdd,
+    Color::Solid(SolidColor::kColorBlack),
+    PolygonFillRule::kPolygonFillEvenOdd,
   );
 
   let c = graphics.bitmaps_collide(
     BitmapCollider {
       bitmap: &bmp,
-      flipped: LCDBitmapFlip::kBitmapUnflipped,
+      flipped: BitmapFlip::kBitmapUnflipped,
       x: 0,
       y: 0,
     },
     BitmapCollider {
       bitmap: &copy,
-      flipped: LCDBitmapFlip::kBitmapUnflipped,
+      flipped: BitmapFlip::kBitmapUnflipped,
       x: 0,
       y: 0,
     },
@@ -77,7 +77,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   let yo_path = "images/yo";
   let load = graphics.load_bitmap(yo_path);
   if let Ok(bitmap) = load {
-    graphics.draw_bitmap(&bitmap, 100, 80, LCDBitmapFlip::kBitmapUnflipped);
+    graphics.draw_bitmap(&bitmap, 100, 80, BitmapFlip::kBitmapUnflipped);
   }
 
   // broken image
