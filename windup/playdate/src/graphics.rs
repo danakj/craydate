@@ -593,7 +593,7 @@ impl Graphics {
 
   /// Sets the current clip rect, using world coordinates—​that is, the given rectangle will be
   /// translated by the current drawing offset.
-  /// 
+  ///
   /// The clip rect is cleared at the beginning of each frame.
   pub fn set_clip_rect(&mut self, rect: euclid::default::Rect<i32>) {
     unsafe {
@@ -606,7 +606,7 @@ impl Graphics {
     }
   }
   /// Sets the current clip rect in screen coordinates.
-  /// 
+  ///
   /// The clip rect is cleared at the beginning of each frame.
   pub fn set_screen_clip_rect(&mut self, rect: euclid::default::Rect<i32>) {
     unsafe {
@@ -811,6 +811,132 @@ impl Graphics {
     // This function is part of Playdate CSystem, not CGraphics, but it's a function that draws
     // something to the screen, so its behaviour is more clear when part of the Graphics type.
     unsafe { self.state.csystem.drawFPS.unwrap()(x, y) }
+  }
+
+  /// Draws an ellipse inside the rectangle of width `line_width` (inset from the rectangle bounds).
+  ///
+  /// If `start_deg != end_deg`, this draws an arc between the given angles. Angles are given in
+  /// degrees, clockwise from due north.
+  pub fn draw_elipse<'a>(
+    &mut self,
+    rect: euclid::default::Rect<i32>,
+    line_width: i32,
+    start_deg: f32,
+    end_deg: f32,
+    color: LCDColor<'a>,
+  ) {
+    unsafe {
+      self.state.cgraphics.drawEllipse.unwrap()(
+        rect.origin.x,
+        rect.origin.y,
+        rect.size.width,
+        rect.size.height,
+        line_width,
+        start_deg,
+        end_deg,
+        color.to_c_color(),
+      )
+    }
+  }
+  /// Fills an ellipse inside the rectangle.
+  ///
+  /// If `start_deg != end_deg`, this draws an arc between the given angles. Angles are given in
+  /// degrees, clockwise from due north.
+  pub fn fill_elipse<'a>(
+    &mut self,
+    rect: euclid::default::Rect<i32>,
+    start_deg: f32,
+    end_deg: f32,
+    color: LCDColor<'a>,
+  ) {
+    unsafe {
+      self.state.cgraphics.fillEllipse.unwrap()(
+        rect.origin.x,
+        rect.origin.y,
+        rect.size.width,
+        rect.size.height,
+        start_deg,
+        end_deg,
+        color.to_c_color(),
+      )
+    }
+  }
+  /// Draws a line from `p1` to `p2` with a stroke width of `width`.
+  pub fn draw_line<'a>(
+    &mut self,
+    p1: euclid::default::Point2D<i32>,
+    p2: euclid::default::Point2D<i32>,
+    line_width: i32,
+    color: LCDColor<'a>,
+  ) {
+    unsafe {
+      self.state.cgraphics.drawLine.unwrap()(p1.x, p1.y, p2.x, p2.y, line_width, color.to_c_color())
+    }
+  }
+  /// Draws a `rect`.
+  pub fn draw_rect<'a>(&mut self, r: euclid::default::Rect<i32>, color: LCDColor<'a>) {
+    unsafe {
+      self.state.cgraphics.drawRect.unwrap()(
+        r.origin.x,
+        r.origin.y,
+        r.size.width,
+        r.size.height,
+        color.to_c_color(),
+      )
+    }
+  }
+  /// Draws a filled `rect`.
+  pub fn fill_rect<'a>(&mut self, r: euclid::default::Rect<i32>, color: LCDColor<'a>) {
+    unsafe {
+      self.state.cgraphics.fillRect.unwrap()(
+        r.origin.x,
+        r.origin.y,
+        r.size.width,
+        r.size.height,
+        color.to_c_color(),
+      )
+    }
+  }
+  /// Draws a filled triangle with points at `p1`, `p2`, and `p3`.
+  pub fn fill_triangle<'a>(
+    &mut self,
+    p1: euclid::default::Point2D<i32>,
+    p2: euclid::default::Point2D<i32>,
+    p3: euclid::default::Point2D<i32>,
+    color: LCDColor<'a>,
+  ) {
+    unsafe {
+      self.state.cgraphics.fillTriangle.unwrap()(
+        p1.x,
+        p1.y,
+        p2.x,
+        p2.y,
+        p3.x,
+        p3.y,
+        color.to_c_color(),
+      )
+    }
+  }
+  /// Fills the polygon with vertices at the given coordinates (an array of points) using the given color and fill, or winding, rule.
+  ///
+  /// See https://en.wikipedia.org/wiki/Nonzero-rule for an explanation of the winding rule.
+  pub fn fill_polygon<'a>(
+    &mut self,
+    points: &[euclid::default::Point2D<i32>],
+    color: LCDColor<'a>,
+    fill_rule: LCDPolygonFillRule,
+  ) {
+    // Point2D is a #[repr(C)] struct of x, y. It's alignment will be the same as i32, so an
+    // array of Point2D can be treated as an array of i32 with x and y alternating.
+    let raw_points = points.as_ptr() as *mut i32;
+    unsafe {
+      self.state.cgraphics.fillPolygon.unwrap()(
+        points.len() as i32,
+        raw_points,
+        color.to_c_color(),
+        fill_rule,
+      )
+    }
   }
 }
 

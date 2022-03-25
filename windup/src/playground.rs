@@ -44,6 +44,18 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   }
   graphics.draw_bitmap(&copy, 0, 30, LCDBitmapFlip::kBitmapUnflipped);
 
+  let points = [
+    euclid::default::Point2D::new(10, 10),
+    euclid::default::Point2D::new(20, 20),
+    euclid::default::Point2D::new(10, 30),
+    euclid::default::Point2D::new(0, 20),
+  ];
+  graphics.fill_polygon(
+    &points,
+    LCDColor::Solid(LCDSolidColor::kColorBlack),
+    LCDPolygonFillRule::kPolygonFillEvenOdd,
+  );
+
   let c = graphics.bitmaps_collide(
     BitmapCollider {
       bitmap: &bmp,

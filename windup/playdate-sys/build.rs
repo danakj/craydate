@@ -45,6 +45,7 @@ fn main() {
     .newtype_enum("PDSystemEvent")
     .newtype_enum("LCDBitmapDrawMode")
     .newtype_enum("LCDBitmapFlip")
+    .newtype_enum("LCDPolygonFillRule")
     .newtype_enum("LCDLineCapStyle")
     .newtype_enum("PDStringEncoding")
     .newtype_enum("LCDPolygonFillRule")
