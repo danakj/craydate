@@ -6,7 +6,7 @@ use core::ptr::NonNull;
 
 use crate::ctypes::*;
 use crate::executor::Executor;
-use crate::graphics::Bitmap;
+use crate::bitmap::Bitmap;
 
 #[non_exhaustive]
 #[derive(Debug)]
@@ -25,6 +25,8 @@ pub struct CApiState {
   pub stack: RefCell<ContextStack>,
   // Tracks how many times the stencil was set.
   pub stencil_generation: Cell<usize>,
+  // Tracks how many times the font was set.
+  pub font_generation: Cell<usize>,
 }
 impl CApiState {
   pub fn new(capi: &'static CApi) -> CApiState {
@@ -40,6 +42,7 @@ impl CApiState {
       button_state_per_frame: Cell::new([None, None]),
       stack: RefCell::new(ContextStack::new()),
       stencil_generation: Cell::new(0),
+      font_generation: Cell::new(0),
     }
   }
 
@@ -155,7 +158,7 @@ impl ContextStack {
     self.stack.push(None)
   }
   pub fn push_bitmap(&mut self, state: &'static CApiState, mut bitmap: Bitmap) -> ContextStackId {
-    unsafe { state.cgraphics.pushContext.unwrap()(bitmap.get_bitmap_mut_ptr()) };
+    unsafe { state.cgraphics.pushContext.unwrap()(bitmap.as_bitmap_mut_ptr()) };
 
     static mut NEXT_ID: usize = 1;
     let id = unsafe {

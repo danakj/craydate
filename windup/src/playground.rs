@@ -30,6 +30,25 @@ pub async fn _run(mut api: playdate::Api) -> ! {
     }
   }
 
+  let font = graphics.load_font("fonts/Mini Sans 2X/Mini Sans 2X.pft");
+  let _active = match &font {
+    Ok(font) => {
+      api.system.log(format!("Font height: {}", font.font_height()));
+
+      let page = font.font_page('d');
+      api.system.log("Got page");
+      let _bitmap = page.glyph('d').unwrap().bitmap();
+
+      Some(graphics.set_font(font))
+    }
+    Err(e) => {
+      api.system.log(format!("ERROR: loading font {}", e));
+      None
+    }
+  };
+
+  
+
   {
     let _stencil_holder = graphics.set_stencil(&stencil);
     graphics.draw_text("Bloop", StringEncoding::kASCIIEncoding, 30, 20);

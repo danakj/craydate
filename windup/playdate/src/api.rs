@@ -134,13 +134,11 @@ impl System {
   /// would be visible instead of the left 200 pixels while the menu is open.
   ///
   /// The bitmap will be copied, so the reference is not held.
-  pub fn set_menu_image(&mut self, bitmap: &crate::graphics::BitmapRef, xoffset: i32) {
+  pub fn set_menu_image(&mut self, bitmap: &crate::bitmap::BitmapRef, xoffset: i32) {
     // SAFETY: Playdate makes a copy from the given pointer, so we can pass it in and then drop the
     // reference on `bitmap` when we leave the function.
-    let ptr = unsafe { bitmap.get_bitmap_ptr() };
     unsafe {
-      // setMenuImage() takes a mut pointer argument, but does not mutate the bitmap.
-      self.state.csystem.setMenuImage.unwrap()(ptr as *mut CLCDBitmap, xoffset.clamp(0, 200))
+      self.state.csystem.setMenuImage.unwrap()(bitmap.as_bitmap_ptr(), xoffset.clamp(0, 200))
     }
   }
 

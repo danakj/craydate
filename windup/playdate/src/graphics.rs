@@ -1,430 +1,13 @@
 use core::ffi::c_void;
 
 use crate::api::Error;
+use crate::bitmap::{Bitmap, BitmapRef, SharedBitmapRef};
 use crate::capi_state::{CApiState, ContextStackId};
+use crate::color::Color;
 use crate::ctypes::*;
+use crate::font::Font;
 use crate::format;
 use crate::null_terminated::ToNullTerminatedString;
-
-const PATTERN_SIZE: usize = 16;
-
-#[derive(Debug)]
-#[repr(transparent)]
-pub struct Pattern(CLCDPattern);
-impl Pattern {
-  pub fn new(arr: [u8; PATTERN_SIZE]) -> Pattern {
-    Pattern(arr)
-  }
-  pub fn from_bitmap(bitmap: &BitmapRef, x: i32, y: i32) -> Pattern {
-    let mut arr = [0; PATTERN_SIZE];
-
-    let mut c_color: CLCDColor = 0;
-    unsafe {
-      // The setColorToPattern function wants a `*mut CLCDBitmap`, but it only reads from the bitmap
-      // to make a pattern, so we can cast to that from a shared reference to the bitmap.
-      let ptr = bitmap.get_bitmap_ptr() as *mut CLCDBitmap;
-      bitmap.state.cgraphics.setColorToPattern.unwrap()(&mut c_color, ptr, x, y);
-      core::ptr::copy_nonoverlapping(c_color as *const u8, arr.as_mut_ptr(), PATTERN_SIZE)
-    }
-
-    Pattern(arr)
-  }
-}
-
-/// Represents a method for drawing to the display or a bitmap. Similar to a SkPaint in Skia.
-#[derive(Debug)]
-pub enum Color<'a> {
-  /// A single color, which is one of `SolidColor`.
-  Solid(SolidColor),
-  /// A reference to a 16 byte buffer, the first 8 bytes are 8x8 pixels (each pixel is 1 bit) and the last
-  /// 8 bytes are 8x8 masks (each mask is 1 bit) that each defines if the corresponding pixel is used.
-  Pattern(&'a Pattern),
-}
-
-impl From<SolidColor> for Color<'_> {
-  fn from(color: SolidColor) -> Self {
-    Color::Solid(color)
-  }
-}
-
-impl<'a> From<&'a Pattern> for Color<'a> {
-  fn from(pattern: &'a Pattern) -> Self {
-    Color::Pattern(&pattern)
-  }
-}
-
-impl Color<'_> {
-  /// Returns a usize representation of an Color which can be passed to the Playdate C Api.
-  ///
-  /// # Safety
-  ///
-  /// The returned usize for patterns is technically a raw pointer to the Pattern array itself. Thus
-  /// the caller must ensure that the Color outlives the returned usize. Also, yes really, Color can be
-  /// both an enum and a pointer.
-  pub(crate) unsafe fn to_c_color(&self) -> usize {
-    match self {
-      Color::Solid(solid) => solid.0 as usize,
-      Color::Pattern(pattern) => pattern.0.as_ptr() as usize,
-    }
-  }
-}
-
-/// A bitmap image.
-///
-/// The bitmap can be cloned which will make a clone of the pixels as well. The bitmap's pixels data
-/// is freed when the bitmap is dropped.
-///
-/// An `Bitmap` is borrowed as an `&BitmapRef` and all methods of that type are available for
-/// `Bitmap as well.
-#[derive(Debug)]
-pub struct Bitmap {
-  /// While BitmapRef is a non-owning pointer, the Bitmap will act as the owner of the bitmap
-  /// found within.
-  owned: BitmapRef,
-}
-impl Bitmap {
-  /// Construct an Bitmap from an owning pointer.
-  fn from_owned_ptr(bitmap_ptr: *mut CLCDBitmap, state: &'static CApiState) -> Self {
-    Bitmap {
-      owned: BitmapRef::from_ptr(bitmap_ptr, state),
-    }
-  }
-}
-
-impl Clone for Bitmap {
-  fn clone(&self) -> Self {
-    Bitmap::from_owned_ptr(
-      unsafe { self.owned.state.cgraphics.copyBitmap.unwrap()(self.owned.bitmap_ptr) },
-      self.owned.state,
-    )
-  }
-}
-
-impl Drop for Bitmap {
-  fn drop(&mut self) {
-    unsafe {
-      self.owned.state.cgraphics.freeBitmap.unwrap()(self.owned.bitmap_ptr);
-    }
-  }
-}
-
-/// A reference to an `Bitmap`, which has a lifetime tied to a different `Bitmap` (or
-/// `BitmapRef`) with a lifetime `'a`.
-#[derive(Debug)]
-pub struct SharedBitmapRef<'a> {
-  bref: BitmapRef,
-  _marker: core::marker::PhantomData<&'a Bitmap>,
-}
-
-impl SharedBitmapRef<'_> {
-  /// Construct a SharedBitmapRef from a non-owning pointer.
-  ///
-  /// Requires being told the lifetime of the Bitmap this is making a reference to.
-  fn from_ptr<'a>(
-    bitmap_ptr: *mut CLCDBitmap,
-    state: &'static CApiState,
-  ) -> SharedBitmapRef<'a> {
-    SharedBitmapRef {
-      bref: BitmapRef::from_ptr(bitmap_ptr, state),
-      _marker: core::marker::PhantomData,
-    }
-  }
-}
-
-/// A borrow of an Bitmap (or SharedBitmap) is held as this type.
-///
-/// BitmapRef exposes most of the method of an Bitmap, allowing them to be used on an owned or
-/// borrowed bitmap.
-///
-/// Intentionally not `Copy` as `BitmapRef` can only be referred to as a reference.
-#[derive(Debug)]
-pub struct BitmapRef {
-  bitmap_ptr: *mut CLCDBitmap,
-  state: &'static CApiState,
-}
-
-impl BitmapRef {
-  /// Construct an BitmapRef from a non-owning pointer.
-  fn from_ptr(bitmap_ptr: *mut CLCDBitmap, state: &'static CApiState) -> Self {
-    BitmapRef { bitmap_ptr, state }
-  }
-
-  fn data_and_pixels_ptr(&self) -> (BitmapData, *mut u8) {
-    let mut width = 0;
-    let mut height = 0;
-    let mut rowbytes = 0;
-    let mut hasmask = 0;
-    let mut pixels = core::ptr::null_mut();
-    unsafe {
-      self.state.cgraphics.getBitmapData.unwrap()(
-        self.bitmap_ptr,
-        &mut width,
-        &mut height,
-        &mut rowbytes,
-        &mut hasmask,
-        &mut pixels,
-      )
-    };
-    let data = BitmapData {
-      width,
-      height,
-      rowbytes,
-      hasmask,
-    };
-    (data, pixels)
-  }
-
-  /// Returns the bitmap's metadata such as its width and height.
-  pub fn data(&self) -> BitmapData {
-    let (data, _) = self.data_and_pixels_ptr();
-    data
-  }
-
-  /// Gives read acccess to the pixels of the bitmap as an array of bytes.
-  ///
-  /// Each byte represents 8 pixels, where each pixel is a bit. The highest bit is the leftmost
-  /// pixel, and lowest bit is the rightmost.
-  pub fn as_bytes(&self) -> &[u8] {
-    let (data, pixels) = self.data_and_pixels_ptr();
-    unsafe { core::slice::from_raw_parts(pixels, (data.rowbytes * data.height) as usize) }
-  }
-  /// Gives read-write acccess to the pixels of the bitmap as an array of bytes.
-  ///
-  /// Each byte represents 8 pixels, where each pixel is a bit. The highest bit is the leftmost
-  /// pixel, and lowest bit is the rightmost.
-  pub fn as_mut_bytes(&mut self) -> &mut [u8] {
-    let (data, pixels) = self.data_and_pixels_ptr();
-    unsafe { core::slice::from_raw_parts_mut(pixels, (data.rowbytes * data.height) as usize) }
-  }
-  /// Gives read acccess to the individual pixels of the bitmap.
-  pub fn pixels(&self) -> BitmapPixels {
-    let (data, pixels) = self.data_and_pixels_ptr();
-    let slice =
-      unsafe { core::slice::from_raw_parts(pixels, (data.rowbytes * data.height) as usize) };
-    BitmapPixels {
-      data,
-      pixels: slice,
-    }
-  }
-  /// Gives read-write acccess to the individual pixels of the bitmap.
-  pub fn pixels_mut(&mut self) -> BitmapPixelsMut {
-    let (data, pixels) = self.data_and_pixels_ptr();
-    let slice =
-      unsafe { core::slice::from_raw_parts_mut(pixels, (data.rowbytes * data.height) as usize) };
-    BitmapPixelsMut {
-      data,
-      pixels: slice,
-    }
-  }
-
-  /// Clears the bitmap, filling with the given `bgcolor`.
-  pub fn clear<'a, C>(&mut self, bgcolor: C)
-  where
-    Color<'a>: From<C>,
-  {
-    unsafe {
-      self.state.cgraphics.clearBitmap.unwrap()(
-        self.bitmap_ptr,
-        Color::<'a>::from(bgcolor).to_c_color(),
-      );
-    }
-  }
-
-  /// Sets a mask image for the given bitmap. The set mask must be the same size as the target
-  /// bitmap.
-  ///
-  /// The mask bitmap is copied, so no reference is held to it.
-  pub fn set_mask_bitmap(&mut self, mask: &BitmapRef) -> Result<(), Error> {
-    // Playdate makes a copy of the mask bitmap.
-    let result =
-      unsafe { self.state.cgraphics.setBitmapMask.unwrap()(self.bitmap_ptr, mask.bitmap_ptr) };
-    match result {
-      1 => Ok(()),
-      0 => Err("failed to set mask bitmap, dimensions to not match".into()),
-      _ => panic!("unknown error result from setBitmapMask"),
-    }
-  }
-
-  /// The mask bitmap attached to this bitmap.
-  ///
-  /// Returns the mask bitmap, if one has been attached with `set_mask_bitmap()`, or None.
-  pub fn mask_bitmap(&self) -> Option<SharedBitmapRef> {
-    let mask = unsafe {
-      // Playdate owns the mask bitmap, and reference a pointer to it. Playdate would free the mask
-      // presumably when `self` is freed.
-      self.state.cgraphics.getBitmapMask.unwrap()(self.bitmap_ptr)
-    };
-    if !mask.is_null() {
-      Some(SharedBitmapRef::from_ptr(mask, self.state))
-    } else {
-      None
-    }
-  }
-
-  pub(crate) unsafe fn get_bitmap_ptr(&self) -> *const CLCDBitmap {
-    self.bitmap_ptr
-  }
-  pub(crate) unsafe fn get_bitmap_mut_ptr(&mut self) -> *mut CLCDBitmap {
-    self.bitmap_ptr
-  }
-}
-
-impl core::ops::Deref for Bitmap {
-  type Target = BitmapRef;
-
-  fn deref(&self) -> &Self::Target {
-    &self.owned
-  }
-}
-impl core::ops::DerefMut for Bitmap {
-  fn deref_mut(&mut self) -> &mut Self::Target {
-    &mut self.owned
-  }
-}
-
-impl core::borrow::Borrow<BitmapRef> for Bitmap {
-  fn borrow(&self) -> &BitmapRef {
-    self // This calls Deref.
-  }
-}
-impl core::borrow::BorrowMut<BitmapRef> for Bitmap {
-  fn borrow_mut(&mut self) -> &mut BitmapRef {
-    self // This calls DerefMut.
-  }
-}
-
-impl alloc::borrow::ToOwned for BitmapRef {
-  type Owned = Bitmap;
-
-  fn to_owned(&self) -> Self::Owned {
-    Bitmap::from_owned_ptr(
-      unsafe { self.state.cgraphics.copyBitmap.unwrap()(self.bitmap_ptr) },
-      self.state,
-    )
-  }
-}
-
-impl core::ops::Deref for SharedBitmapRef<'_> {
-  type Target = BitmapRef;
-
-  fn deref(&self) -> &Self::Target {
-    &self.bref
-  }
-}
-impl core::ops::DerefMut for SharedBitmapRef<'_> {
-  fn deref_mut(&mut self) -> &mut Self::Target {
-    &mut self.bref
-  }
-}
-
-impl core::borrow::Borrow<BitmapRef> for SharedBitmapRef<'_> {
-  fn borrow(&self) -> &BitmapRef {
-    self // This calls Deref.
-  }
-}
-impl core::borrow::BorrowMut<BitmapRef> for SharedBitmapRef<'_> {
-  fn borrow_mut(&mut self) -> &mut BitmapRef {
-    self // This calls DerefMut.
-  }
-}
-
-impl AsRef<BitmapRef> for Bitmap {
-  fn as_ref(&self) -> &BitmapRef {
-    self // This calls Deref.
-  }
-}
-impl AsMut<BitmapRef> for Bitmap {
-  fn as_mut(&mut self) -> &mut BitmapRef {
-    self // This calls DerefMut.
-  }
-}
-impl AsRef<BitmapRef> for SharedBitmapRef<'_> {
-  fn as_ref(&self) -> &BitmapRef {
-    self // This calls Deref.
-  }
-}
-impl AsMut<BitmapRef> for SharedBitmapRef<'_> {
-  fn as_mut(&mut self) -> &mut BitmapRef {
-    self // This calls DerefMut.
-  }
-}
-impl AsRef<BitmapRef> for BitmapRef {
-  fn as_ref(&self) -> &BitmapRef {
-    self
-  }
-}
-impl AsMut<BitmapRef> for BitmapRef {
-  fn as_mut(&mut self) -> &mut BitmapRef {
-    self
-  }
-}
-
-/// Metadata for an `Bitmap`.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct BitmapData {
-  width: i32,
-  height: i32,
-  rowbytes: i32,
-  hasmask: i32,
-}
-impl BitmapData {
-  /// The number of pixels (or, columns) per row of the bitmap.
-  ///
-  /// Each pixel is a single bit, and there may be more bytes (as determined by `row_bytes()`) in a
-  /// row than required to hold all the pixels.
-  pub fn width(&self) -> i32 {
-    self.width
-  }
-  /// The number of rows in the bitmap.
-  pub fn height(&self) -> i32 {
-    self.height
-  }
-  /// The number of bytes per row of the bitmap.
-  pub fn row_bytes(&self) -> i32 {
-    self.rowbytes
-  }
-  /// Whether the bitmap has a mask attached, via `set_mask_bitmap()`.
-  pub fn has_mask(&self) -> bool {
-    self.hasmask != 0
-  }
-}
-
-/// Provide readonly access to the pixels in an Bitmap, through its BitmapData.
-pub struct BitmapPixels<'bitmap> {
-  data: BitmapData,
-  pixels: &'bitmap [u8],
-}
-impl BitmapPixels<'_> {
-  pub fn get(&self, x: usize, y: usize) -> bool {
-    let byte_index = self.data.rowbytes as usize * y + x / 8;
-    let bit_index = x % 8;
-    (self.pixels[byte_index] >> (7 - bit_index)) & 0x1 != 0
-  }
-}
-
-/// Provide mutable access to the pixels in an Bitmap, through its BitmapData.
-pub struct BitmapPixelsMut<'bitmap> {
-  data: BitmapData,
-  pixels: &'bitmap mut [u8],
-}
-impl BitmapPixelsMut<'_> {
-  pub fn get(&self, x: usize, y: usize) -> bool {
-    BitmapPixels {
-      data: self.data,
-      pixels: self.pixels,
-    }
-    .get(x, y)
-  }
-  pub fn set(&mut self, x: usize, y: usize, new_value: bool) {
-    let byte_index = self.data.rowbytes as usize * y + x / 8;
-    let bit_index = x % 8;
-    if new_value {
-      self.pixels[byte_index] |= 1u8 << (7 - bit_index);
-    } else {
-      self.pixels[byte_index] &= !(1u8 << (7 - bit_index));
-    }
-  }
-}
 
 pub struct BitmapCollider<'a> {
   pub bitmap: &'a BitmapRef,
@@ -452,11 +35,11 @@ impl Graphics {
       // checkMaskCollision expects `*mut CLCDBitmap` but it only reads from the bitmaps to check
       // for collision, so we can cast from a shared reference on Bitmap to a mut pointer.
       self.state.cgraphics.checkMaskCollision.unwrap()(
-        a.bitmap.get_bitmap_ptr() as *mut CLCDBitmap,
+        a.bitmap.as_bitmap_ptr(),
         a.x,
         a.y,
         a.flipped,
-        b.bitmap.get_bitmap_ptr() as *mut CLCDBitmap,
+        b.bitmap.as_bitmap_ptr(),
         b.x,
         b.y,
         b.flipped,
@@ -581,13 +164,30 @@ impl Graphics {
   pub fn set_stencil<'a>(&mut self, bitmap: &'a BitmapRef) -> FramebufferStencilBitmap<'a> {
     let gen = self.state.stencil_generation.get() + 1;
     self.state.stencil_generation.set(gen);
-    unsafe { self.state.cgraphics.setStencil.unwrap()(bitmap.get_bitmap_ptr() as *mut CLCDBitmap) }
+    unsafe { self.state.cgraphics.setStencil.unwrap()(bitmap.as_bitmap_ptr()) }
     FramebufferStencilBitmap {
       state: self.state,
       // Track the generation number so as to only unset the stencil on drop if set_stencil() wasn't
       // called again since.
       generation: gen,
       bitmap,
+    }
+  }
+
+  /// Sets the font used for drawing.
+  ///
+  /// The font will remain active for drawing as long as the ActiveFont is not dropped, or another
+  /// call to set_font() is made.
+  pub fn set_font<'a>(&mut self, font: &'a Font) -> ActiveFont<'a> {
+    let gen = self.state.font_generation.get() + 1;
+    self.state.font_generation.set(gen);
+    unsafe { self.state.cgraphics.setFont.unwrap()(font.as_ptr()) }
+    ActiveFont {
+      state: self.state,
+      // Track the generation number so as to only unset the font on drop if set_font() wasn't
+      // called again since.
+      generation: gen,
+      font,
     }
   }
 
@@ -632,7 +232,7 @@ impl Graphics {
   /// The bitmap's upper-left corner is positioned at location (`x`, `y`), and the contents have
   /// the `flip` orientation applied.
   pub fn draw_bitmap(&mut self, bitmap: &BitmapRef, x: i32, y: i32, flip: BitmapFlip) {
-    unsafe { self.state.cgraphics.drawBitmap.unwrap()(bitmap.bitmap_ptr, x, y, flip) }
+    unsafe { self.state.cgraphics.drawBitmap.unwrap()(bitmap.as_bitmap_ptr(), x, y, flip) }
   }
 
   /// Draws the bitmap to the screen, scaled by `xscale` and `yscale`.
@@ -648,7 +248,7 @@ impl Graphics {
     yscale: f32,
   ) {
     unsafe {
-      self.state.cgraphics.drawScaledBitmap.unwrap()(bitmap.bitmap_ptr, x, y, xscale, yscale)
+      self.state.cgraphics.drawScaledBitmap.unwrap()(bitmap.as_bitmap_ptr(), x, y, xscale, yscale)
     }
   }
 
@@ -670,7 +270,7 @@ impl Graphics {
   ) {
     unsafe {
       self.state.cgraphics.drawRotatedBitmap.unwrap()(
-        bitmap.bitmap_ptr,
+        bitmap.as_bitmap_ptr(),
         x,
         y,
         degrees,
@@ -694,7 +294,33 @@ impl Graphics {
     flip: BitmapFlip,
   ) {
     unsafe {
-      self.state.cgraphics.tileBitmap.unwrap()(bitmap.bitmap_ptr, x, y, width, height, flip)
+      self.state.cgraphics.tileBitmap.unwrap()(bitmap.as_bitmap_ptr(), x, y, width, height, flip)
+    }
+  }
+
+  /// Returns the Font object for the font file at `path`.
+  pub fn load_font(&self, path: &str) -> Result<Font, Error> {
+    let mut out_err: *const u8 = core::ptr::null_mut();
+
+    // UNCLEAR: out_err is not a fixed string (it contains the name of the image). However, future
+    // calls will overwrite the previous out_err and trying to free it via system->realloc crashes
+    // (likely because the pointer wasn't alloc'd by us). This probably (hopefully??) means that we
+    // don't need to free it.
+    let font_ptr = unsafe {
+      self.state.cgraphics.loadFont.unwrap()(path.to_null_terminated_utf8().as_ptr(), &mut out_err)
+    };
+
+    if !out_err.is_null() {
+      let result = unsafe { crate::null_terminated::parse_null_terminated_utf8(out_err) };
+      match result {
+        // A valid error string.
+        Ok(err) => Err(format!("load_font: {}", err).into()),
+        // An invalid error string.
+        Err(err) => Err(format!("load_font: unknown error ({})", err).into()),
+      }
+    } else {
+      assert!(!font_ptr.is_null());
+      Ok(Font::from_ptr(font_ptr, self.state))
     }
   }
 
@@ -737,7 +363,7 @@ impl Graphics {
     unsafe {
       self.state.cgraphics.loadIntoBitmap.unwrap()(
         path.to_null_terminated_utf8().as_ptr(),
-        bitmap.get_bitmap_mut_ptr(),
+        bitmap.as_bitmap_mut_ptr(),
         &mut out_err,
       )
     };
@@ -784,7 +410,7 @@ impl Graphics {
     let mut _alloced_size: i32 = 0;
     let bitmap_ptr = unsafe {
       self.state.cgraphics.rotatedBitmap.unwrap()(
-        bitmap.bitmap_ptr,
+        bitmap.as_bitmap_ptr(),
         rotation,
         xscale,
         yscale,
@@ -965,6 +591,26 @@ impl Drop for FramebufferStencilBitmap<'_> {
   fn drop(&mut self) {
     if self.generation == self.state.stencil_generation.get() {
       unsafe { self.state.cgraphics.setStencil.unwrap()(core::ptr::null_mut()) }
+    }
+  }
+}
+
+/// A sentinel that marks a font as the currently active font. Destroying this object will
+/// unset the font as current.
+pub struct ActiveFont<'a> {
+  state: &'static CApiState,
+  generation: usize,
+  font: &'a Font,
+}
+impl<'a> ActiveFont<'a> {
+  pub fn font(&self) -> &'a Font {
+    self.font
+  }
+}
+impl Drop for ActiveFont<'_> {
+  fn drop(&mut self) {
+    if self.generation == self.state.font_generation.get() {
+      unsafe { self.state.cgraphics.setFont.unwrap()(core::ptr::null_mut()) }
     }
   }
 }
