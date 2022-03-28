@@ -19,6 +19,11 @@ impl Sound {
     let ptr = unsafe { self.state.csound.getDefaultChannel.unwrap()() };
     DefaultSoundChannel::from_ptr(ptr, self.state)
   }
+
+  /// Force audio output to the given outputs, regardless of headphone status.
+  pub fn set_active_outputs(&self, headphone: bool, speaker: bool) {
+    unsafe { self.state.csound.setOutputsActive.unwrap()(headphone as i32, speaker as i32) };
+  }
 }
 
 /// SampleFrames is a unit of time in the sound engine, with 44,100 sample frames per second.
