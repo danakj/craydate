@@ -63,14 +63,14 @@ impl System {
   }
 
   /// Prints a string to the Playdate console, as well as to stdout.
-  pub fn log<S: AsRef<str>>(&self, s: S) {
-    crate::debug::log(s)
+  pub fn log<S: alloc::string::ToString>(&self, s: S) {
+    crate::debug::log(&s.to_string())
   }
 
   /// Prints an error string in red to the Playdate console, and pauses Playdate. Also prints the
   /// string to stdout.
-  pub fn error<S: AsRef<str>>(&self, s: S) {
-    crate::debug::error(s);
+  pub fn error<S: alloc::string::ToString>(&self, s: S) {
+    crate::debug::error(&s.to_string());
   }
 
   /// Returns the current time in milliseconds.
@@ -280,35 +280,55 @@ impl Future for FrameWatcherFuture {
   }
 }
 
-pub struct Error(pub String);
-
-impl AsRef<str> for Error {
-  fn as_ref(&self) -> &str {
-    &self.0
+pub enum Error {
+  BorrowError(core::cell::BorrowError),
+  BorrowMutError(core::cell::BorrowMutError),
+  NotFoundError(),
+  String(String),
+}
+impl From<core::cell::BorrowError> for Error {
+  fn from(e: core::cell::BorrowError) -> Self {
+      Error::BorrowError(e)
+  }
+}
+impl From<core::cell::BorrowMutError> for Error {
+  fn from(e: core::cell::BorrowMutError) -> Self {
+      Error::BorrowMutError(e)
   }
 }
 impl From<String> for Error {
-  fn from(s: String) -> Self {
-    Error(s)
-  }
+    fn from(s: String) -> Self {
+        Error::String(s)
+    }
 }
 impl From<&str> for Error {
   fn from(s: &str) -> Self {
-    Error(s.into())
+    Error::String(s.into())
   }
 }
 impl From<&mut str> for Error {
   fn from(s: &mut str) -> Self {
-    Error(s.into())
+    Error::String(s.into())
   }
 }
+
 impl core::fmt::Debug for Error {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-    write!(f, "Error({})", self.0)
+    match self {
+        Error::BorrowError(e) => write!(f, "Error(BorrowError({:?}))", e),
+        Error::BorrowMutError(e) => write!(f, "Error(BorrowMutError({:?}))", e),
+        Error::NotFoundError() => write!(f, "Error(NotFoundError())"),
+        Error::String(e) => write!(f, "Error(String({:?}))", e),
+    }
   }
 }
 impl core::fmt::Display for Error {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-    write!(f, "{}", self.0)
+    match self {
+      Error::BorrowError(e) => write!(f, "{}", e),
+      Error::BorrowMutError(e) => write!(f, "{}", e),
+      Error::NotFoundError() => write!(f, "not found"),
+      Error::String(e) => write!(f, "{}", e),
+    }
   }
 }

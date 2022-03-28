@@ -165,6 +165,9 @@ pub async fn _run(mut api: playdate::Api) -> ! {
 
   delete_recursive("myfolder");
 
+  let vol = api.sound.channels.default_channel().unwrap().volume();
+  api.system.log(format!("Default channel volume (in 0-1): {}", vol));
+
   system.log(format!(
     "Entering main loop at time {}",
     api.system.current_time()
