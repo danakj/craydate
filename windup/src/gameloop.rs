@@ -47,7 +47,7 @@ pub struct World {
   // TODO: add other stuff in the world
 }
 impl World {
-  fn player_update(&mut self, inputs: &Inputs, accum: &mut AccumInputs, system: &mut System) {
+  fn player_update(&mut self, inputs: &Inputs, accum: &mut AccumInputs, _system: &mut System) {
     let player = &mut self.player;
     if inputs.buttons().left_state() == ButtonState::Pushed {
       player.pos = player.pos.translate(euclid::default::Vector2D::new(-1, 0));
@@ -109,7 +109,7 @@ impl World {
       } else {
         y_depth = 0;
       }
-      // system.log(format!("p: {:?}, b: {:?}, x: {:?}, y: {:?}", player.pos, block, x_depth, y_depth));
+      // _system.log(format!("p: {:?}, b: {:?}, x: {:?}, y: {:?}", player.pos, block, x_depth, y_depth));
       if num_traits::abs(x_depth) < num_traits::abs(y_depth) {
         player.vel.x = 0.0;
         new_pos.origin.x -= x_depth;
