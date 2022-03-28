@@ -1,12 +1,12 @@
 use crate::ctypes::*;
 use crate::null_terminated::ToNullTerminatedString;
 
-struct SystemRef(&'static CSystem);
+struct SystemRef(&'static CSystemApi);
 unsafe impl Sync for SystemRef {}
 
 static mut SYSTEM: Option<SystemRef> = None;
 
-pub fn initialize(system: &'static CSystem) {
+pub fn initialize(system: &'static CSystemApi) {
   unsafe { SYSTEM = Some(SystemRef(system)) }
   log("debug::log initialized.");
 }
@@ -16,7 +16,7 @@ pub fn initialize(system: &'static CSystem) {
 /// Note that this function may allocate, so must not be called before Playdate initialization.
 #[allow(dead_code)]
 pub fn log<S: AsRef<str>>(s: S) {
-  let maybe_system: Option<&'static CSystem> = unsafe { SYSTEM.as_ref().map(|r| r.0) };
+  let maybe_system: Option<&'static CSystemApi> = unsafe { SYSTEM.as_ref().map(|r| r.0) };
   match maybe_system {
     Some(system) => {
       let vec = s.as_ref().to_null_terminated_utf8();
@@ -34,7 +34,7 @@ pub fn log<S: AsRef<str>>(s: S) {
 /// Note that this function may allocate, so must not be called before Playdate initialization.
 #[allow(dead_code)]
 pub fn error<S: AsRef<str>>(s: S) {
-  let maybe_system: Option<&'static CSystem> = unsafe { SYSTEM.as_ref().map(|r| r.0) };
+  let maybe_system: Option<&'static CSystemApi> = unsafe { SYSTEM.as_ref().map(|r| r.0) };
   match maybe_system {
     Some(system) => {
       let vec = s.as_ref().to_null_terminated_utf8();
@@ -51,7 +51,7 @@ pub fn error<S: AsRef<str>>(s: S) {
 /// Note that the simulator console is also sent to stderr.
 #[allow(dead_code)]
 pub fn log_c<S: AsRef<str>>(cstr: S) {
-  let maybe_system: Option<&'static CSystem> = unsafe { SYSTEM.as_ref().map(|r| r.0) };
+  let maybe_system: Option<&'static CSystemApi> = unsafe { SYSTEM.as_ref().map(|r| r.0) };
   match maybe_system {
     Some(system) => unsafe { system.logToConsole.unwrap()(cstr.as_ref().as_ptr()) },
     None => log_to_stdout_with_newline("debug::log() called before debug::initialize()"),

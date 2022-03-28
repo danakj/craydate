@@ -136,11 +136,11 @@ impl core::fmt::Display for TimeDelta {
 #[derive(Debug)]
 /// The timer is meant for measuring short times, and the longer it runs the more lossy it becomes.
 pub struct HighResolutionTimer<'a> {
-  csystem: &'static CSystem,
+  csystem: &'static CSystemApi,
   active_marker: &'a Cell<bool>,
 }
 impl<'a> HighResolutionTimer<'a> {
-  pub(crate) fn new(csystem: &'static CSystem, active_marker: &'a Cell<bool>) -> Self {
+  pub(crate) fn new(csystem: &'static CSystemApi, active_marker: &'a Cell<bool>) -> Self {
     active_marker.set(true);
     HighResolutionTimer {
       csystem,

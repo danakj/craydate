@@ -29,6 +29,7 @@ mod geometry;
 mod graphics;
 mod inputs;
 mod null_terminated;
+mod sound;
 mod time;
 
 #[doc(hidden)]
@@ -49,6 +50,7 @@ pub use font::*;
 pub use geometry::*;
 pub use graphics::*;
 pub use inputs::*;
+pub use sound::*;
 pub use time::{TimeDelta, TimeTicks};
 
 #[global_allocator]

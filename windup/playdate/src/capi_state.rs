@@ -11,16 +11,16 @@ use crate::bitmap::Bitmap;
 #[non_exhaustive]
 #[derive(Debug)]
 pub struct CApiState {
-  pub capi: &'static CApi,
-  pub cdisplay: &'static CDisplay,
-  pub csystem: &'static CSystem,
-  pub cfile: &'static CFile,
-  pub cgraphics: &'static CGraphics,
-  pub csound: &'static CSound,
+  pub capi: &'static CPlaydateApi,
+  pub cdisplay: &'static CDisplayApi,
+  pub csystem: &'static CSystemApi,
+  pub cfile: &'static CFileApi,
+  pub cgraphics: &'static CGraphicsApi,
+  pub csound: &'static CSoundApi,
   pub executor: NonNull<Executor>,
 
   pub frame_number: Cell<u64>,
-  pub peripherals_enabled: Cell<PDPeripherals>,
+  pub peripherals_enabled: Cell<Peripherals>,
   // Tracks the button state for the current and previous frame respectively.
   pub button_state_per_frame: Cell<[Option<PDButtonsSet>; 2]>,
   pub stack: RefCell<ContextStack>,
@@ -30,7 +30,7 @@ pub struct CApiState {
   pub font_generation: Cell<usize>,
 }
 impl CApiState {
-  pub fn new(capi: &'static CApi) -> CApiState {
+  pub fn new(capi: &'static CPlaydateApi) -> CApiState {
     CApiState {
       cgraphics: unsafe { &*capi.graphics },
       csystem: unsafe { &*capi.system },
@@ -40,7 +40,7 @@ impl CApiState {
       capi,
       executor: unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(Executor::new()))) },
       frame_number: Cell::new(0),
-      peripherals_enabled: Cell::new(PDPeripherals::kNone),
+      peripherals_enabled: Cell::new(Peripherals::kNone),
       button_state_per_frame: Cell::new([None, None]),
       stack: RefCell::new(ContextStack::new()),
       stencil_generation: Cell::new(0),

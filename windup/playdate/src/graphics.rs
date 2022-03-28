@@ -434,7 +434,7 @@ impl Graphics {
 
   /// Draws the current FPS on the screen at the given (`x`, `y`) coordinates.
   pub fn draw_fps(&mut self, x: i32, y: i32) {
-    // This function is part of Playdate CSystem, not CGraphics, but it's a function that draws
+    // This function is part of Playdate CSystemApi, not CGraphicsApi, but it's a function that draws
     // something to the screen, so its behaviour is more clear when part of the Graphics type.
     unsafe { self.state.csystem.drawFPS.unwrap()(x, y) }
   }

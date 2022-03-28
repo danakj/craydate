@@ -6,7 +6,7 @@ use crate::geometry::Vector3;
 pub struct Inputs {
   state: &'static CApiState,
   frame_number: u64,
-  peripherals_enabled: PDPeripherals,
+  peripherals_enabled: Peripherals,
   buttons: Buttons,
   crank: Crank,
 }
@@ -17,7 +17,7 @@ impl Inputs {
   pub(crate) fn new(
     state: &'static CApiState,
     frame_number: u64,
-    peripherals_enabled: PDPeripherals,
+    peripherals_enabled: Peripherals,
     button_state_per_frame: &[PDButtonsSet; 2],
   ) -> Self {
     let crank = if unsafe { state.csystem.isCrankDocked.unwrap()() != 0 } {
@@ -48,7 +48,7 @@ impl Inputs {
   /// These values are only present if the accelerometer is enabled via `System::enable_devices()`,
   /// otherwise it returns None.
   pub fn accelerometer(&self) -> Option<Vector3<f32>> {
-    if self.peripherals_enabled & PDPeripherals::kAccelerometer == PDPeripherals::kAccelerometer {
+    if self.peripherals_enabled & Peripherals::kAccelerometer == Peripherals::kAccelerometer {
       let mut v = Vector3::default();
       unsafe { self.state.csystem.getAccelerometer.unwrap()(&mut v.x, &mut v.y, &mut v.z) }
       Some(v)
@@ -124,7 +124,7 @@ pub enum ButtonEvent {
 /// The state of all buttons, along with changes since the last frame.
 #[derive(Debug)]
 pub struct Buttons {
-  current: PDButtons,
+  current: CButtons,
   up_events: [Option<ButtonEvent>; 3],
   down_events: [Option<ButtonEvent>; 3],
   left_events: [Option<ButtonEvent>; 3],
@@ -136,18 +136,18 @@ impl Buttons {
   fn new(button_state_per_frame: &[PDButtonsSet; 2]) -> Self {
     Buttons {
       current: button_state_per_frame[0].current,
-      up_events: Self::compute_events(&button_state_per_frame, PDButtons::kButtonUp),
-      down_events: Self::compute_events(&button_state_per_frame, PDButtons::kButtonDown),
-      left_events: Self::compute_events(&button_state_per_frame, PDButtons::kButtonLeft),
-      right_events: Self::compute_events(&button_state_per_frame, PDButtons::kButtonRight),
-      b_events: Self::compute_events(&button_state_per_frame, PDButtons::kButtonB),
-      a_events: Self::compute_events(&button_state_per_frame, PDButtons::kButtonA),
+      up_events: Self::compute_events(&button_state_per_frame, CButtons::kButtonUp),
+      down_events: Self::compute_events(&button_state_per_frame, CButtons::kButtonDown),
+      left_events: Self::compute_events(&button_state_per_frame, CButtons::kButtonLeft),
+      right_events: Self::compute_events(&button_state_per_frame, CButtons::kButtonRight),
+      b_events: Self::compute_events(&button_state_per_frame, CButtons::kButtonB),
+      a_events: Self::compute_events(&button_state_per_frame, CButtons::kButtonA),
     }
   }
 
   /// Infer a sequence of events for a button between 2 frames by combining the button's last pushed
   /// state, current pushed state, and whether a push and/or release happened in between frames.
-  fn compute_events(frames: &[PDButtonsSet; 2], button: PDButtons) -> [Option<ButtonEvent>; 3] {
+  fn compute_events(frames: &[PDButtonsSet; 2], button: CButtons) -> [Option<ButtonEvent>; 3] {
     // Last frame: pushed.
     if frames[1].current & button == button {
       // Last frame: pushed. || Current frame: [released].
@@ -219,8 +219,8 @@ impl Buttons {
   /// Helper function to convert the Playdate API bitmask to the ButtonState enum for a single
   /// button.
   #[inline]
-  fn current_state(&self, button: PDButtons) -> ButtonState {
-    if self.current & button != PDButtons(0) {
+  fn current_state(&self, button: CButtons) -> ButtonState {
+    if self.current & button != CButtons(0) {
       ButtonState::Pushed
     } else {
       ButtonState::Released
@@ -279,41 +279,41 @@ impl Buttons {
   /// Prefer to use the events functions to track button press and release, as this function would
   /// miss push+release sequences that are faster than a single frame.
   pub fn up_state(&self) -> ButtonState {
-    self.current_state(PDButtons::kButtonUp)
+    self.current_state(CButtons::kButtonUp)
   }
   /// Returns the current state of the `Down` button.
   ///
   /// Prefer to use the events functions to track button press and release, as this function would
   /// miss push+release sequences that are faster than a single frame.
   pub fn down_state(&self) -> ButtonState {
-    self.current_state(PDButtons::kButtonDown)
+    self.current_state(CButtons::kButtonDown)
   }
   /// Returns the current state of the `Left` button.
   ///
   /// Prefer to use the events functions to track button press and release, as this function would
   /// miss push+release sequences that are faster than a single frame.
   pub fn left_state(&self) -> ButtonState {
-    self.current_state(PDButtons::kButtonLeft)
+    self.current_state(CButtons::kButtonLeft)
   }
   /// Returns the current state of the `Right` button.
   ///
   /// Prefer to use the events functions to track button press and release, as this function would
   /// miss push+release sequences that are faster than a single frame.
   pub fn right_state(&self) -> ButtonState {
-    self.current_state(PDButtons::kButtonRight)
+    self.current_state(CButtons::kButtonRight)
   }
   /// Returns the current state of the `B` button.
   ///
   /// Prefer to use the events functions to track button press and release, as this function would
   /// miss push+release sequences that are faster than a single frame.
   pub fn b_state(&self) -> ButtonState {
-    self.current_state(PDButtons::kButtonB)
+    self.current_state(CButtons::kButtonB)
   }
   /// Returns the current state of the `A` button.
   ///
   /// Prefer to use the events functions to track button press and release, as this function would
   /// miss push+release sequences that are faster than a single frame.
   pub fn a_state(&self) -> ButtonState {
-    self.current_state(PDButtons::kButtonA)
+    self.current_state(CButtons::kButtonA)
   }
 }

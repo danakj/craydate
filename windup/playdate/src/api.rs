@@ -9,6 +9,7 @@ use crate::display::Display;
 use crate::executor::Executor;
 use crate::file::File;
 use crate::graphics::Graphics;
+use crate::sound::Sound;
 use crate::time::{HighResolutionTimer, TimeTicks, WallClockTime};
 use crate::String;
 
@@ -18,6 +19,7 @@ pub struct Api {
   pub display: Display,
   pub graphics: Graphics,
   pub file: File,
+  pub sound: Sound,
 }
 impl Api {
   pub(crate) fn new(state: &'static CApiState) -> Api {
@@ -26,6 +28,7 @@ impl Api {
       display: Display::new(state),
       graphics: Graphics::new(state),
       file: File::new(state),
+      sound: Sound::new(state),
     }
   }
 }
@@ -153,7 +156,7 @@ impl System {
   /// By default, the accelerometer is disabled to save (a small amount of) power. Once enabled,
   /// accelerometer data is not available until the next frame, and will be accessible from the
   /// output of `FrameWatcher::next()`.
-  pub fn enable_peripherals(&mut self, which: PDPeripherals) {
+  pub fn enable_peripherals(&mut self, which: Peripherals) {
     self.state.peripherals_enabled.set(which);
     unsafe { self.state.csystem.setPeripheralsEnabled.unwrap()(which) }
   }

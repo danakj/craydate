@@ -18,7 +18,7 @@ pub struct GameConfig {
 
 // A placeholder to avoid exposing the type/value to playdate's dependent.
 #[repr(transparent)]
-pub struct EventHandler1(*mut CApi);
+pub struct EventHandler1(*mut CPlaydateApi);
 
 // A placeholder to avoid exposing the type/value to playdate's dependent.
 #[repr(transparent)]
@@ -33,11 +33,11 @@ pub fn initialize(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3, co
   let event = eh2.0;
   let _arg = eh3.0;
 
-  // SAFETY: We have made a shared reference to the `CApi`. Only refer to the object through
-  // the reference hereafter. We can ensure that by never passing a pointer to the `CApi`
-  // or any pointer or reference to `CSystem` elsewhere.
-  let api: &CApi = unsafe { &(*api_ptr) };
-  let system: &CSystem = unsafe { &(*api.system) };
+  // SAFETY: We have made a shared reference to the `CPlaydateApi`. Only refer to the object through
+  // the reference hereafter. We can ensure that by never passing a pointer to the `CPlaydateApi`
+  // or any pointer or reference to `CSystemApi` elsewhere.
+  let api: &CPlaydateApi = unsafe { &(*api_ptr) };
+  let system: &CSystemApi = unsafe { &(*api.system) };
 
   if event == CSystemEvent::kEventInit {
     // SAFETY: Do not allocate before the GLOBAL_ALLOCATOR is set up here, or we will crash
@@ -92,9 +92,9 @@ extern "C" fn update_callback(capi_ptr: *mut c_void) -> i32 {
 
   let buttons_set = unsafe {
     let mut set = PDButtonsSet {
-      current: PDButtons(0),
-      pushed: PDButtons(0),
-      released: PDButtons(0),
+      current: CButtons(0),
+      pushed: CButtons(0),
+      released: CButtons(0),
     };
     capi.csystem.getButtonState.unwrap()(&mut set.current, &mut set.pushed, &mut set.released);
     set
