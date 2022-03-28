@@ -14,7 +14,7 @@
 - 6.2 Audio
 - 6.3 Display **[ DONE ]**
 - 6.4 Filesystem **[ DONE ]**
-- 6.5 Graphics **[ IN PROGRESS ]**
+- 6.5 Graphics **[ DONE ]** (except BitmapTables due to C API being incomplete)
 - 6.6 Video
 - 6.7 Input **[ DONE ]**
 - 6.8 Device Auto Lock **[ DONE ]**
