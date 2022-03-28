@@ -16,6 +16,7 @@ pub struct CApiState {
   pub csystem: &'static CSystem,
   pub cfile: &'static CFile,
   pub cgraphics: &'static CGraphics,
+  pub csound: &'static CSound,
   pub executor: NonNull<Executor>,
 
   pub frame_number: Cell<u64>,
@@ -35,6 +36,7 @@ impl CApiState {
       csystem: unsafe { &*capi.system },
       cdisplay: unsafe { &*capi.display },
       cfile: unsafe { &*capi.file },
+      csound: unsafe { &* capi.sound },
       capi,
       executor: unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(Executor::new()))) },
       frame_number: Cell::new(0),
