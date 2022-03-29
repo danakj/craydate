@@ -1,118 +1,54 @@
-use alloc::collections::BTreeMap;
-use core::cell::{Ref, RefCell, RefMut};
+use alloc::rc::{Rc, Weak};
+use core::mem::ManuallyDrop;
 
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ChannelId(usize);
-impl ChannelId {
-  // 0 is never returned by gen_next_channel_id(), and will refer to the default system-owned
-  // channel.
-  const DEFAULT_CHANNEL: ChannelId = ChannelId(0);
-}
-impl From<usize> for ChannelId {
-  fn from(u: usize) -> Self {
-    ChannelId(u)
-  }
-}
-
-#[derive(Debug)]
-pub struct Channels<Key = ChannelId, Value = *mut CSoundChannel> {
-  state: &'static CApiState,
-  last_id: Key,
-  map: BTreeMap<Key, RefCell<Value>>,
-}
-impl Channels<ChannelId, *mut CSoundChannel> {
-  fn new(state: &'static CApiState) -> Self {
-    let mut map = BTreeMap::new();
-    map.insert(
-      ChannelId::DEFAULT_CHANNEL,
-      RefCell::new(unsafe { state.csound.getDefaultChannel.unwrap()() }),
-    );
-    Channels {
-      state,
-      last_id: ChannelId::DEFAULT_CHANNEL,
-      map,
-    }
-  }
-  fn gen_next_channel_id(&mut self) -> ChannelId {
-    // This function must never return DEFAULT_CHANNEL.
-    self.last_id = ChannelId(self.last_id.0 + 1);
-    assert!(self.last_id != ChannelId::DEFAULT_CHANNEL);
-    self.last_id
-  }
-
-  pub fn default_channel(&self) -> Result<SoundChannel<'_>, Error> {
-    self.channel(ChannelId::DEFAULT_CHANNEL)
-  }
-
-  pub fn default_channel_mut(&self) -> Result<SoundChannelMut<'_>, Error> {
-    self.channel_mut(ChannelId::DEFAULT_CHANNEL)
-  }
-
-  pub fn channel(&self, channel_id: ChannelId) -> Result<SoundChannel<'_>, Error> {
-    let borrow = self.map.get(&channel_id).unwrap().try_borrow()?;
-    let ptr = *borrow;
-    Ok(SoundChannel {
-      state: self.state,
-      ptr,
-      _borrow: Some(borrow),
-    })
-  }
-
-  pub fn channel_mut(&self, channel_id: ChannelId) -> Result<SoundChannelMut<'_>, Error> {
-    let borrow_mut = self.map.get(&channel_id).unwrap().try_borrow_mut()?;
-    let ptr = *borrow_mut;
-    Ok(SoundChannelMut {
-      immut: SoundChannel {
-        state: self.state,
-        ptr,
-        _borrow: None,
-      },
-      _borrow_mut: borrow_mut,
-    })
-  }
-
-  pub fn new_channel(&mut self) -> (ChannelId, SoundChannelMut<'_>) {
-    let id = self.gen_next_channel_id();
-    let channel_api = self.state.csound.channel;
-    let ptr = unsafe { (*channel_api).newChannel.unwrap()() };
-    let borrow_mut = self.map.entry(id).or_insert(RefCell::new(ptr)).borrow_mut();
-    let channel = SoundChannelMut {
-      immut: SoundChannel {
-        state: self.state,
-        ptr,
-        _borrow: None,
-      },
-      _borrow_mut: borrow_mut,
-    };
-    (id, channel)
-  }
-
-  pub fn delete_channel(&mut self, channel_id: ChannelId) -> Result<(), Error> {
-    let channel_api = self.state.csound.channel;
-    let cell = self.map.remove(&channel_id).ok_or(Error::NotFoundError())?;
-    // No try_borrow() here, as `&mut self` implies there's no references held to any channels at
-    // the moment. Channel references hold a stacked borrow of `self`.
-    let ptr = *cell.borrow();
-    unsafe { (*channel_api).freeChannel.unwrap()(ptr) };
-    Ok(())
-  }
-}
-
 #[derive(Debug)]
 pub struct Sound {
   state: &'static CApiState,
-  pub channels: Channels,
+  default_channel: SoundChannelRef,
 }
 impl Sound {
   pub(crate) fn new(state: &'static CApiState) -> Self {
     Sound {
       state,
-      channels: Channels::new(state),
+      default_channel: SoundChannelRef {
+        ptr: Rc::new(unsafe { state.csound.getDefaultChannel.unwrap()() }),
+        state,
+      },
     }
+  }
+
+  pub fn default_channel(&self) -> &SoundChannelRef {
+    &self.default_channel
+  }
+  pub fn default_channel_mut(&mut self) -> &mut SoundChannelRef {
+    &mut self.default_channel
+  }
+
+  pub fn new_channel(&self) -> SoundChannel {
+    SoundChannel {
+      cref: SoundChannelRef {
+        ptr: Rc::new(unsafe { (*self.state.csound.channel).newChannel.unwrap()() }),
+        state: self.state,
+      },
+      added: false,
+    }
+  }
+  pub fn new_fileplayer(&self) -> FilePlayer {
+    FilePlayer::new(self.state)
+  }
+
+  pub fn add_channel(&mut self, channel: &mut SoundChannel) {
+    channel.set_added(true);
+    unsafe { self.state.csound.addChannel.unwrap()(*channel.cref.ptr) };
+  }
+
+  pub fn remove_channel(&mut self, channel: &mut SoundChannel) {
+    channel.set_added(false);
+    unsafe { self.state.csound.removeChannel.unwrap()(*channel.cref.ptr) }
   }
 
   /// Returns the sound engine’s current time value, in units of sample frames, 44,100 per second.
@@ -136,30 +72,169 @@ impl SampleFrames {
 }
 
 #[derive(Debug)]
-pub struct SoundChannel<'a> {
-  state: &'static CApiState,
-  ptr: *mut CSoundChannel,
-  // This field is None when the SoundChannel is the field of a SoundChannelMut. The borrow in that
-  // case lives in the SoundChannelMut.
-  _borrow: Option<Ref<'a, *mut CSoundChannel>>,
+pub struct SoundChannel {
+  cref: SoundChannelRef,
+  added: bool,
 }
-impl SoundChannel<'_> {
-  /// Gets the volume for the channel, in the range [0-1].
-  pub fn volume(&self) -> f32 {
-    let channel_api = self.state.csound.channel;
-    unsafe { (*channel_api).getVolume.unwrap()(self.ptr) }
+#[derive(Debug)]
+pub struct SoundChannelRef {
+  state: &'static CApiState,
+  // This class holds an Rc but is not Clone. This allows it to know when the Rc is going away, in
+  // order to clean up other related stuff.
+  ptr: Rc<*mut CSoundChannel>,
+}
+
+impl SoundChannel {
+  fn set_added(&mut self, added: bool) {
+    self.added = added
   }
 }
 
-#[derive(Debug)]
-pub struct SoundChannelMut<'a> {
-  immut: SoundChannel<'a>,
-  _borrow_mut: RefMut<'a, *mut CSoundChannel>,
+impl SoundChannelRef {
+  /// Gets the volume for the channel, in the range [0-1].
+  // TODO: Replace the ouput with a Type<f32> that clamps the value to 0-1.
+  pub fn volume(&self) -> f32 {
+    unsafe { (*self.state.csound.channel).getVolume.unwrap()(*self.ptr) }
+  }
+
+  pub fn attach_source<T: AsMut<SoundSource>>(&mut self, source: &mut T) {
+    source.as_mut().attach_to_channel(Rc::downgrade(&self.ptr));
+  }
+  pub fn detach_source<T: AsMut<SoundSource>>(&mut self, source: &mut T) -> Result<(), Error> {
+    source.as_mut().detach_from_channel(self.ptr.clone())
+  }
 }
-impl<'a> core::ops::Deref for SoundChannelMut<'a> {
-  type Target = SoundChannel<'a>;
+
+impl Drop for SoundChannel {
+  fn drop(&mut self) {
+    if self.added {
+      unsafe { self.state.csound.removeChannel.unwrap()(*self.ptr) }
+    }
+    unsafe { (*self.state.csound.channel).freeChannel.unwrap()(*self.ptr) }
+  }
+}
+
+impl core::ops::Deref for SoundChannel {
+  type Target = SoundChannelRef;
 
   fn deref(&self) -> &Self::Target {
-    &self.immut
+    &self.cref
+  }
+}
+impl core::ops::DerefMut for SoundChannel {
+  fn deref_mut(&mut self) -> &mut Self::Target {
+    &mut self.cref
+  }
+}
+impl core::borrow::Borrow<SoundChannelRef> for SoundChannel {
+  fn borrow(&self) -> &SoundChannelRef {
+    self // Calls Deref.
+  }
+}
+impl AsRef<SoundChannelRef> for SoundChannel {
+  fn as_ref(&self) -> &SoundChannelRef {
+    self // Calls Deref.
+  }
+}
+
+pub struct SoundSourceVolume {
+  pub left: f32,  // TODO: Replace with some Type<f32> that clamps the value to 0-1.
+  pub right: f32, // TODO: Replace with some Type<f32> that clamps the value to 0-1.
+}
+
+pub struct SoundSource {
+  state: &'static CApiState,
+  ptr: *mut CSoundSource,
+  // The `channel` is set when the SoundSource has been added to the SoundChannel.
+  channel: Option<Weak<*mut CSoundChannel>>, // Don't hold a borrow on SoundChannel.
+}
+
+impl SoundSource {
+  /// Attach the SoundSource to the `channel` if it is not already attached to a channel.
+  fn attach_to_channel(&mut self, channel: Weak<*mut CSoundChannel>) {
+    // Mimic the Playdate API behaviour. Attaching a Source to a Channel when it's already attached
+    // does nothing.
+    if self.channel.is_none() {
+      let rc_ptr = unsafe { channel.upgrade().unwrap_unchecked() };
+      unsafe { (*self.state.csound.channel).addSource.unwrap()(*rc_ptr, self.ptr) };
+      self.channel = Some(channel);
+    }
+  }
+
+  /// Removes the SoundSource from the `channel` if it was currently attached.
+  ///
+  /// If the SoundSource is not attached to `channel`, then `Error::NotFoundError` is returned.
+  fn detach_from_channel(&mut self, channel: Rc<*mut CSoundChannel>) -> Result<(), Error> {
+    if let Some(attached_channel) = &mut self.channel {
+      if attached_channel.ptr_eq(&Rc::downgrade(&channel)) {
+        let r = unsafe { (*self.state.csound.channel).removeSource.unwrap()(*channel, self.ptr) };
+        assert!(r != 0);
+        return Ok(());
+      }
+    }
+    Err(Error::NotFoundError())
+  }
+
+  pub fn volume(&self) -> SoundSourceVolume {
+    let mut v = SoundSourceVolume {
+      left: 0.0,
+      right: 0.0,
+    };
+    unsafe { (*self.state.csound.source).getVolume.unwrap()(self.ptr, &mut v.left, &mut v.right) };
+    v
+  }
+}
+
+impl Drop for SoundSource {
+  fn drop(&mut self) {
+    if let Some(weak_ptr) = self.channel.take() {
+      if let Some(rc_ptr) = weak_ptr.upgrade() {
+        let r = self.detach_from_channel(rc_ptr);
+        assert!(r.is_ok()); // Otherwise, `self.channel` was lying.
+      }
+    }
+  }
+}
+
+pub struct FilePlayer {
+  source: ManuallyDrop<SoundSource>,
+  ptr: *mut CFilePlayer,
+}
+impl FilePlayer {
+  fn new(state: &'static CApiState) -> Self {
+    let ptr = unsafe { (*state.csound.fileplayer).newPlayer.unwrap()() };
+    FilePlayer {
+      source: ManuallyDrop::new(SoundSource {
+        state,
+        ptr: ptr as *mut CSoundSource,
+        channel: None,
+      }),
+      ptr,
+    }
+  }
+
+  pub fn as_source(&self) -> &SoundSource {
+      self.as_ref()
+  }
+  pub fn as_source_mut(&mut self) -> &mut SoundSource {
+    self.as_mut()
+}
+}
+impl Drop for FilePlayer {
+  fn drop(&mut self) {
+    // Ensure the SoundSource has a chance to clean up before it is freed.
+    unsafe { ManuallyDrop::drop(&mut self.source) };
+    unsafe { (*self.source.state.csound.fileplayer).freePlayer.unwrap()(self.ptr) };
+  }
+}
+
+impl AsRef<SoundSource> for FilePlayer {
+  fn as_ref(&self) -> &SoundSource {
+    &self.source
+  }
+}
+impl AsMut<SoundSource> for FilePlayer {
+  fn as_mut(&mut self) -> &mut SoundSource {
+    &mut self.source
   }
 }
