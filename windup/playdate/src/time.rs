@@ -9,8 +9,15 @@ use crate::ctypes::*;
 /// retain the TimeTicks type instead of unwrapping a primitive type from it.
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct TimeTicks(pub(crate) u32);
+pub struct TimeTicks(pub(crate) u32);  // Stores milliseconds.
 impl TimeTicks {
+  pub fn from_milliseconds(millis: u32) -> Self {
+    TimeTicks(millis)
+  }
+  pub fn from_seconds_lossy(sec: f32) -> Self {
+    TimeTicks((sec * 1000f32) as u32)
+  }
+
   // Returns the number of hours passed in the time, truncating any non-whole hours.
   pub fn total_whole_hours(&self) -> u32 {
     self.0 / (1000 * 60 * 60)

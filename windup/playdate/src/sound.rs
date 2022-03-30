@@ -3,6 +3,7 @@ use core::mem::ManuallyDrop;
 
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
+use crate::null_terminated::ToNullTerminatedString;
 use crate::*;
 
 #[derive(Debug)]
@@ -45,7 +46,6 @@ impl Sound {
     channel.set_added(true);
     unsafe { self.state.csound.addChannel.unwrap()(*channel.cref.ptr) };
   }
-
   pub fn remove_channel(&mut self, channel: &mut SoundChannel) {
     channel.set_added(false);
     unsafe { self.state.csound.removeChannel.unwrap()(*channel.cref.ptr) }
@@ -175,6 +175,7 @@ impl SoundSource {
     Err(Error::NotFoundError())
   }
 
+  /// Gets the playback volume (0.0 - 1.0) for left and right channels of the source.
   pub fn volume(&self) -> SoundSourceVolume {
     let mut v = SoundSourceVolume {
       left: 0.0,
@@ -182,6 +183,20 @@ impl SoundSource {
     };
     unsafe { (*self.state.csound.source).getVolume.unwrap()(self.ptr, &mut v.left, &mut v.right) };
     v
+  }
+  /// Sets the playback volume (0.0 - 1.0) for left and right channels of the source.
+  pub fn set_volume(&mut self, v: SoundSourceVolume) {
+    unsafe {
+      (*self.state.csound.source).setVolume.unwrap()(
+        self.ptr,
+        v.left.clamp(0f32, 1f32),
+        v.right.clamp(0f32, 1f32),
+      )
+    }
+  }
+  /// Returns whether the source is currently playing.
+  pub fn is_playing(&self) -> bool {
+    unsafe { (*self.state.csound.source).isPlaying.unwrap()(self.ptr) != 0 }
   }
 }
 
@@ -212,13 +227,123 @@ impl FilePlayer {
       ptr,
     }
   }
-
+  fn as_ptr(&self) -> *mut CFilePlayer {
+    self.source.ptr as *mut CFilePlayer
+  }
   pub fn as_source(&self) -> &SoundSource {
-      self.as_ref()
+    self.as_ref()
   }
   pub fn as_source_mut(&mut self) -> &mut SoundSource {
     self.as_mut()
-}
+  }
+
+  // TODO: setFinishCallback
+
+  /// Prepares the player to steam the file at `path`.
+  pub fn load_file(&mut self, path: &str) {
+    unsafe {
+      (*self.source.state.csound.fileplayer).loadIntoPlayer.unwrap()(
+        self.as_ptr(),
+        path.to_null_terminated_utf8().as_ptr(),
+      )
+    }
+  }
+
+  /// Returns the length, in seconds, of the file loaded into player.
+  pub fn len(&self) -> TimeTicks {
+    let f = unsafe { (*self.source.state.csound.fileplayer).getLength.unwrap()(self.as_ptr()) };
+    TimeTicks::from_seconds_lossy(f)
+  }
+  /// Sets the buffer length of the player to the given length.
+  pub fn set_len(&mut self, time: TimeTicks) {
+    unsafe {
+      (*self.source.state.csound.fileplayer).setBufferLength.unwrap()(
+        self.as_ptr(),
+        time.to_seconds(),
+      )
+    };
+  }
+
+  /// Pauses the file player.
+  pub fn pause(&mut self) {
+    unsafe { (*self.source.state.csound.fileplayer).pause.unwrap()(self.as_ptr()) }
+  }
+  /// Starts playing the file player.
+  ///
+  /// If repeat is greater than one, it loops the given number of times. If zero, it loops endlessly
+  /// until it is stopped with `stop()`.
+  pub fn play(&mut self, repeat: i32) {
+    // TODO: Return play()'s int output value? What is it?
+    unsafe { (*self.source.state.csound.fileplayer).play.unwrap()(self.as_ptr(), repeat) };
+  }
+  /// Stops playing the file.
+  pub fn stop(&mut self) {
+    unsafe { (*self.source.state.csound.fileplayer).stop.unwrap()(self.as_ptr()) }
+  }
+  /// Returns whether the player has underrun.
+  pub fn did_underrun(&self) -> bool {
+    unsafe { (*self.source.state.csound.fileplayer).didUnderrun.unwrap()(self.as_ptr()) != 0 }
+  }
+  /// Sets the start and end of the loop region for playback.
+  ///
+  /// If `end` is `None`, the end of the player's buffer is used.
+  pub fn set_loop_range(&mut self, start: TimeTicks, end: Option<TimeTicks>) {
+    unsafe {
+      (*self.source.state.csound.fileplayer).setLoopRange.unwrap()(
+        self.as_ptr(),
+        start.to_seconds(),
+        end.map_or(0f32, TimeTicks::to_seconds),
+      )
+    }
+  }
+  /// Sets the current offset for the player.
+  pub fn set_offset(&mut self, offset: TimeTicks) {
+    unsafe {
+      (*self.source.state.csound.fileplayer).setOffset.unwrap()(self.as_ptr(), offset.to_seconds())
+    }
+  }
+  /// Gets the current offset for the player.
+  pub fn offset(&self) -> TimeTicks {
+    TimeTicks::from_seconds_lossy(unsafe {
+      (*self.source.state.csound.fileplayer).getOffset.unwrap()(self.as_ptr())
+    })
+  }
+  /// Sets the playback rate for the player.
+  ///
+  /// 1.0 is normal speed, 0.5 is down an octave, 2.0 is up an octave, etc. Unlike sampleplayers,
+  /// fileplayers can’t play in reverse (i.e., rate < 0).
+  pub fn set_playback_rate(&mut self, rate: f32) {
+    unsafe { (*self.source.state.csound.fileplayer).setRate.unwrap()(self.as_ptr(), rate) }
+  }
+  /// Gets the playback rate for the player.
+  pub fn playback_rate(&self) -> f32 {
+    unsafe { (*self.source.state.csound.fileplayer).getRate.unwrap()(self.as_ptr()) }
+  }
+  /// If flag evaluates to true, the player will restart playback (after an audible stutter) as soon
+  /// as data is available.
+  pub fn set_stop_on_underrun(&mut self, stop: bool) {
+    unsafe {
+      (*self.source.state.csound.fileplayer).setStopOnUnderrun.unwrap()(self.as_ptr(), stop as i32)
+    }
+  }
+  /// Changes the volume of the fileplayer to `volume` over a length of `num_samples` sample frames.
+  /// 
+  /// TODO: then calls the provided callback (if given).
+  pub fn fade_volume(
+    &mut self,
+    volume: SoundSourceVolume,
+    num_samples: i32, /* TODO: callback */
+  ) {
+    unsafe {
+      (*self.source.state.csound.fileplayer).fadeVolume.unwrap()(
+        self.as_ptr(),
+        volume.left.clamp(0f32, 1f32),
+        volume.right.clamp(0f32, 1f32),
+        num_samples,
+        None,
+      )
+    }
+  }
 }
 impl Drop for FilePlayer {
   fn drop(&mut self) {

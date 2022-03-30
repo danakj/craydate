@@ -75,7 +75,9 @@ impl System {
 
   /// Returns the current time in milliseconds.
   pub fn current_time(&self) -> TimeTicks {
-    TimeTicks(unsafe { self.state.csystem.getCurrentTimeMilliseconds.unwrap()() })
+    TimeTicks::from_milliseconds(unsafe {
+      self.state.csystem.getCurrentTimeMilliseconds.unwrap()()
+    })
   }
 
   /// Returns the current wall-clock time.
@@ -288,18 +290,18 @@ pub enum Error {
 }
 impl From<core::cell::BorrowError> for Error {
   fn from(e: core::cell::BorrowError) -> Self {
-      Error::BorrowError(e)
+    Error::BorrowError(e)
   }
 }
 impl From<core::cell::BorrowMutError> for Error {
   fn from(e: core::cell::BorrowMutError) -> Self {
-      Error::BorrowMutError(e)
+    Error::BorrowMutError(e)
   }
 }
 impl From<String> for Error {
-    fn from(s: String) -> Self {
-        Error::String(s)
-    }
+  fn from(s: String) -> Self {
+    Error::String(s)
+  }
 }
 impl From<&str> for Error {
   fn from(s: &str) -> Self {
@@ -315,10 +317,10 @@ impl From<&mut str> for Error {
 impl core::fmt::Debug for Error {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     match self {
-        Error::BorrowError(e) => write!(f, "Error(BorrowError({:?}))", e),
-        Error::BorrowMutError(e) => write!(f, "Error(BorrowMutError({:?}))", e),
-        Error::NotFoundError() => write!(f, "Error(NotFoundError())"),
-        Error::String(e) => write!(f, "Error(String({:?}))", e),
+      Error::BorrowError(e) => write!(f, "Error(BorrowError({:?}))", e),
+      Error::BorrowMutError(e) => write!(f, "Error(BorrowMutError({:?}))", e),
+      Error::NotFoundError() => write!(f, "Error(NotFoundError())"),
+      Error::String(e) => write!(f, "Error(String({:?}))", e),
     }
   }
 }
