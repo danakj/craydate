@@ -34,8 +34,8 @@ pub struct Executor {
   // The executor provides async "blocking" tasks, and keeps track of the Wakers that are
   // currently waiting for them.
   //
-  // These are waiting for the `frame` to increment.
-  pub wakers_for_update_callback: Vec<Waker>,
+  // These are waiting for system events.
+  pub system_wakers: Vec<Waker>,
 }
 impl Executor {
   pub fn new() -> Executor {
@@ -45,7 +45,7 @@ impl Executor {
       // There will only ever be a single such waker unless we introduce a spawn()
       // or similar function that has a 2nd async function running in tandem with the
       // main function (ie. when it blocks on an async thing).
-      wakers_for_update_callback: Vec::with_capacity(1),
+      system_wakers: Vec::with_capacity(1),
     }
   }
 
@@ -56,9 +56,9 @@ impl Executor {
     exec.first_poll_main = true;
   }
 
-  pub fn add_waker_for_update_callback(exec_ptr: *mut Executor, waker: &Waker) {
+  pub fn add_waker_for_system_event(exec_ptr: *mut Executor, waker: &Waker) {
     let exec = unsafe { Self::as_mut_ref(exec_ptr) };
-    exec.wakers_for_update_callback.push(waker.clone());
+    exec.system_wakers.push(waker.clone());
   }
 
   pub fn _spawn(_exec_ptr: *mut Executor, _future: Pin<Box<dyn Future<Output = ()>>>) {
@@ -80,6 +80,18 @@ impl Executor {
     }
 
     // TODO: Other Futures given to spawn().
+  }
+
+  pub fn wake_system_wakers(exec_ptr: *mut Executor) {
+    let exec = unsafe { Self::as_mut_ref(exec_ptr) };
+    let wakers = core::mem::replace(&mut exec.system_wakers, Vec::with_capacity(1)).into_iter();
+    drop(exec);
+
+    for w in wakers {
+      // SAFETY: Waking a waker can execute arbitrary code, including going into Executor, so we
+      // must not be holding a reference to Executor. Thus we drop() the executor reference above.
+      w.wake()
+    }
   }
 
   // SAFETY: The reference must not be alive when leaving the Executor class, including by calling a Waker or

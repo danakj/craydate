@@ -8,16 +8,13 @@ use crate::*;
 
 #[derive(Debug)]
 pub struct Sound {
-  state: &'static CApiState,
   default_channel: SoundChannelRef,
 }
 impl Sound {
-  pub(crate) fn new(state: &'static CApiState) -> Self {
+  pub(crate) fn new() -> Self {
     Sound {
-      state,
       default_channel: SoundChannelRef {
-        ptr: Rc::new(unsafe { state.csound.getDefaultChannel.unwrap()() }),
-        state,
+        ptr: Rc::new(unsafe { CApiState::get().csound.getDefaultChannel.unwrap()() }),
       },
     }
   }
@@ -32,33 +29,32 @@ impl Sound {
   pub fn new_channel(&self) -> SoundChannel {
     SoundChannel {
       cref: SoundChannelRef {
-        ptr: Rc::new(unsafe { (*self.state.csound.channel).newChannel.unwrap()() }),
-        state: self.state,
+        ptr: Rc::new(unsafe { (*CApiState::get().csound.channel).newChannel.unwrap()() }),
       },
       added: false,
     }
   }
   pub fn new_fileplayer(&self) -> FilePlayer {
-    FilePlayer::new(self.state)
+    FilePlayer::new()
   }
 
   pub fn add_channel(&mut self, channel: &mut SoundChannel) {
     channel.set_added(true);
-    unsafe { self.state.csound.addChannel.unwrap()(*channel.cref.ptr) };
+    unsafe { CApiState::get().csound.addChannel.unwrap()(*channel.cref.ptr) };
   }
   pub fn remove_channel(&mut self, channel: &mut SoundChannel) {
     channel.set_added(false);
-    unsafe { self.state.csound.removeChannel.unwrap()(*channel.cref.ptr) }
+    unsafe { CApiState::get().csound.removeChannel.unwrap()(*channel.cref.ptr) }
   }
 
   /// Returns the sound engine’s current time value, in units of sample frames, 44,100 per second.
   pub fn current_sound_time(&self) -> SampleFrames {
-    SampleFrames(unsafe { self.state.csound.getCurrentTime.unwrap()() })
+    SampleFrames(unsafe { CApiState::get().csound.getCurrentTime.unwrap()() })
   }
 
   /// Force audio output to the given outputs, regardless of headphone status.
   pub fn set_active_outputs(&self, headphone: bool, speaker: bool) {
-    unsafe { self.state.csound.setOutputsActive.unwrap()(headphone as i32, speaker as i32) };
+    unsafe { CApiState::get().csound.setOutputsActive.unwrap()(headphone as i32, speaker as i32) };
   }
 }
 
@@ -78,7 +74,6 @@ pub struct SoundChannel {
 }
 #[derive(Debug)]
 pub struct SoundChannelRef {
-  state: &'static CApiState,
   // This class holds an Rc but is not Clone. This allows it to know when the Rc is going away, in
   // order to clean up other related stuff.
   ptr: Rc<*mut CSoundChannel>,
@@ -94,7 +89,7 @@ impl SoundChannelRef {
   /// Gets the volume for the channel, in the range [0-1].
   // TODO: Replace the ouput with a Type<f32> that clamps the value to 0-1.
   pub fn volume(&self) -> f32 {
-    unsafe { (*self.state.csound.channel).getVolume.unwrap()(*self.ptr) }
+    unsafe { (*CApiState::get().csound.channel).getVolume.unwrap()(*self.ptr) }
   }
 
   pub fn attach_source<T: AsMut<SoundSource>>(&mut self, source: &mut T) {
@@ -108,9 +103,9 @@ impl SoundChannelRef {
 impl Drop for SoundChannel {
   fn drop(&mut self) {
     if self.added {
-      unsafe { self.state.csound.removeChannel.unwrap()(*self.ptr) }
+      unsafe { CApiState::get().csound.removeChannel.unwrap()(*self.ptr) }
     }
-    unsafe { (*self.state.csound.channel).freeChannel.unwrap()(*self.ptr) }
+    unsafe { (*CApiState::get().csound.channel).freeChannel.unwrap()(*self.ptr) }
   }
 }
 
@@ -143,7 +138,6 @@ pub struct SoundSourceVolume {
 }
 
 pub struct SoundSource {
-  state: &'static CApiState,
   ptr: *mut CSoundSource,
   // The `channel` is set when the SoundSource has been added to the SoundChannel.
   channel: Option<Weak<*mut CSoundChannel>>, // Don't hold a borrow on SoundChannel.
@@ -156,7 +150,7 @@ impl SoundSource {
     // does nothing.
     if self.channel.is_none() {
       let rc_ptr = unsafe { channel.upgrade().unwrap_unchecked() };
-      unsafe { (*self.state.csound.channel).addSource.unwrap()(*rc_ptr, self.ptr) };
+      unsafe { (*CApiState::get().csound.channel).addSource.unwrap()(*rc_ptr, self.ptr) };
       self.channel = Some(channel);
     }
   }
@@ -167,7 +161,8 @@ impl SoundSource {
   fn detach_from_channel(&mut self, channel: Rc<*mut CSoundChannel>) -> Result<(), Error> {
     if let Some(attached_channel) = &mut self.channel {
       if attached_channel.ptr_eq(&Rc::downgrade(&channel)) {
-        let r = unsafe { (*self.state.csound.channel).removeSource.unwrap()(*channel, self.ptr) };
+        let r =
+          unsafe { (*CApiState::get().csound.channel).removeSource.unwrap()(*channel, self.ptr) };
         assert!(r != 0);
         return Ok(());
       }
@@ -181,13 +176,15 @@ impl SoundSource {
       left: 0.0,
       right: 0.0,
     };
-    unsafe { (*self.state.csound.source).getVolume.unwrap()(self.ptr, &mut v.left, &mut v.right) };
+    unsafe {
+      (*CApiState::get().csound.source).getVolume.unwrap()(self.ptr, &mut v.left, &mut v.right)
+    };
     v
   }
   /// Sets the playback volume (0.0 - 1.0) for left and right channels of the source.
   pub fn set_volume(&mut self, v: SoundSourceVolume) {
     unsafe {
-      (*self.state.csound.source).setVolume.unwrap()(
+      (*CApiState::get().csound.source).setVolume.unwrap()(
         self.ptr,
         v.left.clamp(0f32, 1f32),
         v.right.clamp(0f32, 1f32),
@@ -196,7 +193,7 @@ impl SoundSource {
   }
   /// Returns whether the source is currently playing.
   pub fn is_playing(&self) -> bool {
-    unsafe { (*self.state.csound.source).isPlaying.unwrap()(self.ptr) != 0 }
+    unsafe { (*CApiState::get().csound.source).isPlaying.unwrap()(self.ptr) != 0 }
   }
 }
 
@@ -216,11 +213,10 @@ pub struct FilePlayer {
   ptr: *mut CFilePlayer,
 }
 impl FilePlayer {
-  fn new(state: &'static CApiState) -> Self {
-    let ptr = unsafe { (*state.csound.fileplayer).newPlayer.unwrap()() };
+  fn new() -> Self {
+    let ptr = unsafe { (*CApiState::get().csound.fileplayer).newPlayer.unwrap()() };
     FilePlayer {
       source: ManuallyDrop::new(SoundSource {
-        state,
         ptr: ptr as *mut CSoundSource,
         channel: None,
       }),
@@ -242,7 +238,7 @@ impl FilePlayer {
   /// Prepares the player to steam the file at `path`.
   pub fn load_file(&mut self, path: &str) {
     unsafe {
-      (*self.source.state.csound.fileplayer).loadIntoPlayer.unwrap()(
+      (*CApiState::get().csound.fileplayer).loadIntoPlayer.unwrap()(
         self.as_ptr(),
         path.to_null_terminated_utf8().as_ptr(),
       )
@@ -251,13 +247,13 @@ impl FilePlayer {
 
   /// Returns the length, in seconds, of the file loaded into player.
   pub fn len(&self) -> TimeTicks {
-    let f = unsafe { (*self.source.state.csound.fileplayer).getLength.unwrap()(self.as_ptr()) };
+    let f = unsafe { (*CApiState::get().csound.fileplayer).getLength.unwrap()(self.as_ptr()) };
     TimeTicks::from_seconds_lossy(f)
   }
   /// Sets the buffer length of the player to the given length.
   pub fn set_len(&mut self, time: TimeTicks) {
     unsafe {
-      (*self.source.state.csound.fileplayer).setBufferLength.unwrap()(
+      (*CApiState::get().csound.fileplayer).setBufferLength.unwrap()(
         self.as_ptr(),
         time.to_seconds(),
       )
@@ -266,7 +262,7 @@ impl FilePlayer {
 
   /// Pauses the file player.
   pub fn pause(&mut self) {
-    unsafe { (*self.source.state.csound.fileplayer).pause.unwrap()(self.as_ptr()) }
+    unsafe { (*CApiState::get().csound.fileplayer).pause.unwrap()(self.as_ptr()) }
   }
   /// Starts playing the file player.
   ///
@@ -274,22 +270,22 @@ impl FilePlayer {
   /// until it is stopped with `stop()`.
   pub fn play(&mut self, repeat: i32) {
     // TODO: Return play()'s int output value? What is it?
-    unsafe { (*self.source.state.csound.fileplayer).play.unwrap()(self.as_ptr(), repeat) };
+    unsafe { (*CApiState::get().csound.fileplayer).play.unwrap()(self.as_ptr(), repeat) };
   }
   /// Stops playing the file.
   pub fn stop(&mut self) {
-    unsafe { (*self.source.state.csound.fileplayer).stop.unwrap()(self.as_ptr()) }
+    unsafe { (*CApiState::get().csound.fileplayer).stop.unwrap()(self.as_ptr()) }
   }
   /// Returns whether the player has underrun.
   pub fn did_underrun(&self) -> bool {
-    unsafe { (*self.source.state.csound.fileplayer).didUnderrun.unwrap()(self.as_ptr()) != 0 }
+    unsafe { (*CApiState::get().csound.fileplayer).didUnderrun.unwrap()(self.as_ptr()) != 0 }
   }
   /// Sets the start and end of the loop region for playback.
   ///
   /// If `end` is `None`, the end of the player's buffer is used.
   pub fn set_loop_range(&mut self, start: TimeTicks, end: Option<TimeTicks>) {
     unsafe {
-      (*self.source.state.csound.fileplayer).setLoopRange.unwrap()(
+      (*CApiState::get().csound.fileplayer).setLoopRange.unwrap()(
         self.as_ptr(),
         start.to_seconds(),
         end.map_or(0f32, TimeTicks::to_seconds),
@@ -299,13 +295,13 @@ impl FilePlayer {
   /// Sets the current offset for the player.
   pub fn set_offset(&mut self, offset: TimeTicks) {
     unsafe {
-      (*self.source.state.csound.fileplayer).setOffset.unwrap()(self.as_ptr(), offset.to_seconds())
+      (*CApiState::get().csound.fileplayer).setOffset.unwrap()(self.as_ptr(), offset.to_seconds())
     }
   }
   /// Gets the current offset for the player.
   pub fn offset(&self) -> TimeTicks {
     TimeTicks::from_seconds_lossy(unsafe {
-      (*self.source.state.csound.fileplayer).getOffset.unwrap()(self.as_ptr())
+      (*CApiState::get().csound.fileplayer).getOffset.unwrap()(self.as_ptr())
     })
   }
   /// Sets the playback rate for the player.
@@ -313,21 +309,21 @@ impl FilePlayer {
   /// 1.0 is normal speed, 0.5 is down an octave, 2.0 is up an octave, etc. Unlike sampleplayers,
   /// fileplayers can’t play in reverse (i.e., rate < 0).
   pub fn set_playback_rate(&mut self, rate: f32) {
-    unsafe { (*self.source.state.csound.fileplayer).setRate.unwrap()(self.as_ptr(), rate) }
+    unsafe { (*CApiState::get().csound.fileplayer).setRate.unwrap()(self.as_ptr(), rate) }
   }
   /// Gets the playback rate for the player.
   pub fn playback_rate(&self) -> f32 {
-    unsafe { (*self.source.state.csound.fileplayer).getRate.unwrap()(self.as_ptr()) }
+    unsafe { (*CApiState::get().csound.fileplayer).getRate.unwrap()(self.as_ptr()) }
   }
   /// If flag evaluates to true, the player will restart playback (after an audible stutter) as soon
   /// as data is available.
   pub fn set_stop_on_underrun(&mut self, stop: bool) {
     unsafe {
-      (*self.source.state.csound.fileplayer).setStopOnUnderrun.unwrap()(self.as_ptr(), stop as i32)
+      (*CApiState::get().csound.fileplayer).setStopOnUnderrun.unwrap()(self.as_ptr(), stop as i32)
     }
   }
   /// Changes the volume of the fileplayer to `volume` over a length of `num_samples` sample frames.
-  /// 
+  ///
   /// TODO: then calls the provided callback (if given).
   pub fn fade_volume(
     &mut self,
@@ -335,7 +331,7 @@ impl FilePlayer {
     num_samples: i32, /* TODO: callback */
   ) {
     unsafe {
-      (*self.source.state.csound.fileplayer).fadeVolume.unwrap()(
+      (*CApiState::get().csound.fileplayer).fadeVolume.unwrap()(
         self.as_ptr(),
         volume.left.clamp(0f32, 1f32),
         volume.right.clamp(0f32, 1f32),
@@ -349,7 +345,7 @@ impl Drop for FilePlayer {
   fn drop(&mut self) {
     // Ensure the SoundSource has a chance to clean up before it is freed.
     unsafe { ManuallyDrop::drop(&mut self.source) };
-    unsafe { (*self.source.state.csound.fileplayer).freePlayer.unwrap()(self.ptr) };
+    unsafe { (*CApiState::get().csound.fileplayer).freePlayer.unwrap()(self.ptr) };
   }
 }
 

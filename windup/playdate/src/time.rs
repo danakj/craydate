@@ -9,7 +9,7 @@ use crate::ctypes::*;
 /// retain the TimeTicks type instead of unwrapping a primitive type from it.
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct TimeTicks(pub(crate) u32);  // Stores milliseconds.
+pub struct TimeTicks(pub(crate) u32); // Stores milliseconds.
 impl TimeTicks {
   pub fn from_milliseconds(millis: u32) -> Self {
     TimeTicks(millis)

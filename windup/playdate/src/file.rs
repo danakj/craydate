@@ -10,8 +10,8 @@ use crate::null_terminated::ToNullTerminatedString;
 use crate::Error;
 
 /// Returns human-readable text describing the most recent file error.
-fn last_err(state: &CApiState) -> String {
-  let ptr = unsafe { state.cfile.geterr.unwrap()() };
+fn last_err() -> String {
+  let ptr = unsafe { CApiState::get().cfile.geterr.unwrap()() };
   match unsafe { crate::null_terminated::parse_null_terminated_utf8(ptr) } {
     Ok(s) => s.into(),
     Err(e) => format!(
@@ -22,12 +22,10 @@ fn last_err(state: &CApiState) -> String {
 }
 
 #[derive(Debug)]
-pub struct File {
-  pub(crate) state: &'static CApiState,
-}
+pub struct File;
 impl File {
-  pub(crate) fn new(state: &'static CApiState) -> Self {
-    File { state }
+  pub(crate) fn new() -> Self {
+    File
   }
 
   /// Returns an iterator with every file or subfolder found at `path`.
@@ -35,15 +33,15 @@ impl File {
   /// Subfolders are indicated by a slash '/' suffix in the filename. `list_files()` does not
   /// recurse into subfolders.
   pub fn list_files(&self, path: &str) -> Result<ListFilesIterator, Error> {
-    ListFilesIterator::new(self.state, path)
-      .or_else(|e| Err(format!("{} (Playdate: {})", e, last_err(self.state)).into()))
+    ListFilesIterator::new(CApiState::get(), path)
+      .or_else(|e| Err(format!("{} (Playdate: {})", e, last_err()).into()))
   }
 
   /// Reads information about the file or folder at `path`.
   pub fn stat(&self, path: &str) -> Result<FileStat, Error> {
     let mut s = core::mem::MaybeUninit::<CFileStat>::uninit();
     let result = unsafe {
-      self.state.cfile.stat.unwrap()(path.to_null_terminated_utf8().as_ptr(), s.as_mut_ptr())
+      CApiState::get().cfile.stat.unwrap()(path.to_null_terminated_utf8().as_ptr(), s.as_mut_ptr())
     };
     match result {
       0 => {
@@ -65,7 +63,7 @@ impl File {
         format!(
           "error reading stat info for '{}' (Playdate: {})",
           path,
-          last_err(self.state)
+          last_err()
         )
         .into(),
       ),
@@ -78,17 +76,10 @@ impl File {
   // Data/<gameid> folder.
   pub fn make_folder(&self, path: &str) -> Result<(), Error> {
     let result =
-      unsafe { self.state.cfile.mkdir.unwrap()(path.to_null_terminated_utf8().as_ptr()) };
+      unsafe { CApiState::get().cfile.mkdir.unwrap()(path.to_null_terminated_utf8().as_ptr()) };
     match result {
       0 => Ok(()),
-      _ => Err(
-        format!(
-          "error making folder '{}' (Playdate: {})",
-          path,
-          last_err(self.state)
-        )
-        .into(),
-      ),
+      _ => Err(format!("error making folder '{}' (Playdate: {})", path, last_err()).into()),
     }
   }
 
@@ -98,7 +89,7 @@ impl File {
   /// folder when another exists with the same name. It does not create intermediate folders.
   pub fn rename(&self, from: &str, to: &str) -> Result<(), Error> {
     let result = unsafe {
-      self.state.cfile.rename.unwrap()(
+      CApiState::get().cfile.rename.unwrap()(
         from.to_null_terminated_utf8().as_ptr(),
         to.to_null_terminated_utf8().as_ptr(),
       )
@@ -110,7 +101,7 @@ impl File {
           "error renaming file/folder '{}' to '{}' (Playdate: {})",
           from,
           to,
-          last_err(self.state)
+          last_err()
         )
         .into(),
       ),
@@ -121,7 +112,7 @@ impl File {
   pub fn read_file(&self, path: &str) -> Result<Vec<u8>, Error> {
     // To open a file for reading in the simulator and on the hardware you currently have to set the mode to kFileRead|kFileReadData
     let ptr = NonNull::new(unsafe {
-      self.state.cfile.open.unwrap()(
+      CApiState::get().cfile.open.unwrap()(
         path.to_null_terminated_utf8().as_ptr(),
         playdate_sys::FileOptions::kFileRead | playdate_sys::FileOptions::kFileReadData,
       )
@@ -131,12 +122,12 @@ impl File {
         format!(
           "error opening file '{}' for reading (Playdate: {})",
           path,
-          last_err(self.state)
+          last_err()
         )
         .into(),
       ),
       Some(handle) => {
-        let f = OpenFile::new(self.state, handle);
+        let f = OpenFile::new(handle);
         let read_result = f.read_file();
         let _close_result = f.close(); // We don't care if close() fails on a read.
         read_result
@@ -151,7 +142,7 @@ impl File {
   pub fn write_file(&self, path: &str, contents: &[u8]) -> Result<(), Error> {
     // To open a file for reading in the simulator and on the hardware you currently have to set the mode to kFileRead|kFileReadData
     let ptr = NonNull::new(unsafe {
-      self.state.cfile.open.unwrap()(
+      CApiState::get().cfile.open.unwrap()(
         path.to_null_terminated_utf8().as_ptr(),
         playdate_sys::FileOptions::kFileWrite,
       )
@@ -161,12 +152,12 @@ impl File {
         format!(
           "error opening file '{}' for writing (Playdate: {})",
           path,
-          last_err(self.state)
+          last_err()
         )
         .into(),
       ),
       Some(handle) => {
-        let f = OpenFile::new(self.state, handle);
+        let f = OpenFile::new(handle);
         let write_result = f.write_file(contents);
         // If close() fails on a write, we return an error as the file content may not be complete.
         f.close()?;
@@ -183,14 +174,14 @@ impl File {
   /// Data/<gameid> folder, so it can not refer to things that are part of the game's pdx image.
   pub fn delete(&self, path: &str) -> Result<(), Error> {
     let result =
-      unsafe { self.state.cfile.unlink.unwrap()(path.to_null_terminated_utf8().as_ptr(), 0) };
+      unsafe { CApiState::get().cfile.unlink.unwrap()(path.to_null_terminated_utf8().as_ptr(), 0) };
     match result {
       0 => Ok(()),
       _ => Err(
         format!(
           "error deleting file/folder '{}' (Playdate: {})",
           path,
-          last_err(self.state)
+          last_err()
         )
         .into(),
       ),
@@ -206,14 +197,14 @@ impl File {
   /// part of the game's pdx image.
   pub fn delete_recursive(&self, path: &str) -> Result<(), Error> {
     let result =
-      unsafe { self.state.cfile.unlink.unwrap()(path.to_null_terminated_utf8().as_ptr(), 1) };
+      unsafe { CApiState::get().cfile.unlink.unwrap()(path.to_null_terminated_utf8().as_ptr(), 1) };
     match result {
       0 => Ok(()),
       _ => Err(
         format!(
           "error recursively deleting file/folder '{}' (Playdate: {})",
           path,
-          last_err(self.state)
+          last_err()
         )
         .into(),
       ),
@@ -227,14 +218,12 @@ impl File {
 /// OpenFile without calling close() will panic/abort.
 #[derive(Debug)]
 struct OpenFile {
-  state: &'static CApiState,
   handle: NonNull<COpenFile>,
   closed: bool,
 }
 impl OpenFile {
-  fn new(state: &'static CApiState, handle: NonNull<COpenFile>) -> Self {
+  fn new(handle: NonNull<COpenFile>) -> Self {
     OpenFile {
-      state,
       handle,
       closed: false,
     }
@@ -247,7 +236,7 @@ impl OpenFile {
     let mut buf = [0; BUF_SIZE as usize];
     loop {
       let result = unsafe {
-        self.state.cfile.read.unwrap()(
+        CApiState::get().cfile.read.unwrap()(
           self.handle.as_ptr(),
           buf.as_mut_ptr() as *mut c_void,
           BUF_SIZE,
@@ -257,10 +246,7 @@ impl OpenFile {
         // Reached the end of the file.
         0 => break,
         // Return immediately on an error.
-        -1 => Err(format!(
-          "error reading from file (Playdate: {}",
-          last_err(self.state)
-        ))?,
+        -1 => Err(format!("error reading from file (Playdate: {}", last_err()))?,
         num_read_bytes => num_read_bytes as usize,
       };
       out.extend(buf[0..bytes].into_iter());
@@ -272,14 +258,14 @@ impl OpenFile {
   pub fn write_file(&self, contents: &[u8]) -> Result<(), Error> {
     // TODO: This would be needed if we support other operations beyond read/write the whole
     // file.
-    // self.state.cfile.seek.unwrap()(self.handle.as_ptr(), 0, playdate_sys::SEEK_SET as i32);
+    // CApiState::get().cfile.seek.unwrap()(self.handle.as_ptr(), 0, playdate_sys::SEEK_SET as i32);
 
     const BUF_SIZE: usize = 256;
     for buf in contents.chunks(BUF_SIZE) {
       let mut written_from_buffer = 0;
       loop {
         let result = unsafe {
-          self.state.cfile.write.unwrap()(
+          CApiState::get().cfile.write.unwrap()(
             self.handle.as_ptr().add(written_from_buffer),
             buf.as_ptr() as *const c_void,
             (buf.len() - written_from_buffer) as u32,
@@ -287,10 +273,7 @@ impl OpenFile {
         };
         written_from_buffer += match result {
           // Return immediately on an error.
-          -1 => Err(format!(
-            "error writing to file (Playdate: {}",
-            last_err(self.state)
-          ))?,
+          -1 => Err(format!("error writing to file (Playdate: {}", last_err()))?,
           num_written_bytes => num_written_bytes as usize,
         };
         if written_from_buffer == buf.len() {
@@ -306,10 +289,10 @@ impl OpenFile {
   /// Dropping the OpenFile without calling close() will panic/abort.
   pub fn close(mut self) -> Result<(), Error> {
     self.closed = true;
-    let result = unsafe { self.state.cfile.close.unwrap()(self.handle.as_ptr()) };
+    let result = unsafe { CApiState::get().cfile.close.unwrap()(self.handle.as_ptr()) };
     match result {
       0 => Ok(()),
-      _ => Err(format!("error closing file (Playdate: {})", last_err(self.state)).into()),
+      _ => Err(format!("error closing file (Playdate: {})", last_err()).into()),
     }
   }
 }

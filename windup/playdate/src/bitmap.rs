@@ -18,26 +18,25 @@ pub struct Bitmap {
 }
 impl Bitmap {
   /// Construct an Bitmap from an owning pointer.
-  pub(crate) fn from_owned_ptr(bitmap_ptr: *mut CLCDBitmap, state: &'static CApiState) -> Self {
+  pub(crate) fn from_owned_ptr(bitmap_ptr: *mut CLCDBitmap) -> Self {
     Bitmap {
-      owned: BitmapRef::from_ptr(bitmap_ptr, state),
+      owned: BitmapRef::from_ptr(bitmap_ptr),
     }
   }
 }
 
 impl Clone for Bitmap {
   fn clone(&self) -> Self {
-    Bitmap::from_owned_ptr(
-      unsafe { self.owned.state.cgraphics.copyBitmap.unwrap()(self.owned.bitmap_ptr) },
-      self.owned.state,
-    )
+    Bitmap::from_owned_ptr(unsafe {
+      CApiState::get().cgraphics.copyBitmap.unwrap()(self.owned.bitmap_ptr)
+    })
   }
 }
 
 impl Drop for Bitmap {
   fn drop(&mut self) {
     unsafe {
-      self.owned.state.cgraphics.freeBitmap.unwrap()(self.owned.bitmap_ptr);
+      CApiState::get().cgraphics.freeBitmap.unwrap()(self.owned.bitmap_ptr);
     }
   }
 }
@@ -54,12 +53,9 @@ impl SharedBitmapRef<'_> {
   /// Construct a SharedBitmapRef from a non-owning pointer.
   ///
   /// Requires being told the lifetime of the Bitmap this is making a reference to.
-  pub(crate) fn from_ptr<'a>(
-    bitmap_ptr: *mut CLCDBitmap,
-    state: &'static CApiState,
-  ) -> SharedBitmapRef<'a> {
+  pub(crate) fn from_ptr<'a>(bitmap_ptr: *mut CLCDBitmap) -> SharedBitmapRef<'a> {
     SharedBitmapRef {
-      bref: BitmapRef::from_ptr(bitmap_ptr, state),
+      bref: BitmapRef::from_ptr(bitmap_ptr),
       _marker: core::marker::PhantomData,
     }
   }
@@ -67,7 +63,7 @@ impl SharedBitmapRef<'_> {
 
 impl Clone for SharedBitmapRef<'_> {
   fn clone(&self) -> Self {
-    SharedBitmapRef::from_ptr(self.bref.bitmap_ptr, self.bref.state)
+    SharedBitmapRef::from_ptr(self.bref.bitmap_ptr)
   }
 }
 
@@ -79,14 +75,13 @@ impl Clone for SharedBitmapRef<'_> {
 /// Intentionally not `Copy` as `BitmapRef` can only be referred to as a reference.
 #[derive(Debug)]
 pub struct BitmapRef {
-  state: &'static CApiState,
   bitmap_ptr: *mut CLCDBitmap,
 }
 
 impl BitmapRef {
   /// Construct an BitmapRef from a non-owning pointer.
-  pub(crate) fn from_ptr(bitmap_ptr: *mut CLCDBitmap, state: &'static CApiState) -> Self {
-    BitmapRef { bitmap_ptr, state }
+  pub(crate) fn from_ptr(bitmap_ptr: *mut CLCDBitmap) -> Self {
+    BitmapRef { bitmap_ptr }
   }
 
   fn data_and_pixels_ptr(&self) -> (BitmapData, *mut u8) {
@@ -96,7 +91,7 @@ impl BitmapRef {
     let mut hasmask = 0;
     let mut pixels = core::ptr::null_mut();
     unsafe {
-      self.state.cgraphics.getBitmapData.unwrap()(
+      CApiState::get().cgraphics.getBitmapData.unwrap()(
         self.bitmap_ptr,
         &mut width,
         &mut height,
@@ -163,7 +158,7 @@ impl BitmapRef {
     Color<'a>: From<C>,
   {
     unsafe {
-      self.state.cgraphics.clearBitmap.unwrap()(
+      CApiState::get().cgraphics.clearBitmap.unwrap()(
         self.bitmap_ptr,
         Color::<'a>::from(bgcolor).to_c_color(),
       );
@@ -176,8 +171,9 @@ impl BitmapRef {
   /// The mask bitmap is copied, so no reference is held to it.
   pub fn set_mask_bitmap(&mut self, mask: &BitmapRef) -> Result<(), Error> {
     // Playdate makes a copy of the mask bitmap.
-    let result =
-      unsafe { self.state.cgraphics.setBitmapMask.unwrap()(self.bitmap_ptr, mask.bitmap_ptr) };
+    let result = unsafe {
+      CApiState::get().cgraphics.setBitmapMask.unwrap()(self.bitmap_ptr, mask.bitmap_ptr)
+    };
     match result {
       1 => Ok(()),
       0 => Err("failed to set mask bitmap, dimensions to not match".into()),
@@ -192,18 +188,15 @@ impl BitmapRef {
     let mask = unsafe {
       // Playdate owns the mask bitmap, and reference a pointer to it. Playdate would free the mask
       // presumably when `self` is freed.
-      self.state.cgraphics.getBitmapMask.unwrap()(self.bitmap_ptr)
+      CApiState::get().cgraphics.getBitmapMask.unwrap()(self.bitmap_ptr)
     };
     if !mask.is_null() {
-      Some(SharedBitmapRef::from_ptr(mask, self.state))
+      Some(SharedBitmapRef::from_ptr(mask))
     } else {
       None
     }
   }
 
-  pub(crate) fn get_state(&self) -> &'static CApiState {
-    self.state
-  }
   pub(crate) unsafe fn as_bitmap_ptr(&self) -> *mut CLCDBitmap {
     self.bitmap_ptr
   }
@@ -240,10 +233,9 @@ impl alloc::borrow::ToOwned for BitmapRef {
   type Owned = Bitmap;
 
   fn to_owned(&self) -> Self::Owned {
-    Bitmap::from_owned_ptr(
-      unsafe { self.state.cgraphics.copyBitmap.unwrap()(self.bitmap_ptr) },
-      self.state,
-    )
+    Bitmap::from_owned_ptr(unsafe {
+      CApiState::get().cgraphics.copyBitmap.unwrap()(self.bitmap_ptr)
+    })
   }
 }
 

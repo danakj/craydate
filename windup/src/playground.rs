@@ -47,8 +47,6 @@ pub async fn _run(mut api: playdate::Api) -> ! {
     }
   };
 
-  
-
   {
     let _stencil_holder = graphics.set_stencil(&stencil);
     graphics.draw_text("Bloop", StringEncoding::kASCIIEncoding, 30, 20);
@@ -171,30 +169,39 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   let mut fileplayer = api.sound.new_fileplayer();
   api.sound.default_channel_mut().attach_source(&mut fileplayer);
   let vol = fileplayer.as_source().volume();
-  api.system.log(format!("Fileplayer volume (in 0-1): {} {}", vol.left, vol.right));
+  api.system.log(format!(
+    "Fileplayer volume (in 0-1): {} {}",
+    vol.left, vol.right
+  ));
 
   system.log(format!(
     "Entering main loop at time {}",
     api.system.current_time()
   ));
-  let fw = system.frame_watcher();
+  let events = system.system_event_watcher();
   loop {
-    let inputs = fw.next().await;
+    let (inputs, frame_number) = match events.next().await {
+      SystemEvent::NextFrame {
+        inputs,
+        frame_number,
+      } => (inputs, frame_number),
+      SystemEvent::WillLock => {
+        api.system.log("locked");
+        continue;
+      }
+      SystemEvent::DidUnlock => {
+        api.system.log("unlocked");
+        continue;
+      }
+      _ => continue,
+    };
     for (button, event) in inputs.buttons().all_events() {
       match event {
         playdate::ButtonEvent::Push => {
-          api.system.log(format!(
-            "{:?} pushed on frame {}",
-            button,
-            inputs.frame_number()
-          ));
+          api.system.log(format!("{:?} pushed on frame {}", button, frame_number));
         }
         playdate::ButtonEvent::Release => {
-          api.system.log(format!(
-            "{:?} released on frame {}",
-            button,
-            inputs.frame_number()
-          ));
+          api.system.log(format!("{:?} released on frame {}", button, frame_number));
         }
       }
     }

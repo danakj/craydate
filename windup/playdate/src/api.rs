@@ -1,17 +1,12 @@
 use core::cell::Cell;
-use core::future::Future;
-use core::pin::Pin;
-use core::task::{Context, Poll};
 
 use crate::capi_state::CApiState;
-use crate::ctypes::*;
 use crate::display::Display;
-use crate::executor::Executor;
 use crate::file::File;
 use crate::graphics::Graphics;
 use crate::sound::Sound;
 use crate::time::{HighResolutionTimer, TimeTicks, WallClockTime};
-use crate::String;
+use crate::{ctypes::*, SystemEventWatcher};
 
 #[derive(Debug)]
 pub struct Api {
@@ -22,27 +17,25 @@ pub struct Api {
   pub sound: Sound,
 }
 impl Api {
-  pub(crate) fn new(state: &'static CApiState) -> Api {
+  pub(crate) fn new() -> Api {
     Api {
-      system: System::new(state),
-      display: Display::new(state),
-      graphics: Graphics::new(state),
-      file: File::new(state),
-      sound: Sound::new(state),
+      system: System::new(),
+      display: Display::new(),
+      graphics: Graphics::new(),
+      file: File::new(),
+      sound: Sound::new(),
     }
   }
 }
 
 #[derive(Debug)]
 pub struct System {
-  pub(crate) state: &'static CApiState,
   // Runtime tracking to ensure only one timer is active.
   timer_active: Cell<bool>,
 }
 impl System {
-  fn new(state: &'static CApiState) -> Self {
+  fn new() -> Self {
     System {
-      state,
       timer_active: Cell::new(false),
     }
   }
@@ -51,15 +44,15 @@ impl System {
   // sections is exposed here in a Rusty way except:
   // - formatString() is not exposed, as the format!() macro replaces it in Rust.
   // - setUpdateCallback() is not exposed, as it is used internally. The ability to wait for the
-  //   next update (i.e. frame) is instead done through `frame_watcher()` that provides an async
-  //   function that returns when the next update happens.
+  //   next update (i.e. frame) is instead done through `system_event_watcher()` that provides an
+  //   async function that returns when the next update happens.
   // - drawFPS() is moved to the Graphics api.
   // - getLanguage() from Graphics > Miscellaneous is moved to here.
   // - TODO: All system menu interaction functions.
 
   /// A watcher that lets you `await` for the next frame update from the Playdate device.
-  pub fn frame_watcher(&self) -> FrameWatcher {
-    FrameWatcher { state: self.state }
+  pub fn system_event_watcher(&self) -> SystemEventWatcher {
+    SystemEventWatcher::new()
   }
 
   /// Prints a string to the Playdate console, as well as to stdout.
@@ -76,7 +69,7 @@ impl System {
   /// Returns the current time in milliseconds.
   pub fn current_time(&self) -> TimeTicks {
     TimeTicks::from_milliseconds(unsafe {
-      self.state.csystem.getCurrentTimeMilliseconds.unwrap()()
+      CApiState::get().csystem.getCurrentTimeMilliseconds.unwrap()()
     })
   }
 
@@ -87,7 +80,7 @@ impl System {
   /// logic and for tracking elapsed time.
   pub fn wall_clock_time(&self) -> WallClockTime {
     let mut time = 0;
-    unsafe { self.state.csystem.getSecondsSinceEpoch.unwrap()(&mut time) };
+    unsafe { CApiState::get().csystem.getSecondsSinceEpoch.unwrap()(&mut time) };
     WallClockTime(time)
   }
 
@@ -102,29 +95,29 @@ impl System {
     if self.timer_active.get() {
       panic!("HighResolutionTimer is already active.")
     }
-    let timer = HighResolutionTimer::new(self.state.csystem, &self.timer_active);
-    unsafe { self.state.csystem.resetElapsedTime.unwrap()() };
+    let timer = HighResolutionTimer::new(CApiState::get().csystem, &self.timer_active);
+    unsafe { CApiState::get().csystem.resetElapsedTime.unwrap()() };
     timer
   }
 
   /// Returns whether the global "flipped" system setting is set.
   pub fn is_flipped_enabled(&self) -> bool {
-    unsafe { self.state.csystem.getFlipped.unwrap()() != 0 }
+    unsafe { CApiState::get().csystem.getFlipped.unwrap()() != 0 }
   }
 
   /// Returns whether the global "reduce flashing" system setting is set.
   pub fn is_reduce_flashing_enabled(&self) -> bool {
-    unsafe { self.state.csystem.getReduceFlashing.unwrap()() != 0 }
+    unsafe { CApiState::get().csystem.getReduceFlashing.unwrap()() != 0 }
   }
 
   /// Returns the battery percentage, which is a value between 0 and 1.
   pub fn battery_percentage(&self) -> f32 {
-    unsafe { self.state.csystem.getBatteryPercentage.unwrap()() / 100f32 }
+    unsafe { CApiState::get().csystem.getBatteryPercentage.unwrap()() / 100f32 }
   }
 
   /// Returns the battery voltage.
   pub fn battery_voltage(&self) -> f32 {
-    unsafe { self.state.csystem.getBatteryVoltage.unwrap()() }
+    unsafe { CApiState::get().csystem.getBatteryVoltage.unwrap()() }
   }
 
   /// Sets the bitmap to be displayed beside (and behind) the system menu.
@@ -143,14 +136,14 @@ impl System {
     // SAFETY: Playdate makes a copy from the given pointer, so we can pass it in and then drop the
     // reference on `bitmap` when we leave the function.
     unsafe {
-      self.state.csystem.setMenuImage.unwrap()(bitmap.as_bitmap_ptr(), xoffset.clamp(0, 200))
+      CApiState::get().csystem.setMenuImage.unwrap()(bitmap.as_bitmap_ptr(), xoffset.clamp(0, 200))
     }
   }
 
   /// Removes the user-specified bitmap from beside the system menu. The default image is displayed
   /// instead.
   pub fn clear_menu_image(&mut self) {
-    unsafe { self.state.csystem.setMenuImage.unwrap()(core::ptr::null_mut(), 0) }
+    unsafe { CApiState::get().csystem.setMenuImage.unwrap()(core::ptr::null_mut(), 0) }
   }
 
   /// To use a peripheral, it must first be enabled via this function.
@@ -159,13 +152,13 @@ impl System {
   /// accelerometer data is not available until the next frame, and will be accessible from the
   /// output of `FrameWatcher::next()`.
   pub fn enable_peripherals(&mut self, which: Peripherals) {
-    self.state.peripherals_enabled.set(which);
-    unsafe { self.state.csystem.setPeripheralsEnabled.unwrap()(which) }
+    CApiState::get().peripherals_enabled.set(which);
+    unsafe { CApiState::get().csystem.setPeripheralsEnabled.unwrap()(which) }
   }
 
   /// Returns the current language of the system.
   pub fn get_language(&self) -> Language {
-    unsafe { self.state.csystem.getLanguage.unwrap()() }
+    unsafe { CApiState::get().csystem.getLanguage.unwrap()() }
   }
 
   /// Disables or enables the 60 second auto-lock feature. When enabled, the timer is reset to 60
@@ -181,7 +174,7 @@ impl System {
       AutoLock::Disabled => 1,
       AutoLock::Enabled => 0,
     };
-    unsafe { self.state.csystem.setAutoLockDisabled.unwrap()(disabled) }
+    unsafe { CApiState::get().csystem.setAutoLockDisabled.unwrap()(disabled) }
   }
 
   /// Disables or enables sound effects when the crank is docked or undocked.
@@ -199,7 +192,7 @@ impl System {
       CrankSounds::Silent => 1,
       CrankSounds::DockingSounds => 0,
     };
-    let previous = unsafe { self.state.csystem.setCrankSoundsDisabled.unwrap()(disabled) };
+    let previous = unsafe { CApiState::get().csystem.setCrankSoundsDisabled.unwrap()(disabled) };
     match previous {
       0 => CrankSounds::DockingSounds,
       _ => CrankSounds::Silent,
@@ -223,114 +216,4 @@ pub enum CrankSounds {
   Silent,
   /// The crank makes sounds when docked or undocked.
   DockingSounds,
-}
-
-#[derive(Debug)]
-pub struct FrameWatcher {
-  state: &'static CApiState,
-}
-impl FrameWatcher {
-  /// Runs until the next frame from the Playdate device, then returns the frame number.
-  ///
-  /// This function returns after the Playdate device calls the "update callback" to signify that
-  /// the game should perform updates for the next frame to be displayed.
-  pub async fn next(&self) -> crate::inputs::Inputs {
-    self.next_impl().await
-  }
-  fn next_impl(&self) -> FrameWatcherFuture {
-    FrameWatcherFuture {
-      state: self.state,
-      seen_frame: self.state.frame_number.get(),
-    }
-  }
-}
-
-/// A future for which poll() waits for the next update, then returns Complete.
-struct FrameWatcherFuture {
-  state: &'static CApiState,
-  seen_frame: u64,
-}
-
-impl Future for FrameWatcherFuture {
-  type Output = crate::inputs::Inputs;
-
-  fn poll(self: Pin<&mut Self>, ctxt: &mut Context<'_>) -> Poll<crate::inputs::Inputs> {
-    let frame = self.state.frame_number.get();
-
-    if frame > self.seen_frame {
-      if frame > self.seen_frame + 1 {
-        crate::debug::log(
-          "WARNING: FrameWatcher missed a frame. This could happen if an async function was called 
-          and `await`ed without also waiting for the FrameWatcher via select(). Currently only one
-          async function can run (we don't support a spawn()) and thus we don't have a select(). So 
-          if this occurs it's a surprising bug.",
-        )
-      }
-
-      Poll::Ready(crate::inputs::Inputs::new(
-        self.state,
-        frame,
-        self.state.peripherals_enabled.get(),
-        &self.state.button_state_per_frame.get().map(|b| b.unwrap()),
-      ))
-    } else {
-      // Register the waker to be woken when the frame changes. We will observe that it has
-      // indeed changed and return Ready since we have saved the current frame at construction.
-      Executor::add_waker_for_update_callback(self.state.executor.as_ptr(), ctxt.waker());
-      Poll::Pending
-    }
-  }
-}
-
-pub enum Error {
-  BorrowError(core::cell::BorrowError),
-  BorrowMutError(core::cell::BorrowMutError),
-  NotFoundError(),
-  String(String),
-}
-impl From<core::cell::BorrowError> for Error {
-  fn from(e: core::cell::BorrowError) -> Self {
-    Error::BorrowError(e)
-  }
-}
-impl From<core::cell::BorrowMutError> for Error {
-  fn from(e: core::cell::BorrowMutError) -> Self {
-    Error::BorrowMutError(e)
-  }
-}
-impl From<String> for Error {
-  fn from(s: String) -> Self {
-    Error::String(s)
-  }
-}
-impl From<&str> for Error {
-  fn from(s: &str) -> Self {
-    Error::String(s.into())
-  }
-}
-impl From<&mut str> for Error {
-  fn from(s: &mut str) -> Self {
-    Error::String(s.into())
-  }
-}
-
-impl core::fmt::Debug for Error {
-  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-    match self {
-      Error::BorrowError(e) => write!(f, "Error(BorrowError({:?}))", e),
-      Error::BorrowMutError(e) => write!(f, "Error(BorrowMutError({:?}))", e),
-      Error::NotFoundError() => write!(f, "Error(NotFoundError())"),
-      Error::String(e) => write!(f, "Error(String({:?}))", e),
-    }
-  }
-}
-impl core::fmt::Display for Error {
-  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-    match self {
-      Error::BorrowError(e) => write!(f, "{}", e),
-      Error::BorrowMutError(e) => write!(f, "{}", e),
-      Error::NotFoundError() => write!(f, "not found"),
-      Error::String(e) => write!(f, "{}", e),
-    }
-  }
 }

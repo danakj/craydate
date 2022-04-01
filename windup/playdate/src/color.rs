@@ -1,5 +1,6 @@
-use crate::ctypes::*;
 use crate::bitmap::BitmapRef;
+use crate::capi_state::CApiState;
+use crate::ctypes::*;
 
 const PATTERN_SIZE: usize = 16;
 
@@ -18,7 +19,7 @@ impl Pattern {
       // The setColorToPattern function wants a `*mut CLCDBitmap`, but it only reads from the bitmap
       // to make a pattern, so we can cast to that from a shared reference to the bitmap.
       let ptr = bitmap.as_bitmap_ptr();
-      bitmap.get_state().cgraphics.setColorToPattern.unwrap()(&mut c_color, ptr, x, y);
+      CApiState::get().cgraphics.setColorToPattern.unwrap()(&mut c_color, ptr, x, y);
       core::ptr::copy_nonoverlapping(c_color as *const u8, arr.as_mut_ptr(), PATTERN_SIZE)
     }
 

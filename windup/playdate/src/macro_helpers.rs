@@ -2,7 +2,6 @@
 extern crate alloc; // `alloc` is fine to use once initialize() has set up the allocator.
 
 pub use alloc::boxed::Box;
-use alloc::vec::Vec;
 use core::ffi::c_void;
 use core::future::Future;
 use core::pin::Pin;
@@ -31,7 +30,7 @@ pub struct EventHandler3(u32);
 pub fn initialize(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3, config: GameConfig) {
   let api_ptr = eh1.0;
   let event = eh2.0;
-  let _arg = eh3.0;
+  let arg = eh3.0;
 
   // SAFETY: We have made a shared reference to the `CPlaydateApi`. Only refer to the object through
   // the reference hereafter. We can ensure that by never passing a pointer to the `CPlaydateApi`
@@ -39,42 +38,72 @@ pub fn initialize(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3, co
   let api: &CPlaydateApi = unsafe { &(*api_ptr) };
   let system: &CSystemApi = unsafe { &(*api.system) };
 
-  if event == CSystemEvent::kEventInit {
-    // SAFETY: Do not allocate before the GLOBAL_ALLOCATOR is set up here, or we will crash
-    // in the allocator.
-    GLOBAL_ALLOCATOR.set_system_ptr(system);
-    crate::debug::initialize(system);
+  match event {
+    CSystemEvent::kEventInit => {
+      // SAFETY: Do not allocate before the GLOBAL_ALLOCATOR is set up here, or we will crash
+      // in the allocator.
+      GLOBAL_ALLOCATOR.set_system_ptr(system);
+      crate::debug::initialize(system);
 
-    // We leak this pointer so it has 'static lifetime.
-    let capi = Box::into_raw(Box::new(CApiState::new(api)));
-    // The CApiState is always accessed through a shared pointer. And the CApiState is constructed
-    // in initialize() and then never destroyed, so references can be 'static lifetime.
-    let capi: &'static CApiState = unsafe { &*capi };
+      // We leak this pointer so it has 'static lifetime.
+      let capi_state = Box::into_raw(Box::new(CApiState::new(api)));
+      // The CApiState is always accessed through a shared pointer. And the CApiState is constructed
+      // in initialize() and then never destroyed, so references can be 'static lifetime.
+      let capi_state: &'static CApiState = unsafe { &*capi_state };
+      CApiState::set_instance(capi_state);
 
-    // We start by running the main function. This gets the future for our single execution
-    // of the main function. The main function can never return (its output is `!`), so the
-    // future will never be complete. We will poll() it to actually run the code in the main
-    // function on the first execution of update_callback().
+      // We start by running the main function. This gets the future for our single execution
+      // of the main function. The main function can never return (its output is `!`), so the
+      // future will never be complete. We will poll() it to actually run the code in the main
+      // function on the first execution of update_callback().
+      Executor::set_main_future(
+        capi_state.executor.as_ptr(),
+        (config.main_fn)(api::Api::new()),
+      );
 
-    // TODO: should exec_ptr be constructed internally here?
-    let api = api::Api::new(capi);
-
-    Executor::set_main_future(capi.executor.as_ptr(), (config.main_fn)(api));
-
-    unsafe {
-      system.setUpdateCallback.unwrap()(
-        Some(update_callback),
-        capi as *const CApiState as *mut c_void,
-      )
-    };
+      unsafe { system.setUpdateCallback.unwrap()(Some(update_callback), core::ptr::null_mut()) };
+    }
+    CSystemEvent::kEventInitLua => (),
+    CSystemEvent::kEventKeyPressed => {
+      CApiState::get().add_system_event(SystemEvent::SimulatorKeyPressed { keycode: arg });
+      Executor::wake_system_wakers(CApiState::get().executor.as_ptr());
+    }
+    CSystemEvent::kEventKeyReleased => {
+      CApiState::get().add_system_event(SystemEvent::SimulatorKeyReleased { keycode: arg });
+      Executor::wake_system_wakers(CApiState::get().executor.as_ptr());
+    }
+    CSystemEvent::kEventLock => {
+      CApiState::get().add_system_event(SystemEvent::WillLock);
+      Executor::wake_system_wakers(CApiState::get().executor.as_ptr());
+    }
+    CSystemEvent::kEventLowPower => {
+      CApiState::get().add_system_event(SystemEvent::WillSleep);
+      Executor::wake_system_wakers(CApiState::get().executor.as_ptr());
+    }
+    CSystemEvent::kEventPause => {
+      CApiState::get().add_system_event(SystemEvent::WillPause);
+      Executor::wake_system_wakers(CApiState::get().executor.as_ptr());
+    }
+    CSystemEvent::kEventResume => {
+      CApiState::get().add_system_event(SystemEvent::WillResume);
+      Executor::wake_system_wakers(CApiState::get().executor.as_ptr());
+    }
+    CSystemEvent::kEventTerminate => {
+      CApiState::get().add_system_event(SystemEvent::WillTerminate);
+      Executor::wake_system_wakers(CApiState::get().executor.as_ptr());
+    }
+    CSystemEvent::kEventUnlock => {
+      CApiState::get().add_system_event(SystemEvent::DidUnlock);
+      Executor::wake_system_wakers(CApiState::get().executor.as_ptr());
+    }
+    _ => (),
   }
 }
 
-extern "C" fn update_callback(capi_ptr: *mut c_void) -> i32 {
+extern "C" fn update_callback(_: *mut c_void) -> i32 {
   // The CApiState is constructed in initialize() and then never destroyed, so references can be
   // 'static lifetime.
-  let capi: &'static CApiState = unsafe { &*(capi_ptr as *const CApiState) };
-  let exec_ptr = capi.executor.as_ptr();
+  let capi = CApiState::get();
 
   // Drop any bitmaps from the previous frame off the ContextStack.
   capi.reset_context_stack();
@@ -83,7 +112,7 @@ extern "C" fn update_callback(capi_ptr: *mut c_void) -> i32 {
   // to await the FrameWatcher and immediately be woken instead of having to skip a frame. In
   // particular this allows the main function to wait for the next frame at the top of its main loop
   // without missing the first frame.
-  Executor::poll_futures(exec_ptr);
+  Executor::poll_futures(capi.executor.as_ptr());
 
   capi.frame_number.set(capi.frame_number.get() + 1);
 
@@ -101,15 +130,14 @@ extern "C" fn update_callback(capi_ptr: *mut c_void) -> i32 {
   };
   capi.set_current_frame_button_state(buttons_set);
 
-  let exec: &mut Executor = unsafe { &mut *(exec_ptr) };
-  let mut wakers = core::mem::replace(&mut exec.wakers_for_update_callback, Vec::with_capacity(1));
-  drop(exec);
-
-  for w in wakers.drain(..) {
-    // SAFETY: Waking a waker can execute arbitrary code, so we could end up in code with access to the
-    // executor, so we have dropped our reference to the Executor first.
-    w.wake()
-  }
+  CApiState::get().add_system_event(SystemEvent::NextFrame {
+    frame_number: capi.frame_number.get(),
+    inputs: Inputs::new(
+      capi.peripherals_enabled.get(),
+      &capi.button_state_per_frame.get().map(|b| b.unwrap()),
+    ),
+  });
+  Executor::wake_system_wakers(capi.executor.as_ptr());
 
   1 // Returning 0 will pause the simulator.
 }

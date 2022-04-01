@@ -2,10 +2,8 @@ use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::geometry::Vector3;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Inputs {
-  state: &'static CApiState,
-  frame_number: u64,
   peripherals_enabled: Peripherals,
   buttons: Buttons,
   crank: Crank,
@@ -15,11 +13,10 @@ impl Inputs {
   // happened between frames. So they are passed in to Inputs from the cache instead of pulled
   // from the device here.
   pub(crate) fn new(
-    state: &'static CApiState,
-    frame_number: u64,
     peripherals_enabled: Peripherals,
     button_state_per_frame: &[PDButtonsSet; 2],
   ) -> Self {
+    let state = CApiState::get();
     let crank = if unsafe { state.csystem.isCrankDocked.unwrap()() != 0 } {
       Crank::Docked
     } else {
@@ -30,17 +27,10 @@ impl Inputs {
     };
 
     Inputs {
-      state,
-      frame_number,
       peripherals_enabled,
       buttons: Buttons::new(button_state_per_frame),
       crank,
     }
-  }
-  /// The current frame number, which is monotonically increasing after the return of each call to
-  /// `FrameWatcher::next()`
-  pub fn frame_number(&self) -> u64 {
-    self.frame_number
   }
 
   /// Returns the last read values from the accelerometor.
@@ -50,7 +40,7 @@ impl Inputs {
   pub fn accelerometer(&self) -> Option<Vector3<f32>> {
     if self.peripherals_enabled & Peripherals::kAccelerometer == Peripherals::kAccelerometer {
       let mut v = Vector3::default();
-      unsafe { self.state.csystem.getAccelerometer.unwrap()(&mut v.x, &mut v.y, &mut v.z) }
+      unsafe { CApiState::get().csystem.getAccelerometer.unwrap()(&mut v.x, &mut v.y, &mut v.z) }
       Some(v)
     } else {
       None
@@ -122,7 +112,7 @@ pub enum ButtonEvent {
 }
 
 /// The state of all buttons, along with changes since the last frame.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Buttons {
   current: CButtons,
   up_events: [Option<ButtonEvent>; 3],

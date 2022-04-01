@@ -8,14 +8,12 @@ use crate::null_terminated::ToNullTerminatedString;
 /// Font which can be used to draw text when made active with `Graphics::set_font()`.
 #[derive(Debug)]
 pub struct Font {
-  state: &'static CApiState,
   font_ptr: NonNull<CLCDFont>,
 }
 impl Font {
-  pub(crate) fn from_ptr(font_ptr: *mut CLCDFont, state: &'static CApiState) -> Self {
+  pub(crate) fn from_ptr(font_ptr: *mut CLCDFont) -> Self {
     Font {
       font_ptr: unsafe { NonNull::new_unchecked(font_ptr) },
-      state,
     }
   }
 
@@ -26,7 +24,7 @@ impl Font {
   pub fn measure_text_width(&self, text: &str, tracking: i32) -> i32 {
     let utf = text.to_null_terminated_utf8();
     unsafe {
-      self.state.cgraphics.getTextWidth.unwrap()(
+      CApiState::get().cgraphics.getTextWidth.unwrap()(
         self.font_ptr.as_ptr(),
         utf.as_ptr() as *const core::ffi::c_void,
         utf.len() as u64 - 1, // Don't count the null.
@@ -38,7 +36,7 @@ impl Font {
 
   /// The height of the font.
   pub fn font_height(&self) -> u8 {
-    unsafe { self.state.cgraphics.getFontHeight.unwrap()(self.font_ptr.as_ptr()) }
+    unsafe { CApiState::get().cgraphics.getFontHeight.unwrap()(self.font_ptr.as_ptr()) }
   }
 
   /// Returns the FontPage for the character `c`.
@@ -48,9 +46,8 @@ impl Font {
   /// same page. The FontPage can be used to query information about all characters in the page.
   pub fn font_page(&self, c: char) -> FontPage {
     let page_ptr =
-      unsafe { self.state.cgraphics.getFontPage.unwrap()(self.font_ptr.as_ptr(), c as u32) };
+      unsafe { CApiState::get().cgraphics.getFontPage.unwrap()(self.font_ptr.as_ptr(), c as u32) };
     FontPage {
-      state: self.state,
       page_ptr: unsafe { NonNull::new_unchecked(page_ptr) },
       page_test: c as u32 & 0xffffff00,
     }
@@ -67,7 +64,6 @@ impl Font {
 /// ~0xff)`, then c1 and c2 belong to the same page. The FontPage can be used to query information
 /// about all characters in the page.
 pub struct FontPage {
-  state: &'static CApiState,
   page_ptr: NonNull<CLCDFontPage>,
   /// If a characters high 24 bits match this, then it's part of the page.
   page_test: u32,
@@ -96,7 +92,7 @@ impl FontPage {
       let mut bitmap_ptr: *mut CLCDBitmap = core::ptr::null_mut();
       let mut advance = 0;
       let glyph_ptr = unsafe {
-        self.state.cgraphics.getPageGlyph.unwrap()(
+        CApiState::get().cgraphics.getPageGlyph.unwrap()(
           self.page_ptr.as_ptr(),
           c as u32,
           &mut bitmap_ptr,
@@ -104,11 +100,10 @@ impl FontPage {
         )
       };
       Some(FontGlyph {
-        state: self.state,
         glyph_ptr: NonNull::new(glyph_ptr).unwrap(),
         advance,
         glyph_char: c,
-        bitmap: SharedBitmapRef::<'static>::from_ptr(bitmap_ptr, self.state),
+        bitmap: SharedBitmapRef::<'static>::from_ptr(bitmap_ptr),
       })
     }
   }
@@ -116,7 +111,6 @@ impl FontPage {
 
 /// Information about a specific character's font glyph.
 pub struct FontGlyph {
-  state: &'static CApiState,
   glyph_ptr: NonNull<CLCDFontGlyph>,
   advance: i32,
   glyph_char: char,
@@ -135,7 +129,7 @@ impl FontGlyph {
   /// The adjustment would be applied to the `advance()`.
   pub fn kerning(&self, next_char: char) -> i32 {
     unsafe {
-      self.state.cgraphics.getGlyphKerning.unwrap()(
+      CApiState::get().cgraphics.getGlyphKerning.unwrap()(
         self.glyph_ptr.as_ptr(),
         self.glyph_char as u32,
         next_char as u32,

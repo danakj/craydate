@@ -214,16 +214,19 @@ pub async fn run(mut api: playdate::Api) -> ! {
         [7, 4],
         [7, 3],
       ]
-      .map(|[x, y]| euclid::rect(x * 32, y * 32, 32, 32))
+      .map(|[x, y]| euclid::rect(x * 32, y * 32, 32, 32)),
     ),
     block_bmp: graphics.load_bitmap("images/box").unwrap(),
   };
 
   let mut accum = AccumInputs { crank_accum: 0.0 };
 
-  let fw = system.frame_watcher();
+  let events = system.system_event_watcher();
   loop {
-    let inputs = fw.next().await;
+    let inputs = match events.next().await {
+      SystemEvent::NextFrame { inputs, .. } => inputs,
+      _ => continue,
+    };
 
     // TODO: probably need a more efficient drawing mechanism than full redraw
     graphics.clear(SolidColor::kColorWhite);

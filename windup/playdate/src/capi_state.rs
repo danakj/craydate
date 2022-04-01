@@ -1,17 +1,19 @@
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
+use alloc::rc::Weak;
 use alloc::vec::Vec;
 use core::cell::{Cell, RefCell};
 use core::ptr::NonNull;
 
+use crate::bitmap::Bitmap;
 use crate::ctypes::*;
 use crate::executor::Executor;
-use crate::bitmap::Bitmap;
+use crate::system_event::{SystemEvent, SystemEventWatcherState};
+
+static mut GLOBAL_CAPI_STATE: Option<&'static CApiState> = None;
 
 #[non_exhaustive]
-#[derive(Debug)]
-pub struct CApiState {
-  pub capi: &'static CPlaydateApi,
+pub(crate) struct CApiState {
   pub cdisplay: &'static CDisplayApi,
   pub csystem: &'static CSystemApi,
   pub cfile: &'static CFileApi,
@@ -28,6 +30,7 @@ pub struct CApiState {
   pub stencil_generation: Cell<usize>,
   // Tracks how many times the font was set.
   pub font_generation: Cell<usize>,
+  pub system_event_watchers: Cell<Vec<Weak<SystemEventWatcherState>>>,
 }
 impl CApiState {
   pub fn new(capi: &'static CPlaydateApi) -> CApiState {
@@ -36,8 +39,7 @@ impl CApiState {
       csystem: unsafe { &*capi.system },
       cdisplay: unsafe { &*capi.display },
       cfile: unsafe { &*capi.file },
-      csound: unsafe { &* capi.sound },
-      capi,
+      csound: unsafe { &*capi.sound },
       executor: unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(Executor::new()))) },
       frame_number: Cell::new(0),
       peripherals_enabled: Cell::new(Peripherals::kNone),
@@ -45,11 +47,18 @@ impl CApiState {
       stack: RefCell::new(ContextStack::new()),
       stencil_generation: Cell::new(0),
       font_generation: Cell::new(0),
+      system_event_watchers: Cell::new(Vec::new()),
     }
   }
+  pub fn set_instance(capi: &'static CApiState) {
+    unsafe { GLOBAL_CAPI_STATE = Some(capi) };
+  }
+  pub fn get() -> &'static CApiState {
+    unsafe { GLOBAL_CAPI_STATE.unwrap() }
+  }
 
-  /// Stores the current frame's button states, and moves the previous frames' states into the
-  /// next position.
+  /// Stores the current frame's button states, and moves the previous frames' states into the next
+  /// position.
   pub fn set_current_frame_button_state(&self, buttons_set: PDButtonsSet) {
     let mut buttons = self.button_state_per_frame.take();
     // On the first frame, we push a duplicate frame.
@@ -66,31 +75,46 @@ impl CApiState {
   pub fn reset_context_stack(&self) {
     *self.stack.borrow_mut() = ContextStack::new();
   }
+
+  pub fn add_system_event(&self, event: SystemEvent) {
+    let watchers = self.system_event_watchers.take();
+    let filtered_watchers = watchers
+      .into_iter()
+      .filter(|weak| match weak.upgrade() {
+        Some(state) => {
+          // Each event leads to a wake() which runs the handler and then yields back to the C event
+          // handler, and we wake() all Wakers before we give control back to the system. So there
+          // should never be more then 1 event waiting to be woken for.
+          assert!(state.next_event.take().is_none());
+          state.next_event.set(Some(event.clone()));
+          true
+        }
+        None => false,
+      })
+      .collect();
+    self.system_event_watchers.set(filtered_watchers);
+  }
 }
 
 /// Holds a reference on an Bitmap that was placed into the context stack. The reference can
 /// be used to retrieve that Bitmap on a future frame, after it is released.
 #[derive(Debug)]
 pub struct ContextStackId {
-  state: &'static CApiState,
   id: usize,
 }
 impl Clone for ContextStackId {
   fn clone(&self) -> Self {
-    let mut stack = self.state.stack.borrow_mut();
+    let mut stack = CApiState::get().stack.borrow_mut();
     let held = stack.holding.get_mut(&self.id);
     let held = unsafe { held.unwrap_unchecked() };
     held.refs += 1;
 
-    ContextStackId {
-      state: self.state,
-      id: self.id,
-    }
+    ContextStackId { id: self.id }
   }
 }
 impl Drop for ContextStackId {
   fn drop(&mut self) {
-    let mut stack = self.state.stack.borrow_mut();
+    let mut stack = CApiState::get().stack.borrow_mut();
     let held = stack.holding.get_mut(&self.id);
     let held = unsafe { held.unwrap_unchecked() };
     held.refs -= 1;
@@ -134,7 +158,7 @@ struct StackBitmap {
 }
 
 #[derive(Debug)]
-pub struct ContextStack {
+pub(crate) struct ContextStack {
   /// The active stack. The top of the stack is where drawing commands are currently being applied.
   /// A None at the top of the stack refers to the framebuffer, and an empty stack also refers to
   /// the framebuffer.
@@ -154,13 +178,13 @@ impl ContextStack {
     }
   }
 
-  pub fn push_framebuffer(&mut self, state: &'static CApiState) {
-    unsafe { state.cgraphics.pushContext.unwrap()(core::ptr::null_mut()) };
+  pub fn push_framebuffer(&mut self) {
+    unsafe { CApiState::get().cgraphics.pushContext.unwrap()(core::ptr::null_mut()) };
 
     self.stack.push(None)
   }
-  pub fn push_bitmap(&mut self, state: &'static CApiState, mut bitmap: Bitmap) -> ContextStackId {
-    unsafe { state.cgraphics.pushContext.unwrap()(bitmap.as_bitmap_mut_ptr()) };
+  pub fn push_bitmap(&mut self, mut bitmap: Bitmap) -> ContextStackId {
+    unsafe { CApiState::get().cgraphics.pushContext.unwrap()(bitmap.as_bitmap_mut_ptr()) };
 
     static mut NEXT_ID: usize = 1;
     let id = unsafe {
@@ -176,10 +200,7 @@ impl ContextStack {
         bitmap: None,
       },
     );
-    ContextStackId {
-      state: state,
-      id,
-    }
+    ContextStackId { id }
   }
   pub fn pop(&mut self, state: &'static CApiState) -> Option<ContextStackId> {
     unsafe { state.cgraphics.popContext.unwrap()() };
@@ -198,10 +219,7 @@ impl ContextStack {
           held.bitmap = Some(stack_b.bitmap);
           assert!(held.refs >= 1);
           held.refs += 1;
-          Some(ContextStackId {
-            state,
-            id: stack_b.id,
-          })
+          Some(ContextStackId { id: stack_b.id })
         }
       }
     })
@@ -209,5 +227,4 @@ impl ContextStack {
   pub fn take_bitmap(&mut self, id: ContextStackId) -> Option<Bitmap> {
     self.holding.remove(&id.id).and_then(|held| held.bitmap)
   }
-
 }

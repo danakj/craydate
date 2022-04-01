@@ -22,6 +22,7 @@ mod ctypes;
 mod ctypes_enums;
 mod debug;
 mod display;
+mod error;
 mod executor;
 mod file;
 mod font;
@@ -30,6 +31,7 @@ mod graphics;
 mod inputs;
 mod null_terminated;
 mod sound;
+mod system_event;
 mod time;
 
 #[doc(hidden)]
@@ -38,19 +40,21 @@ pub mod macro_helpers;
 /// Reexport some of alloc, since things in alloc are not guaranteed to work in `no_std` as it all
 /// depends on our global allocator. This makes it clear they can be used, and avoids the need for
 /// `export mod alloc` elsewhere.
-pub use alloc::{borrow::ToOwned as ToOwned, format, string::String as String};
+pub use alloc::{borrow::ToOwned, format, string::String};
 
 pub use api::*;
 pub use bitmap::*;
 pub use color::*;
 pub use ctypes_enums::*;
 pub use display::*;
+pub use error::*;
 pub use file::*;
 pub use font::*;
 pub use geometry::*;
 pub use graphics::*;
 pub use inputs::*;
 pub use sound::*;
+pub use system_event::*;
 pub use time::{TimeDelta, TimeTicks};
 
 #[global_allocator]
