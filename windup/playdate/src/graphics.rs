@@ -573,11 +573,10 @@ impl Graphics {
   ) {
     // Point2D is a #[repr(C)] struct of x, y. It's alignment will be the same as i32, so an
     // array of Point2D can be treated as an array of i32 with x and y alternating.
-    let raw_points = points.as_ptr() as *mut i32;
     unsafe {
       CApiState::get().cgraphics.fillPolygon.unwrap()(
         points.len() as i32,
-        raw_points,
+        points.as_ptr() as *mut i32,
         color.to_c_color(),
         fill_rule,
       )
