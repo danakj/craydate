@@ -58,7 +58,7 @@ pub use system_event::*;
 pub use time::{TimeDelta, TimeTicks};
 
 #[global_allocator]
-pub static GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();
+pub static mut GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();
 
 /// A helper implementation of panic_handler for the toplevel crate to forward to.
 ///

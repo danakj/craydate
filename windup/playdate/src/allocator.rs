@@ -1,7 +1,6 @@
 use core::alloc::Layout;
 use core::ffi::c_void;
 use core::ptr::null_mut;
-use core::sync::atomic::{AtomicPtr, Ordering};
 
 use static_assertions::*;
 
@@ -54,27 +53,23 @@ const fn calc_shift_for_align(addr: u64, align: usize) -> usize {
 }
 
 pub struct Allocator {
-  sys: AtomicPtr<playdate_sys::playdate_sys>,
+  sys: Option<&'static playdate_sys::playdate_sys>,
 }
 
 impl Allocator {
   pub const fn new() -> Allocator {
     Allocator::tests();
     Allocator {
-      sys: AtomicPtr::new(null_mut()),
+      sys: None,
     }
   }
 
-  pub fn set_system_ptr(&self, sys: &'static playdate_sys::playdate_sys) {
-    self.sys.store(
-      sys as *const playdate_sys::playdate_sys as *mut playdate_sys::playdate_sys,
-      Ordering::Release,
-    );
+  pub fn set_system_ptr(&mut self, sys: &'static playdate_sys::playdate_sys) {
+    self.sys = Some(sys)
   }
 
   fn alloc_fn(&self, ptr: *mut u8, size: usize) -> *mut u8 {
-    let sys_ptr = self.sys.load(Ordering::Acquire);
-    let sys = unsafe { &*sys_ptr };
+    let sys = self.sys.unwrap();
     let realloc = sys.realloc.unwrap();
     unsafe { realloc(ptr as *mut c_void, size as u64) as *mut u8 }
   }

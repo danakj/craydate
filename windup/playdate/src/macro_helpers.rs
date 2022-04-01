@@ -42,7 +42,7 @@ pub fn initialize(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3, co
     CSystemEvent::kEventInit => {
       // SAFETY: Do not allocate before the GLOBAL_ALLOCATOR is set up here, or we will crash
       // in the allocator.
-      GLOBAL_ALLOCATOR.set_system_ptr(system);
+      unsafe { GLOBAL_ALLOCATOR.set_system_ptr(system) };
       crate::debug::initialize(system);
 
       // We leak this pointer so it has 'static lifetime.
