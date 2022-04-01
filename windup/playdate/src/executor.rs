@@ -134,35 +134,34 @@ mod never_return_waker {
   }
 
   fn clone_fn(data_ptr: *const ()) -> RawWaker {
-    let data = unsafe { &mut *(data_ptr as *mut WakerData) };
-    data.refs += 1;
+    unsafe { (*as_data(data_ptr)).refs += 1 };
     RawWaker::new(data_ptr, &VTABLE)
   }
   fn wake_fn(data_ptr: *const ()) {
-    let data = unsafe { &mut *(data_ptr as *mut WakerData) };
-
     // Steal the data_ptr from the Waker being dropped.
     let waker = unsafe { Waker::from_raw(RawWaker::new(data_ptr as *const (), &VTABLE)) };
     // SAFETY: No Executor is held while calling poll_main().
-    unsafe { Executor::poll_main(data.exec_ptr, waker) }
+    unsafe { Executor::poll_main((*as_data(data_ptr)).exec_ptr, waker) }
 
     // Don't change the `data`'s refs or drop it here. This is called when the Waker will not be dropped
     // separately, so the data_ptr won't be freed by the Waker for this function.
   }
   fn wake_by_ref_fn(data_ptr: *const ()) {
-    let data = unsafe { &mut *(data_ptr as *mut WakerData) };
-
     // Clone the Waker and its data.
     let waker = unsafe { Waker::from_raw(clone_fn(data_ptr)) };
     // SAFETY: No Executor is held while calling poll_main().
-    unsafe { Executor::poll_main(data.exec_ptr, waker) }
+    unsafe { Executor::poll_main((*as_data(data_ptr)).exec_ptr, waker) }
   }
   fn drop_fn(data_ptr: *const ()) {
     let data = unsafe { &mut *(data_ptr as *mut WakerData) };
     data.refs -= 1;
     if data.refs == 0 {
-      unsafe { Box::from_raw(data as *mut WakerData) };
+      unsafe { Box::from_raw(data) };
     }
+  }
+
+  fn as_data(data_ptr: *const ()) -> *mut WakerData {
+    data_ptr as *mut WakerData
   }
 
   static VTABLE: RawWakerVTable = RawWakerVTable::new(clone_fn, wake_fn, wake_by_ref_fn, drop_fn);
