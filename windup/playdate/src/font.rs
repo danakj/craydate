@@ -53,7 +53,7 @@ impl Font {
     }
   }
 
-  pub(crate) fn as_ptr(&self) -> *mut CLCDFont {
+  pub(crate) fn as_ptr(&self) -> *const CLCDFont {
     self.font_ptr.as_ptr()
   }
 }

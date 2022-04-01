@@ -178,7 +178,7 @@ impl Graphics {
   pub fn set_font<'a>(&mut self, font: &'a Font) -> ActiveFont<'a> {
     let gen = CApiState::get().font_generation.get() + 1;
     CApiState::get().font_generation.set(gen);
-    unsafe { CApiState::get().cgraphics.setFont.unwrap()(font.as_ptr()) }
+    unsafe { CApiState::get().cgraphics.setFont.unwrap()(font.as_ptr() as *mut CLCDFont) }
     ActiveFont {
       // Track the generation number so as to only unset the font on drop if set_font() wasn't
       // called again since.
