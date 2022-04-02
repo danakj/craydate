@@ -59,9 +59,7 @@ pub struct Allocator {
 impl Allocator {
   pub const fn new() -> Allocator {
     Allocator::tests();
-    Allocator {
-      sys: None,
-    }
+    Allocator { sys: None }
   }
 
   pub fn set_system_ptr(&mut self, sys: &'static playdate_sys::playdate_sys) {
