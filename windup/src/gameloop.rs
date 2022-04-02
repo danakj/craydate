@@ -7,8 +7,6 @@ use playdate::*;
 
 const INITIAL_X: i32 = 50;
 const INITIAL_Y: i32 = 50;
-const MIN_X: i32 = 0;
-const MAX_X: i32 = 400 - 32;
 const FLOOR_Y: i32 = 200;
 // delta velocity per second
 const GRAVITY: f32 = 3.0;
@@ -133,12 +131,7 @@ impl World {
     if player.pos.origin.y >= FLOOR_Y {
       player.pos.origin.y = FLOOR_Y;
       player.vel = euclid::default::Vector2D::new(0.0, 0.0);
-    }
-    if player.pos.origin.x < MIN_X {
-      player.pos.origin.x = MIN_X;
-    }
-    if player.pos.origin.x > MAX_X {
-      player.pos.origin.x = MAX_X;
+      player.grounded = true;
     }
   }
 
@@ -146,7 +139,15 @@ impl World {
     self.player_update(inputs, accum, system);
   }
 
+  pub fn camera_offset(&self) -> i32 {
+    // TODO: consider lerping or better behavior here.
+    INITIAL_X - self.player.pos.origin.x
+  }
+
   pub fn draw(&self, g: &mut Graphics) {
+    // TODO: could this be RAII? or should drawing the ui reset to zero?
+    g.set_draw_offset(self.camera_offset(), 0);
+
     for block in &self.blocks {
       g.draw_bitmap(
         &self.block_bmp,
@@ -157,6 +158,8 @@ impl World {
     }
     // TODO: draw other stuff in world
     self.player.draw(g);
+
+    g.set_draw_offset(0, 0);
   }
 }
 
@@ -207,8 +210,16 @@ pub async fn run(mut api: playdate::Api) -> ! {
         [10, 6],
         [11, 6],
         [12, 6],
+        [13, 6],
+        [14, 6],
+        [15, 6],
+        [16, 6],
+        [17, 6],
+        [18, 6],
+        [19, 6],
         // small bump
         [4, 5],
+        [18, 5],
         // large bump
         [7, 5],
         [7, 4],
