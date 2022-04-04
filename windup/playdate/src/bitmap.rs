@@ -1,6 +1,9 @@
+use alloc::format;
+
 use crate::capi_state::CApiState;
 use crate::color::Color;
 use crate::ctypes::*;
+use crate::null_terminated::ToNullTerminatedString;
 use crate::Error;
 
 /// A bitmap image.
@@ -17,6 +20,72 @@ pub struct Bitmap {
   owned: BitmapRef,
 }
 impl Bitmap {
+  /// Allocates and returns a new `width` by `height` `Bitmap` filled with `bg_color`.
+  pub fn new<'a, C>(width: i32, height: i32, bg_color: C) -> Bitmap
+  where
+    Color<'a>: From<C>,
+  {
+    // FIXME: for some reason, patterns don't appear to work here, but do work with a C example.
+    let bitmap_ptr = unsafe {
+      CApiState::get().cgraphics.newBitmap.unwrap()(
+        width,
+        height,
+        Color::<'a>::from(bg_color).to_c_color(),
+      )
+    };
+    Bitmap::from_owned_ptr(bitmap_ptr)
+  }
+
+  /// Returns a new, rotated and scaled Bitmap based on the given `bitmap`.
+  pub fn from_bitmap_with_rotation(
+    bitmap: &BitmapRef,
+    rotation: f32,
+    xscale: f32,
+    yscale: f32,
+  ) -> Bitmap {
+    // This function could grow the bitmap by rotating and so it (conveniently?) also returns the
+    // alloced size of the new bitmap.  You can get this off the bitmap data more or less if needed.
+    let mut _alloced_size: i32 = 0;
+    let bitmap_ptr = unsafe {
+      CApiState::get().cgraphics.rotatedBitmap.unwrap()(
+        bitmap.as_bitmap_ptr(),
+        rotation,
+        xscale,
+        yscale,
+        &mut _alloced_size,
+      )
+    };
+    Bitmap::from_owned_ptr(bitmap_ptr)
+  }
+
+  pub fn from_file(path: &str) -> Result<Bitmap, Error> {
+    let mut out_err: *const u8 = core::ptr::null_mut();
+
+    // UNCLEAR: out_err is not a fixed string (it contains the name of the image). However, future
+    // calls will overwrite the previous out_err and trying to free it via system->realloc crashes
+    // (likely because the pointer wasn't alloc'd by us). This probably (hopefully??) means that we
+    // don't need to free it.
+    let bitmap_ptr = unsafe {
+      CApiState::get().cgraphics.loadBitmap.unwrap()(
+        path.to_null_terminated_utf8().as_ptr(),
+        &mut out_err,
+      )
+    };
+
+    if !out_err.is_null() {
+      let result = unsafe { crate::null_terminated::parse_null_terminated_utf8(out_err) };
+      match result {
+        // A valid error string.
+        Ok(err) => Err(format!("load_bitmap: {}", err).into()),
+        // An invalid error string.
+        Err(err) => Err(format!("load_bitmap: unknown error ({})", err).into()),
+      }
+    } else {
+      assert!(!bitmap_ptr.is_null());
+      Ok(Bitmap::from_owned_ptr(bitmap_ptr))
+    }
+  }
+
   /// Construct an Bitmap from an owning pointer.
   pub(crate) fn from_owned_ptr(bitmap_ptr: *mut CLCDBitmap) -> Self {
     Bitmap {
@@ -107,6 +176,35 @@ impl BitmapRef {
       hasmask,
     };
     (data, pixels)
+  }
+
+  /// Loads the image at `path` into the previously allocated `BitmapRef`.
+  pub fn load_file(&mut self, path: &str) -> Result<(), Error> {
+    let mut out_err: *const u8 = core::ptr::null_mut();
+
+    // UNCLEAR: out_err is not a fixed string (it contains the name of the image). However, future
+    // calls will overwrite the previous out_err and trying to free it via system->realloc crashes
+    // (likely because the pointer wasn't alloc'd by us). This probably (hopefully??) means that we
+    // don't need to free it.
+    unsafe {
+      CApiState::get().cgraphics.loadIntoBitmap.unwrap()(
+        path.to_null_terminated_utf8().as_ptr(),
+        self.as_bitmap_mut_ptr(),
+        &mut out_err,
+      )
+    };
+
+    if !out_err.is_null() {
+      let result = unsafe { crate::null_terminated::parse_null_terminated_utf8(out_err) };
+      match result {
+        // A valid error string.
+        Ok(err) => Err(format!("load_into_bitmap: {}", err).into()),
+        // An invalid error string.
+        Err(err) => Err(format!("load_into_bitmap: unknown error ({})", err).into()),
+      }
+    } else {
+      Ok(())
+    }
   }
 
   /// Returns the bitmap's metadata such as its width and height.

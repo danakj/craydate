@@ -5,7 +5,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   let system = &api.system;
   let graphics = &mut api.graphics;
 
-  let mut grey50 = graphics.new_bitmap(8, 8, SolidColor::kColorBlack);
+  let mut grey50 = Bitmap::new(8, 8, SolidColor::kColorBlack);
   for x in (0..8).step_by(2) {
     for y in 0..8 {
       let xwrite = x + y % 2;
@@ -16,13 +16,13 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   let grey50 = Pattern::from_bitmap(&grey50, 0, 0);
   graphics.clear(&grey50);
 
-  let mut bmp = graphics.new_bitmap(100, 40, SolidColor::kColorWhite);
-  let mask = graphics.new_bitmap(100, 40, SolidColor::kColorWhite);
+  let mut bmp = Bitmap::new(100, 40, SolidColor::kColorWhite);
+  let mask = Bitmap::new(100, 40, SolidColor::kColorWhite);
   bmp.set_mask_bitmap(&mask).expect("mask problems");
 
   graphics.draw_bitmap(&bmp, 5, 9, BitmapFlip::kBitmapUnflipped);
 
-  let mut stencil = graphics.new_bitmap(64, 64, SolidColor::kColorWhite);
+  let mut stencil = Bitmap::new(64, 64, SolidColor::kColorWhite);
   for y in 0..64 as usize {
     let c = y % 4 != 0;
     for x in 0..64 as usize {
@@ -30,7 +30,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
     }
   }
 
-  let font = graphics.load_font("fonts/Mini Sans 2X/Mini Sans 2X.pft");
+  let font = Font::from_file("fonts/Mini Sans 2X/Mini Sans 2X.pft");
   let _active = match &font {
     Ok(font) => {
       api.system.log(format!("Font height: {}", font.font_height()));
@@ -92,14 +92,14 @@ pub async fn _run(mut api: playdate::Api) -> ! {
 
   // working image
   let yo_path = "images/yo";
-  let load = graphics.load_bitmap(yo_path);
+  let load = Bitmap::from_file(yo_path);
   if let Ok(bitmap) = load {
     graphics.draw_bitmap(&bitmap, 100, 80, BitmapFlip::kBitmapUnflipped);
   }
 
   // broken image
   let broken_path = "images/wat";
-  let load = graphics.load_bitmap(broken_path);
+  let load = Bitmap::from_file(broken_path);
   if let Err(error) = load {
     system.log(error);
   }

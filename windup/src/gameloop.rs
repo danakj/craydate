@@ -188,7 +188,7 @@ pub async fn run(mut api: playdate::Api) -> ! {
 
   let mut world = World {
     player: GameObj {
-      bitmap: graphics.load_bitmap("images/bot").unwrap(),
+      bitmap: Bitmap::from_file("images/bot").unwrap(),
       pos: euclid::rect(INITIAL_X, INITIAL_Y, 20, 20),
       pos_remainder: euclid::vec2(0.0, 0.0),
       vel: euclid::vec2(0.0, 0.0),
@@ -227,7 +227,7 @@ pub async fn run(mut api: playdate::Api) -> ! {
       ]
       .map(|[x, y]| euclid::rect(x * 32, y * 32, 32, 32)),
     ),
-    block_bmp: graphics.load_bitmap("images/box").unwrap(),
+    block_bmp: Bitmap::from_file("images/box").unwrap(),
   };
 
   let mut accum = AccumInputs { crank_accum: 0.0 };

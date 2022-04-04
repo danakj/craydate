@@ -1,8 +1,10 @@
+use alloc::format;
 use core::ptr::NonNull;
 
 use crate::bitmap::SharedBitmapRef;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
+use crate::error::Error;
 use crate::null_terminated::ToNullTerminatedString;
 
 /// Font which can be used to draw text when made active with `Graphics::set_font()`.
@@ -11,6 +13,35 @@ pub struct Font {
   font_ptr: NonNull<CLCDFont>,
 }
 impl Font {
+  /// Returns the Font object for the font file at `path`.
+  pub fn from_file(path: &str) -> Result<Font, Error> {
+    let mut out_err: *const u8 = core::ptr::null_mut();
+
+    // UNCLEAR: out_err is not a fixed string (it contains the name of the image). However, future
+    // calls will overwrite the previous out_err and trying to free it via system->realloc crashes
+    // (likely because the pointer wasn't alloc'd by us). This probably (hopefully??) means that we
+    // don't need to free it.
+    let font_ptr = unsafe {
+      CApiState::get().cgraphics.loadFont.unwrap()(
+        path.to_null_terminated_utf8().as_ptr(),
+        &mut out_err,
+      )
+    };
+
+    if !out_err.is_null() {
+      let result = unsafe { crate::null_terminated::parse_null_terminated_utf8(out_err) };
+      match result {
+        // A valid error string.
+        Ok(err) => Err(format!("load_font: {}", err).into()),
+        // An invalid error string.
+        Err(err) => Err(format!("load_font: unknown error ({})", err).into()),
+      }
+    } else {
+      assert!(!font_ptr.is_null());
+      Ok(Font::from_ptr(font_ptr))
+    }
+  }
+
   pub(crate) fn from_ptr(font_ptr: *mut CLCDFont) -> Self {
     Font {
       font_ptr: unsafe { NonNull::new_unchecked(font_ptr) },
