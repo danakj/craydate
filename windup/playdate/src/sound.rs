@@ -26,18 +26,6 @@ impl Sound {
     &mut self.default_channel
   }
 
-  pub fn new_channel(&self) -> SoundChannel {
-    SoundChannel {
-      cref: SoundChannelRef {
-        ptr: Rc::new(unsafe { (*CApiState::get().csound.channel).newChannel.unwrap()() }),
-      },
-      added: false,
-    }
-  }
-  pub fn new_fileplayer(&self) -> FilePlayer {
-    FilePlayer::new()
-  }
-
   pub fn add_channel(&mut self, channel: &mut SoundChannel) {
     channel.set_added(true);
     unsafe { CApiState::get().csound.addChannel.unwrap()(*channel.cref.ptr) };
@@ -72,6 +60,17 @@ pub struct SoundChannel {
   cref: SoundChannelRef,
   added: bool,
 }
+impl SoundChannel {
+  pub fn new() -> SoundChannel {
+    SoundChannel {
+      cref: SoundChannelRef {
+        ptr: Rc::new(unsafe { (*CApiState::get().csound.channel).newChannel.unwrap()() }),
+      },
+      added: false,
+    }
+  }
+}
+
 #[derive(Debug)]
 pub struct SoundChannelRef {
   // This class holds an Rc but is not Clone. This allows it to know when the Rc is going away, in
@@ -213,7 +212,7 @@ pub struct FilePlayer {
   ptr: *mut CFilePlayer,
 }
 impl FilePlayer {
-  fn new() -> Self {
+  pub fn new() -> Self {
     let ptr = unsafe { (*CApiState::get().csound.fileplayer).newPlayer.unwrap()() };
     FilePlayer {
       source: ManuallyDrop::new(SoundSource {

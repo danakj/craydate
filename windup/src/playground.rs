@@ -166,7 +166,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   let vol = api.sound.default_channel().volume();
   api.system.log(format!("Default channel volume (in 0-1): {}", vol));
 
-  let mut fileplayer = api.sound.new_fileplayer();
+  let mut fileplayer = FilePlayer::new();
   api.sound.default_channel_mut().attach_source(&mut fileplayer);
   let vol = fileplayer.as_source().volume();
   api.system.log(format!(
