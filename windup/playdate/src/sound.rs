@@ -218,6 +218,20 @@ impl Drop for SoundSource {
   }
 }
 
+/// FilePlayer is used for streaming audio from a file on disk.
+/// 
+/// This requires less memory than keeping all of the file’s data in memory (as with the
+/// SamplePlayer), but can increase overhead at run time.
+/// 
+/// FilePlayer can play MP3 files, but MP3 decoding is CPU-intensive. For a balance of good
+/// performance and small file size, we recommend encoding audio into ADPCM .wav files.
+///
+/// # Preparing your sound files
+/// To encode into ADPCM with Audacity
+/// * File > Export Audio… > File type: WAV (Microsoft), Encoding: IMA ADPCM.
+///
+/// To encode into ADPCM with ffmpeg
+/// * type `ffmpeg -i input.mp3 -acodec adpcm_ima_wav output.wav` at the command line.
 pub struct FilePlayer {
   source: ManuallyDrop<SoundSource>,
   ptr: *mut CFilePlayer,
