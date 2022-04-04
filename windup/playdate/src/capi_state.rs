@@ -12,6 +12,17 @@ use crate::system_event::{SystemEvent, SystemEventWatcherState};
 
 static mut GLOBAL_CAPI_STATE: Option<&'static CApiState> = None;
 
+pub(crate) struct CallbackState {
+  pub source_source_callbacks: BTreeMap<*mut CSoundSource, Box<dyn FnOnce()>>,
+}
+impl CallbackState {
+  fn new() -> Self {
+    CallbackState {
+      source_source_callbacks: BTreeMap::new(),
+    }
+  }
+}
+
 #[non_exhaustive]
 pub(crate) struct CApiState {
   pub cdisplay: &'static CDisplayApi,
@@ -31,6 +42,7 @@ pub(crate) struct CApiState {
   // Tracks how many times the font was set.
   pub font_generation: Cell<usize>,
   pub system_event_watchers: Cell<Vec<Weak<SystemEventWatcherState>>>,
+  pub callback_state: Cell<Option<CallbackState>>,
 }
 impl CApiState {
   pub fn new(capi: &'static CPlaydateApi) -> CApiState {
@@ -48,6 +60,7 @@ impl CApiState {
       stencil_generation: Cell::new(0),
       font_generation: Cell::new(0),
       system_event_watchers: Cell::new(Vec::new()),
+      callback_state: Cell::new(Some(CallbackState::new())),
     }
   }
   pub fn set_instance(capi: &'static CApiState) {

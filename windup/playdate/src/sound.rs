@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 use alloc::rc::{Rc, Weak};
 use core::mem::ManuallyDrop;
 
@@ -194,10 +195,20 @@ impl SoundSource {
   pub fn is_playing(&self) -> bool {
     unsafe { (*CApiState::get().csound.source).isPlaying.unwrap()(self.ptr) != 0 }
   }
+
+  pub fn set_completion_callback(&mut self, cb: impl FnOnce() + 'static) {
+    let mut cb_state = CApiState::get().callback_state.take().unwrap();
+    cb_state.source_source_callbacks.insert(self.ptr, Box::new(cb));
+    CApiState::get().callback_state.set(Some(cb_state));
+  }
 }
 
 impl Drop for SoundSource {
   fn drop(&mut self) {
+    let mut cb_state = CApiState::get().callback_state.take().unwrap();
+    cb_state.source_source_callbacks.remove(&self.ptr);
+    CApiState::get().callback_state.set(Some(cb_state));
+
     if let Some(weak_ptr) = self.channel.take() {
       if let Some(rc_ptr) = weak_ptr.upgrade() {
         let r = self.detach_from_channel(rc_ptr);
@@ -234,8 +245,6 @@ impl FilePlayer {
   pub fn as_source_mut(&mut self) -> &mut SoundSource {
     self.as_mut()
   }
-
-  // TODO: setFinishCallback
 
   /// Prepares the player to steam the file at `path`.
   pub fn load_file(&mut self, path: &str) {
