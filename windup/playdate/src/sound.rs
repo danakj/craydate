@@ -219,10 +219,10 @@ impl Drop for SoundSource {
 }
 
 /// FilePlayer is used for streaming audio from a file on disk.
-/// 
+///
 /// This requires less memory than keeping all of the file’s data in memory (as with the
 /// SamplePlayer), but can increase overhead at run time.
-/// 
+///
 /// FilePlayer can play MP3 files, but MP3 decoding is CPU-intensive. For a balance of good
 /// performance and small file size, we recommend encoding audio into ADPCM .wav files.
 ///
@@ -237,8 +237,15 @@ pub struct FilePlayer {
   ptr: *mut CFilePlayer,
 }
 impl FilePlayer {
-  pub fn new() -> Self {
+  /// Prepares the player to steam the file at `path`.
+  pub fn from_file(path: &str) -> Self {
     let ptr = unsafe { (*CApiState::get().csound.fileplayer).newPlayer.unwrap()() };
+    unsafe {
+      (*CApiState::get().csound.fileplayer).loadIntoPlayer.unwrap()(
+        ptr,
+        path.to_null_terminated_utf8().as_ptr(),
+      )
+    }
     FilePlayer {
       source: ManuallyDrop::new(SoundSource {
         ptr: ptr as *mut CSoundSource,
@@ -258,16 +265,6 @@ impl FilePlayer {
   }
   pub fn as_source_mut(&mut self) -> &mut SoundSource {
     self.as_mut()
-  }
-
-  /// Prepares the player to steam the file at `path`.
-  pub fn load_file(&mut self, path: &str) {
-    unsafe {
-      (*CApiState::get().csound.fileplayer).loadIntoPlayer.unwrap()(
-        self.as_mut_ptr(),
-        path.to_null_terminated_utf8().as_ptr(),
-      )
-    }
   }
 
   /// Returns the length, in seconds, of the file loaded into player.
@@ -293,11 +290,11 @@ impl FilePlayer {
   }
   /// Starts playing the file player.
   ///
-  /// If repeat is greater than one, it loops the given number of times. If zero, it loops endlessly
-  /// until it is stopped with `stop()`.
-  pub fn play(&mut self, repeat: i32) {
+  /// If `times` is greater than one, it loops the given number of times. If zero, it loops
+  /// endlessly until it is stopped with `stop()`.
+  pub fn play(&mut self, times: i32) {
     // TODO: Return play()'s int output value? What is it?
-    unsafe { (*CApiState::get().csound.fileplayer).play.unwrap()(self.as_mut_ptr(), repeat) };
+    unsafe { (*CApiState::get().csound.fileplayer).play.unwrap()(self.as_mut_ptr(), times) };
   }
   /// Stops playing the file.
   pub fn stop(&mut self) {

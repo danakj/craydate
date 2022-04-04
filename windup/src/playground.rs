@@ -166,13 +166,13 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   let vol = api.sound.default_channel().volume();
   api.system.log(format!("Default channel volume (in 0-1): {}", vol));
 
-  let mut fileplayer = FilePlayer::new();
+  let mut fileplayer = FilePlayer::from_file("sounds/mojojojo.pda");
   api.sound.default_channel_mut().attach_source(&mut fileplayer);
-  let vol = fileplayer.as_source().volume();
   api.system.log(format!(
-    "Fileplayer volume (in 0-1): {} {}",
-    vol.left, vol.right
+    "Fileplayer length: {} seconds",
+    fileplayer.len().to_seconds(),
   ));
+  fileplayer.play(1);
 
   system.log(format!(
     "Entering main loop at time {}",
