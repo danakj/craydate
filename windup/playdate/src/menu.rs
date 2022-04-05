@@ -7,12 +7,18 @@ use crate::ctypes::*;
 use crate::null_terminated::ToNullTerminatedString;
 
 static mut MENU_KEY: *mut c_void = core::ptr::null_mut();
+fn make_key() -> *mut c_void {
+  unsafe {
+    MENU_KEY = MENU_KEY.add(1);
+    MENU_KEY
+  }
+}
 
 pub struct MenuItem {
   ptr: *mut CMenuItem,
   title: String,
   #[allow(dead_code)]
-  callback: RegisteredCallback,  // Holds ownership of the closure.
+  callback: RegisteredCallback, // Holds ownership of the closure.
 }
 
 impl MenuItem {
@@ -21,10 +27,7 @@ impl MenuItem {
     cb: impl Fn(T) + 'static,
     callbacks: &mut Callbacks<T>,
   ) -> MenuItem {
-    let key = unsafe {
-      MENU_KEY = MENU_KEY.add(1);
-      MENU_KEY
-    };
+    let key = make_key();
     let (func, reg) = callbacks.add_menu_item(key, cb);
     let title = String::from(title); // Allocate a stable title pointer to pass to C.
     let ptr = unsafe {
