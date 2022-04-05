@@ -36,9 +36,6 @@ fn pdx_out_dir() -> PathBuf {
 }
 
 fn pdx_asset_dir(path_to_assets: PathBuf) -> PathBuf {
-  // FIXME: this is an unfortunate hardcoding of the asset dir relative to the simulator-win cargo manifest dir.
-  // It makes some logical sense to have the assets for a project be located with the windup code.
-  // Maybe there is some better folder structure that could make simulator-win/playdate-build more independent.
   let sim_dir =
     std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR envionment variable is not set");
   PathBuf::from(sim_dir).join(path_to_assets)
