@@ -1,6 +1,6 @@
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
-use alloc::rc::Weak;
+use alloc::rc::{Rc, Weak};
 use alloc::vec::Vec;
 use core::cell::{Cell, RefCell};
 use core::ptr::NonNull;
@@ -11,17 +11,6 @@ use crate::executor::Executor;
 use crate::system_event::{SystemEvent, SystemEventWatcherState};
 
 static mut GLOBAL_CAPI_STATE: Option<&'static CApiState> = None;
-
-pub(crate) struct CallbackState {
-  pub source_source_callbacks: BTreeMap<*mut CSoundSource, Box<dyn FnOnce()>>,
-}
-impl CallbackState {
-  fn new() -> Self {
-    CallbackState {
-      source_source_callbacks: BTreeMap::new(),
-    }
-  }
-}
 
 #[non_exhaustive]
 pub(crate) struct CApiState {
@@ -41,8 +30,7 @@ pub(crate) struct CApiState {
   pub stencil_generation: Cell<usize>,
   // Tracks how many times the font was set.
   pub font_generation: Cell<usize>,
-  pub system_event_watchers: Cell<Vec<Weak<SystemEventWatcherState>>>,
-  pub callback_state: Cell<Option<CallbackState>>,
+  pub system_event_watcher_state: Cell<Weak<SystemEventWatcherState>>,
 }
 impl CApiState {
   pub fn new(capi: &'static CPlaydateApi) -> CApiState {
@@ -59,8 +47,7 @@ impl CApiState {
       stack: RefCell::new(ContextStack::new()),
       stencil_generation: Cell::new(0),
       font_generation: Cell::new(0),
-      system_event_watchers: Cell::new(Vec::new()),
-      callback_state: Cell::new(Some(CallbackState::new())),
+      system_event_watcher_state: Cell::new(Weak::new()),
     }
   }
   pub fn set_instance(capi: &'static CApiState) {
@@ -90,22 +77,12 @@ impl CApiState {
   }
 
   pub fn add_system_event(&self, event: SystemEvent) {
-    let watchers = self.system_event_watchers.take();
-    let filtered_watchers = watchers
-      .into_iter()
-      .filter(|weak| match weak.upgrade() {
-        Some(state) => {
-          // Each event leads to a wake() which runs the handler and then yields back to the C event
-          // handler, and we wake() all Wakers before we give control back to the system. So there
-          // should never be more then 1 event waiting to be woken for.
-          assert!(state.next_event.take().is_none());
-          state.next_event.set(Some(event.clone()));
-          true
-        }
-        None => false,
-      })
-      .collect();
-    self.system_event_watchers.set(filtered_watchers);
+    let watcher_state = self.system_event_watcher_state.take().upgrade();
+    if let Some(state) = watcher_state {
+      assert!(state.next_event.take().is_none());
+      state.next_event.set(Some(event));
+      self.system_event_watcher_state.set(Rc::downgrade(&state));
+    }
   }
 }
 

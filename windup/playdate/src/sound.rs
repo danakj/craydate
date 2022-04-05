@@ -1,4 +1,3 @@
-use alloc::boxed::Box;
 use alloc::rc::{Rc, Weak};
 use core::mem::ManuallyDrop;
 
@@ -141,14 +140,26 @@ pub struct SoundSource {
   ptr: *mut CSoundSource,
   // The `channel` is set when the SoundSource has been added to the SoundChannel.
   channel: Option<Weak<*mut CSoundChannel>>, // Don't hold a borrow on SoundChannel.
+  // When the RegisteredCallback is destroyed, the user-given closure will be destroyed as well.
+  completion_callback: Option<RegisteredCallback>,
 }
 
 impl SoundSource {
+  fn new(ptr: *mut CSoundSource) -> Self {
+    SoundSource {
+      ptr,
+      channel: None,
+      completion_callback: None,
+    }
+  }
+
   /// Attach the SoundSource to the `channel` if it is not already attached to a channel.
   fn attach_to_channel(&mut self, channel: Weak<*mut CSoundChannel>) {
     // Mimic the Playdate API behaviour. Attaching a Source to a Channel when it's already attached
     // does nothing.
     if self.channel.is_none() {
+      // The SoundSource holds a Weak pointer to the SoundChannel so it knows whether to remove
+      // itself in drop().
       let rc_ptr = unsafe { channel.upgrade().unwrap_unchecked() };
       unsafe { (*CApiState::get().csound.channel).addSource.unwrap()(*rc_ptr, self.ptr) };
       self.channel = Some(channel);
@@ -196,18 +207,24 @@ impl SoundSource {
     unsafe { (*CApiState::get().csound.source).isPlaying.unwrap()(self.ptr) != 0 }
   }
 
-  pub fn set_completion_callback(&mut self, cb: impl FnOnce() + 'static) {
-    let mut cb_state = CApiState::get().callback_state.take().unwrap();
-    cb_state.source_source_callbacks.insert(self.ptr, Box::new(cb));
-    CApiState::get().callback_state.set(Some(cb_state));
+  pub fn set_completion_callback<T>(
+    &mut self,
+    callbacks: &mut Callbacks<T>,
+    cb: impl Fn(T) + 'static,
+  ) {
+    let (func, reg) = callbacks.add_sound_source_completion(self.ptr, cb);
+    self.completion_callback = Some(reg);
+    unsafe { (*CApiState::get().csound.source).setFinishCallback.unwrap()(self.ptr, Some(func)) }
+  }
+  pub fn clear_completion_callback(&mut self) {
+    unsafe { (*CApiState::get().csound.source).setFinishCallback.unwrap()(self.ptr, None) }
+    self.completion_callback = None;
   }
 }
 
 impl Drop for SoundSource {
   fn drop(&mut self) {
-    let mut cb_state = CApiState::get().callback_state.take().unwrap();
-    cb_state.source_source_callbacks.remove(&self.ptr);
-    CApiState::get().callback_state.set(Some(cb_state));
+    self.clear_completion_callback();
 
     if let Some(weak_ptr) = self.channel.take() {
       if let Some(rc_ptr) = weak_ptr.upgrade() {
@@ -247,10 +264,7 @@ impl FilePlayer {
       )
     }
     FilePlayer {
-      source: ManuallyDrop::new(SoundSource {
-        ptr: ptr as *mut CSoundSource,
-        channel: None,
-      }),
+      source: ManuallyDrop::new(SoundSource::new(ptr as *mut CSoundSource)),
       ptr,
     }
   }

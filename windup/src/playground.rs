@@ -106,7 +106,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
 
   let display = &mut api.display;
   display.set_inverted(true);
-  display.set_flipped(true, false);
+  //display.set_flipped(true, false);
   display.set_scale(2);
 
   let list_files_in = |path: &str| match api.file.list_files(path) {
@@ -166,6 +166,8 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   let vol = api.sound.default_channel().volume();
   api.system.log(format!("Default channel volume (in 0-1): {}", vol));
 
+  let mut i32callbacks = Callbacks::<(i32, &System)>::new();
+
   let mut fileplayer = FilePlayer::from_file("sounds/mojojojo.pda");
   api.sound.default_channel_mut().attach_source(&mut fileplayer);
   api.system.log(format!(
@@ -173,6 +175,13 @@ pub async fn _run(mut api: playdate::Api) -> ! {
     fileplayer.len().to_seconds(),
   ));
   fileplayer.play(1);
+  fileplayer.as_mut().set_completion_callback(&mut i32callbacks, |(i, system)| {
+    system.log(format!("finished playback of mojojojo {}", i));
+  });
+
+  let _action_item = MenuItem::new_action("hello world", |(i, system)| {
+    system.log(format!("menu action {}", i));
+  }, &mut i32callbacks);
 
   system.log(format!(
     "Entering main loop at time {}",
@@ -191,6 +200,10 @@ pub async fn _run(mut api: playdate::Api) -> ! {
       }
       SystemEvent::DidUnlock => {
         api.system.log("unlocked");
+        continue;
+      }
+      SystemEvent::Callback => {
+        i32callbacks.run((1, &api.system));
         continue;
       }
       _ => continue,

@@ -41,6 +41,7 @@ pub use playdate_sys::LCDVideoPlayer as CVideoPlayer;
 pub use playdate_sys::OnePoleFilter as COnePoleFilter;
 pub use playdate_sys::Overdrive as COverdrive;
 pub use playdate_sys::PDButtons as CButtons;
+pub use playdate_sys::PDMenuItem as CMenuItem;
 pub use playdate_sys::PDSynth as CSynth;
 pub use playdate_sys::PDSynthEnvelope as CSynthEnvelope;
 pub use playdate_sys::PDSynthInstrument as CSynthInstrument;

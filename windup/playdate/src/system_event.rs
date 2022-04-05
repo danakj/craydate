@@ -9,7 +9,7 @@ use crate::executor::Executor;
 use crate::inputs::Inputs;
 
 /// Playdate system events.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum SystemEvent {
   /// Event when the next frame should be prepared for display. Handle this event by running the
   /// game's update and draw routines.
@@ -48,10 +48,18 @@ pub enum SystemEvent {
     /// The released keycode.
     keycode: u32,
   },
+  Callback,
 }
 
 pub(crate) struct SystemEventWatcherState {
   pub next_event: Cell<Option<SystemEvent>>,
+}
+impl SystemEventWatcherState {
+  pub(crate) fn new() -> Self {
+    SystemEventWatcherState {
+      next_event: Cell::new(None),
+    }
+  }
 }
 
 pub struct SystemEventWatcher {
@@ -59,15 +67,13 @@ pub struct SystemEventWatcher {
 }
 impl SystemEventWatcher {
   pub(crate) fn new() -> Self {
-    let state = Rc::new(SystemEventWatcherState {
-      next_event: Cell::new(None),
-    });
-    {
-      let capi = CApiState::get();
-      let mut watchers = capi.system_event_watchers.take();
-      watchers.push(Rc::downgrade(&state));
-      capi.system_event_watchers.set(watchers);
-    }
+    let capi = CApiState::get();
+    let state = match capi.system_event_watcher_state.take().upgrade() {
+      Some(rc) => rc,
+      None => Rc::new(SystemEventWatcherState::new()),
+    };
+    capi.system_event_watcher_state.set(Rc::downgrade(&state));
+
     SystemEventWatcher { state }
   }
 
