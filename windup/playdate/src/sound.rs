@@ -263,6 +263,9 @@ impl FilePlayer {
         path.to_null_terminated_utf8().as_ptr(),
       )
     }
+    // TODO: If file loading fails, file_length() would return -1 in the future:
+    // https://devforum.play.date/t/playing-sounds-using-c-api/4228/3, and we should surface errors
+    // somehow.
     FilePlayer {
       source: ManuallyDrop::new(SoundSource::new(ptr as *mut CSoundSource)),
       ptr,
@@ -282,14 +285,15 @@ impl FilePlayer {
   }
 
   /// Returns the length, in seconds, of the file loaded into player.
-  pub fn len(&self) -> TimeTicks {
+  pub fn file_len(&self) -> TimeTicks {
     let f = unsafe {
       (*CApiState::get().csound.fileplayer).getLength.unwrap()(self.as_ptr() as *mut CFilePlayer)
     };
     TimeTicks::from_seconds_lossy(f)
   }
-  /// Sets the buffer length of the player to the given length.
-  pub fn set_len(&mut self, time: TimeTicks) {
+
+  /// Sets the length of the buffer which will be filled from the file.
+  pub fn set_buffer_len(&mut self, time: TimeTicks) {
     unsafe {
       (*CApiState::get().csound.fileplayer).setBufferLength.unwrap()(
         self.as_mut_ptr(),
@@ -306,9 +310,12 @@ impl FilePlayer {
   ///
   /// If `times` is greater than one, it loops the given number of times. If zero, it loops
   /// endlessly until it is stopped with `stop()`.
-  pub fn play(&mut self, times: i32) {
+  pub fn play(&mut self, times: i32) -> Result<(), Error> {
     // TODO: Return play()'s int output value? What is it?
-    unsafe { (*CApiState::get().csound.fileplayer).play.unwrap()(self.as_mut_ptr(), times) };
+    match unsafe { (*CApiState::get().csound.fileplayer).play.unwrap()(self.as_mut_ptr(), times) } {
+      0 => Err("FilePlayer error on play".into()),
+      _ => Ok(())
+    }
   }
   /// Stops playing the file.
   pub fn stop(&mut self) {
