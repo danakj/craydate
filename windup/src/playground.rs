@@ -170,7 +170,6 @@ pub async fn _run(mut api: playdate::Api) -> ! {
 
   let mut fileplayer = FilePlayer::from_file("sounds/mojojojo.pda");
   api.sound.default_channel_mut().attach_source(&mut fileplayer);
-  fileplayer.set_buffer_len(TimeTicks::from_milliseconds(200));
   api.system.log(format!(
     "Fileplayer length: {} seconds",
     fileplayer.file_len().to_seconds(),
@@ -178,7 +177,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   fileplayer.as_mut().set_completion_callback(&mut i32callbacks, |(i, system)| {
     system.log(format!("finished playback of mojojojo {}", i));
   });
-  fileplayer.play(1);
+  fileplayer.play(1).expect("fileplayer play failed?");
 
   let action_item = MenuItem::new_action("hello world", &mut i32callbacks, |(i, system)| {
     system.log(format!("menu action {}", i));
