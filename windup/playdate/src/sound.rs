@@ -90,6 +90,11 @@ impl SoundChannelRef {
   pub fn volume(&self) -> f32 {
     unsafe { (*CApiState::get().csound.channel).getVolume.unwrap()(*self.ptr) }
   }
+  /// Sets the volume for the channel, in the range [0-1].
+  // TODO: Replace the ouput with a Type<f32> that clamps the value to 0-1.
+  pub fn set_volume(&mut self, volume: f32) {
+    unsafe { (*CApiState::get().csound.channel).setVolume.unwrap()(*self.ptr, volume) }
+  }
 
   pub fn attach_source<T: AsMut<SoundSource>>(&mut self, source: &mut T) {
     source.as_mut().attach_to_channel(Rc::downgrade(&self.ptr));
@@ -314,7 +319,7 @@ impl FilePlayer {
     // TODO: Return play()'s int output value? What is it?
     match unsafe { (*CApiState::get().csound.fileplayer).play.unwrap()(self.as_mut_ptr(), times) } {
       0 => Err("FilePlayer error on play".into()),
-      _ => Ok(())
+      _ => Ok(()),
     }
   }
   /// Stops playing the file.
