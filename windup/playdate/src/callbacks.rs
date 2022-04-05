@@ -12,13 +12,24 @@ use crate::system_event::SystemEvent;
 
 static mut CURRENT_CALLBACK: CallbackArguments = CallbackArguments::None;
 
+/// The key used for each set of callbacks held in a `Callbacks` collection.
+///
+/// They key type would need to be passed to the C callback function in order to find the
+/// user-provided closure from the key.
 #[derive(Debug)]
 enum CallbackKey {
   SoundSourceCompletion(*mut CSoundSource),
   MenuItem(*mut c_void),
 }
+
+/// The arguments given to the C callback function for each type of function. These are used to find
+/// the user-provided closure.
+///
+/// The enum functions to indicate, in `CURRENT_CALLBACK`, which callback is currently being
+/// executed, or `None`.
 #[derive(Debug)]
 enum CallbackArguments {
+  /// Indicates that no callback is active.
   None,
   SoundSourceCompletion(*mut CSoundSource),
   MenuItem(*mut c_void),
@@ -32,8 +43,11 @@ impl CallbackArguments {
   }
 }
 
+/// Holds ownership of the closure given when registering a system callback. Dropping this type
+/// would prevent the closure from ever being called. Typically held as a field as long as a
+/// callback is registered.
 #[must_use]
-pub struct RegisteredCallback {
+pub(crate) struct RegisteredCallback {
   cb_type: Option<CallbackKey>,
   weak_removed: Weak<RefCell<Vec<CallbackKey>>>,
 }
@@ -45,12 +59,16 @@ impl Drop for RegisteredCallback {
   }
 }
 
+/// Provides an API to run a closure tied to a callback when the `SystemEventWatcher` reports a
+/// callback is ready to be run via `SystemEvent::Callback`. This type uses its type argument `T` to
+/// define the values that the caller will pass along to the closure when running it.
 pub struct Callbacks<T> {
   sound_source_completion_callbacks: BTreeMap<*mut CSoundSource, Box<dyn Fn(T)>>,
   menu_item_callbacks: BTreeMap<*mut c_void, Box<dyn Fn(T)>>,
   removed: Rc<RefCell<Vec<CallbackKey>>>,
 }
 impl<T> Callbacks<T> {
+  /// Construct a container for callbacks that will be passed `T` when they are run.
   pub fn new() -> Self {
     Callbacks {
       sound_source_completion_callbacks: BTreeMap::new(),
@@ -70,6 +88,14 @@ impl<T> Callbacks<T> {
     }
   }
 
+  /// Attempt to run a callback, passing along a `T`.
+  ///
+  /// This should be called in response to a `SystemEvent::Callback` event occuring, which indicates
+  /// there is a callback available to be run.
+  ///
+  /// Returns true if the callback was found in this `Callbacks` collection and run, otherwise
+  /// returns false. A false return would mean the callback is in a different `Callbacks` collection
+  /// (or the callback was removed via dropping `RegisteredCallback` internally incorrectly).
   pub fn run(&mut self, t: T) -> bool {
     self.gc();
 
@@ -125,6 +151,9 @@ impl CCallbacks {
     assert!(unsafe { CURRENT_CALLBACK.is_none() });
     unsafe { CURRENT_CALLBACK = callback_args };
     CApiState::get().add_system_event(SystemEvent::Callback);
+    // Waking the executors should cause them to poll() and receive back a `SystemEvent::Callback`,
+    // as set on the line above. They would run the callback via `Callbacks` then eventually yield
+    // back to us here.
     Executor::wake_system_wakers(CApiState::get().executor.as_ptr());
     unsafe { CURRENT_CALLBACK = CallbackArguments::None };
   }
