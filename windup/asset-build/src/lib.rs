@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::Error;
 
@@ -16,10 +16,14 @@ fn sync<P: AsRef<Path>, Q: AsRef<Path>>(source: P, destination: Q) -> Result<(),
   Ok(syncer.sync()?).map(|_| ())
 }
 
-pub fn generate_assets<P: AsRef<Path>>(asset_dir: P, pdx_source_dir: &str) -> Result<(), Error> {
-  sync(asset_dir.as_ref(), pdx_source_dir)?;
+pub fn generate_assets(pdx_source_dir: &str) -> Result<(), Error> {
+  const RAW_ASSET_DIR: &str = "assets/raw/";
 
-  // TODO: separate assets into raw assets and cooked assets
+  let asset_build_dir = env!("CARGO_MANIFEST_DIR");
+  let raw_asset_dir = PathBuf::from(asset_build_dir).join(RAW_ASSET_DIR);
+
+  sync(raw_asset_dir, pdx_source_dir)?;
+
   // TODO: build map files here
   Ok(())
 }

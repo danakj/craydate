@@ -39,11 +39,6 @@ pub fn export_vars() {
     "PDX_OUT_DIR",
     pdx_out_dir().to_string_lossy()
   );
-  println!(
-    "cargo:rustc-env={}={}",
-    "SIM_MANIFEST_DIR",
-    std::env::var("CARGO_MANIFEST_DIR").unwrap()
-  );
   println!("cargo:rustc-env={}={}", "PDX_NAME", pdx_name());
 }
 
