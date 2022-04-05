@@ -1,0 +1,9 @@
+[package]
+name = "asset-build"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+rusync = "0.7.2"
+playdate-build = {path = "../playdate-build"}

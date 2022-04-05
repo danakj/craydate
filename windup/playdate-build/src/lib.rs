@@ -6,24 +6,10 @@ mod consts;
 mod error;
 
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX, EXE_SUFFIX};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
-extern crate rusync;
-
 pub use error::{PlaydateBuildError, Result};
-
-fn sync<P: AsRef<Path>, Q: AsRef<Path>>(source: P, destination: Q) -> Result<rusync::Stats> {
-  let options = rusync::SyncOptions::default();
-  let progress_info = Box::new(rusync::ConsoleProgressInfo::new());
-  let syncer = rusync::Syncer::new(
-    source.as_ref(),
-    destination.as_ref(),
-    options,
-    progress_info,
-  );
-  Ok(syncer.sync()?)
-}
 
 fn pdx_source_dir() -> PathBuf {
   let dir = std::env::var("OUT_DIR").expect("OUT_DIR envionment variable is not set");
@@ -35,20 +21,14 @@ fn pdx_out_dir() -> PathBuf {
   PathBuf::from(dir).join("pdx_out")
 }
 
-fn pdx_asset_dir(path_to_assets: PathBuf) -> PathBuf {
-  let sim_dir =
-    std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR envionment variable is not set");
-  PathBuf::from(sim_dir).join(path_to_assets)
-}
-
 fn pdx_name() -> String {
   std::env::var("CARGO_PKG_NAME").expect("CARGO_PKG_NAME envionment variable is not set")
 }
 
 /// Export variables that will be consumed by Cargo to build a game.
-/// 
+///
 /// `path_to_assets` is the relative path from the executable crate's root to the game's assets.
-pub fn export_vars(path_to_assets: PathBuf) {
+pub fn export_vars() {
   println!(
     "cargo:rustc-env={}={}",
     "PDX_SOURCE_DIR",
@@ -61,18 +41,13 @@ pub fn export_vars(path_to_assets: PathBuf) {
   );
   println!(
     "cargo:rustc-env={}={}",
-    "PDX_ASSET_DIR",
-    pdx_asset_dir(path_to_assets).to_string_lossy()
+    "SIM_MANIFEST_DIR",
+    std::env::var("CARGO_MANIFEST_DIR").unwrap()
   );
   println!("cargo:rustc-env={}={}", "PDX_NAME", pdx_name());
 }
 
-pub fn build_pdx(
-  pdx_source_dir: &str,
-  pdx_out_dir: &str,
-  pdx_asset_dir: &str,
-  pdx_name: &str,
-) -> Result<String> {
+pub fn build_pdx(pdx_source_dir: &str, pdx_out_dir: &str, pdx_name: &str) -> Result<String> {
   let sdk_path =
     std::env::var("PLAYDATE_SDK_PATH").expect("PLAYDATE_SDK_PATH environment variable is not set");
 
@@ -94,13 +69,10 @@ pub fn build_pdx(
   let lib_path = lib_path.parent().unwrap(); // Cargo build dir.
   let lib_path = lib_path.parent().unwrap(); // Where the actual library lives.
 
-  // TODO: rusync doesn't handle file -> dir or file -> file rsyncing.
   std::fs::copy(
     lib_path.join(&lib_name),
     pdx_source_dir.join(&pdex_lib_name),
   )?;
-
-  sync(&pdx_asset_dir, &pdx_source_dir)?;
 
   let pdx_compiler = PathBuf::from(&sdk_path).join("bin").join(format!("pdc{}", EXE_SUFFIX));
   let out = Command::new(&pdx_compiler)
