@@ -14,6 +14,7 @@ fn make_key() -> *mut c_void {
   }
 }
 
+/// A system menu item. The game can specify up to 3 custom menu items in the system menu.
 pub struct MenuItem {
   ptr: *mut CMenuItem,
   title: String,
@@ -22,6 +23,11 @@ pub struct MenuItem {
 }
 
 impl MenuItem {
+  /// Construct a new action menu item and add it to the system menu as long as the MenuItem stays
+  /// alive.
+  /// 
+  /// If the action menu item is chosen, the menu will be closed and the given callback `cb` will be
+  /// available to run. A `SystemEvent::Callback` event will fire to indicate this.
   pub fn new_action<T>(
     title: &str,
     cb: impl Fn(T) + 'static,
@@ -44,9 +50,11 @@ impl MenuItem {
     }
   }
 
+  /// Get the menu item's title.
   pub fn title(&self) -> &str {
     &self.title
   }
+  /// Set the menu item's title.
   pub fn set_title(&mut self, title: &str) {
     let title = String::from(title);
     unsafe {
