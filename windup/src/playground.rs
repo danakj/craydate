@@ -179,14 +179,15 @@ pub async fn _run(mut api: playdate::Api) -> ! {
     system.log(format!("finished playback of mojojojo {}", i));
   });
 
-  let _action_item = MenuItem::new_action("hello world", &mut i32callbacks, |(i, system)| {
+  let action_item = MenuItem::new_action("hello world", &mut i32callbacks, |(i, system)| {
     system.log(format!("menu action {}", i));
   });
-  let _check_item = MenuItem::new_checkmark("dank", false, &mut i32callbacks, |(i, system)| {
+  action_item.title();
+  let check_item = MenuItem::new_checkmark("dank", false, &mut i32callbacks, |(i, system)| {
     system.log(format!("dankness adjusted {}", i));
   });
-  _check_item.set_checked(true);
-  let _options_item = MenuItem::new_options(
+  check_item.set_checked(true);
+  let options_item = MenuItem::new_options(
     "temp",
     ["too hot", "too cold", "just right"],
     &mut i32callbacks,
@@ -194,7 +195,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
       system.log(format!("temperature adjusted {}", i));
     },
   );
-  _options_item.set_value(2);
+  options_item.set_value(2);
 
   system.log(format!(
     "Entering main loop at time {}",

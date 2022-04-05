@@ -24,7 +24,6 @@ pub enum AnyType {}
 /// A system menu item. The game can specify up to 3 custom menu items in the system menu.
 pub struct MenuItem<Type = AnyType> {
   ptr: *mut CMenuItem,
-  title: String,
   _callback: RegisteredCallback, // Holds ownership of the closure.
   _marker: PhantomData<Type>,
 }
@@ -42,7 +41,6 @@ impl MenuItem {
   ) -> MenuItem<Action> {
     let key = make_key();
     let (func, reg) = callbacks.add_menu_item(key, cb);
-    let title = String::from(title); // Allocate a stable title pointer to pass to C.
     let ptr = unsafe {
       CApiState::get().csystem.addMenuItem.unwrap()(
         title.to_null_terminated_utf8().as_ptr(),
@@ -52,7 +50,6 @@ impl MenuItem {
     };
     MenuItem {
       ptr,
-      title,
       _callback: reg,
       _marker: PhantomData,
     }
@@ -72,7 +69,6 @@ impl MenuItem {
   ) -> MenuItem<Checkmark> {
     let key = make_key();
     let (func, reg) = callbacks.add_menu_item(key, cb);
-    let title = String::from(title); // Allocate a stable title pointer to pass to C.
     let ptr = unsafe {
       CApiState::get().csystem.addCheckmarkMenuItem.unwrap()(
         title.to_null_terminated_utf8().as_ptr(),
@@ -83,7 +79,6 @@ impl MenuItem {
     };
     MenuItem {
       ptr,
-      title,
       _callback: reg,
       _marker: PhantomData,
     }
@@ -103,7 +98,6 @@ impl MenuItem {
   ) -> MenuItem<Options> {
     let key = make_key();
     let (func, reg) = callbacks.add_menu_item(key, cb);
-    let title = String::from(title); // Allocate a stable title pointer to pass to C.
     let options_null_terminated: Vec<_> =
       options.into_iter().map(|o| o.to_null_terminated_utf8()).collect();
     let options_pointers: Vec<_> = options_null_terminated.iter().map(|o| o.as_ptr()).collect();
@@ -118,7 +112,6 @@ impl MenuItem {
     };
     MenuItem {
       ptr,
-      title,
       _callback: reg,
       _marker: PhantomData,
     }
@@ -128,7 +121,10 @@ impl MenuItem {
 impl<T> MenuItem<T> {
   /// Get the menu item's title.
   pub fn title(&self) -> &str {
-    &self.title
+    unsafe {
+      let ptr = CApiState::get().csystem.getMenuItemTitle.unwrap()(self.ptr);
+      crate::null_terminated::parse_null_terminated_utf8(ptr).unwrap()
+    }
   }
   /// Set the menu item's title.
   pub fn set_title(&mut self, title: &str) {
@@ -136,10 +132,9 @@ impl<T> MenuItem<T> {
     unsafe {
       CApiState::get().csystem.setMenuItemTitle.unwrap()(
         self.ptr,
-        self.title.to_null_terminated_utf8().as_ptr(),
+        title.to_null_terminated_utf8().as_ptr(),
       )
     }
-    self.title = title;
   }
 }
 
