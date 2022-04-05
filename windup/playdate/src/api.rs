@@ -40,16 +40,6 @@ impl System {
     }
   }
 
-  // System Api notes. Everything in the "Utility", "Device Auto Lock", and "System Sounds" api
-  // sections is exposed here in a Rusty way except:
-  // - formatString() is not exposed, as the format!() macro replaces it in Rust.
-  // - setUpdateCallback() is not exposed, as it is used internally. The ability to wait for the
-  //   next update (i.e. frame) is instead done through `system_event_watcher()` that provides an
-  //   async function that returns when the next update happens.
-  // - drawFPS() is moved to the Graphics api.
-  // - getLanguage() from Graphics > Miscellaneous is moved to here.
-  // - TODO: All system menu interaction functions.
-
   /// A watcher that lets you `await` for the next frame update from the Playdate device.
   pub fn system_event_watcher(&self) -> SystemEventWatcher {
     SystemEventWatcher::new()
