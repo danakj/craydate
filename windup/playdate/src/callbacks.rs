@@ -13,7 +13,7 @@ use crate::system_event::SystemEvent;
 static mut CURRENT_CALLBACK: CallbackArguments = CallbackArguments::None;
 
 #[derive(Debug)]
-pub(crate) enum CallbackKey {
+enum CallbackKey {
   SoundSourceCompletion(*mut CSoundSource),
   MenuItem(*mut c_void),
 }
