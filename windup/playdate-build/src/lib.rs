@@ -35,20 +35,23 @@ fn pdx_out_dir() -> PathBuf {
   PathBuf::from(dir).join("pdx_out")
 }
 
-fn pdx_asset_dir() -> PathBuf {
+fn pdx_asset_dir(path_to_assets: PathBuf) -> PathBuf {
   // FIXME: this is an unfortunate hardcoding of the asset dir relative to the simulator-win cargo manifest dir.
   // It makes some logical sense to have the assets for a project be located with the windup code.
   // Maybe there is some better folder structure that could make simulator-win/playdate-build more independent.
   let sim_dir =
     std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR envionment variable is not set");
-  PathBuf::from(sim_dir).join("../windup/assets")
+  PathBuf::from(sim_dir).join(path_to_assets)
 }
 
 fn pdx_name() -> String {
   std::env::var("CARGO_PKG_NAME").expect("CARGO_PKG_NAME envionment variable is not set")
 }
 
-pub fn export_vars() {
+/// Export variables that will be consumed by Cargo to build a game.
+/// 
+/// `path_to_assets` is the relative path from the executable crate's root to the game's assets.
+pub fn export_vars(path_to_assets: PathBuf) {
   println!(
     "cargo:rustc-env={}={}",
     "PDX_SOURCE_DIR",
@@ -62,7 +65,7 @@ pub fn export_vars() {
   println!(
     "cargo:rustc-env={}={}",
     "PDX_ASSET_DIR",
-    pdx_asset_dir().to_string_lossy()
+    pdx_asset_dir(path_to_assets).to_string_lossy()
   );
   println!("cargo:rustc-env={}={}", "PDX_NAME", pdx_name());
 }
