@@ -8,10 +8,12 @@ use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::null_terminated::ToNullTerminatedString;
 
-static mut MENU_KEY: *mut c_void = core::ptr::null_mut();
-fn make_key() -> *mut c_void {
+pub type MenuCallback<'a, T, F, S> = crate::callbacks::CallbackBuilder<'a, T, F, NoNull, S>;
+
+static mut MENU_KEY: usize = 0;
+fn make_key() -> usize {
   unsafe {
-    MENU_KEY = MENU_KEY.add(1);
+    MENU_KEY += 1;
     MENU_KEY
   }
 }
@@ -32,14 +34,14 @@ impl MenuItem {
   /// Construct a new action menu item and add it to the system menu as long as the MenuItem stays
   /// alive.
   ///
-  /// If the action menu item is chosen, the menu will be closed and the given callback `cb` will be
+  /// If the action menu item is chosen, the menu will be closed and the given `callback` will be
   /// available to run. A `SystemEvent::Callback` event will fire to indicate this.
-  pub fn new_action<T>(
+  pub fn new_action<'a, T, F: Fn(T) + 'static>(
     title: &str,
-    callbacks: &mut Callbacks<T>,
-    cb: impl Fn(T) + 'static,
+    callback: MenuCallback<'a, T, F, Constructed>,
   ) -> MenuItem<Action> {
     let key = make_key();
+    let (callbacks, cb) = callback.into_inner().unwrap();
     let (func, reg) = callbacks.add_menu_item(key, cb);
     let ptr = unsafe {
       CApiState::get().csystem.addMenuItem.unwrap()(
@@ -61,13 +63,13 @@ impl MenuItem {
   /// If the action menu item is chosen, the value will be changed, and when menu is later closed
   /// the given callback `cb` will be available to run. A `SystemEvent::Callback` event will fire to
   /// indicate this.
-  pub fn new_checkmark<T>(
+  pub fn new_checkmark<'a, T, F: Fn(T) + 'static>(
     title: &str,
     intially_checked: bool,
-    callbacks: &mut Callbacks<T>,
-    cb: impl Fn(T) + 'static,
+    callback: MenuCallback<'a, T, F, Constructed>,
   ) -> MenuItem<Checkmark> {
     let key = make_key();
+    let (callbacks, cb) = callback.into_inner().unwrap();
     let (func, reg) = callbacks.add_menu_item(key, cb);
     let ptr = unsafe {
       CApiState::get().csystem.addCheckmarkMenuItem.unwrap()(
@@ -90,13 +92,13 @@ impl MenuItem {
   /// If the action menu item is chosen, the value will be changed, and when menu is later closed
   /// the given callback `cb` will be available to run. A `SystemEvent::Callback` event will fire to
   /// indicate this.
-  pub fn new_options<'a, T>(
+  pub fn new_options<'a, T, F: Fn(T) + 'static>(
     title: &str,
     options: impl IntoIterator<Item = &'a str>,
-    callbacks: &mut Callbacks<T>,
-    cb: impl Fn(T) + 'static,
+    callback: MenuCallback<'a, T, F, Constructed>,
   ) -> MenuItem<Options> {
     let key = make_key();
+    let (callbacks, cb) = callback.into_inner().unwrap();
     let (func, reg) = callbacks.add_menu_item(key, cb);
     let options_null_terminated: Vec<_> =
       options.into_iter().map(|o| o.to_null_terminated_utf8()).collect();

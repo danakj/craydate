@@ -170,30 +170,43 @@ pub async fn _run(mut api: playdate::Api) -> ! {
 
   let mut fileplayer = FilePlayer::from_file("sounds/mojojojo.pda");
   api.sound.default_channel_mut().attach_source(&mut fileplayer);
-  fileplayer.as_mut().set_completion_callback(&mut i32callbacks, |(i, system)| {
-    system.log(format!("finished playback of mojojojo {}", i));
-  });
+  fileplayer.as_mut().set_completion_callback(
+    SoundCompletionCallback::with(&mut i32callbacks).call(|(i, system)| {
+      system.log(format!("finished playback of mojojojo {}", i));
+    }),
+  );
   fileplayer.play(1).expect("fileplayer play failed?");
   api.system.log(format!(
     "Fileplayer length: {} seconds",
     fileplayer.file_len().to_seconds(),
   ));
+  fileplayer.fade_volume(
+    SoundSourceVolume::zero(),
+    100,
+    SoundCompletionCallback::with(&mut i32callbacks).call(|(_i, system)| system.log("fade done!")),
+  );
 
-  let action_item = MenuItem::new_action("hello world", &mut i32callbacks, |(i, system)| {
-    system.log(format!("menu action {}", i));
-  });
+  let action_item = MenuItem::new_action(
+    "hello world",
+    MenuCallback::with(&mut i32callbacks).call(|(i, system)| {
+      system.log(format!("menu action {}", i));
+    }),
+  );
   action_item.title();
-  let check_item = MenuItem::new_checkmark("dank", false, &mut i32callbacks, |(i, system)| {
-    system.log(format!("dankness adjusted {}", i));
-  });
+  let check_item = MenuItem::new_checkmark(
+    "dank",
+    false,
+    MenuCallback::with(&mut i32callbacks).call(|(i, system)| {
+      system.log(format!("dankness adjusted {}", i));
+    }),
+  );
   check_item.set_checked(true);
   let options_item = MenuItem::new_options(
     "temp",
     ["too hot", "too cold", "just right"],
-    &mut i32callbacks,
-    |(i, system)| {
+    MenuCallback::with(&mut i32callbacks).call(|(i, system)| {
       system.log(format!("temperature adjusted {}", i));
-    },
+    }),
   );
   options_item.set_value(2);
 

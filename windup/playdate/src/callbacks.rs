@@ -19,7 +19,7 @@ static mut CURRENT_CALLBACK: CallbackArguments = CallbackArguments::None;
 #[derive(Debug)]
 enum CallbackKey {
   SoundSourceCompletion(*mut CSoundSource),
-  MenuItem(*mut c_void),
+  MenuItem(usize),
 }
 
 /// The arguments given to the C callback function for each type of function. These are used to find
@@ -32,7 +32,7 @@ enum CallbackArguments {
   /// Indicates that no callback is active.
   None,
   SoundSourceCompletion(*mut CSoundSource),
-  MenuItem(*mut c_void),
+  MenuItem(usize),
 }
 impl CallbackArguments {
   fn is_none(&self) -> bool {
@@ -64,7 +64,7 @@ impl Drop for RegisteredCallback {
 /// define the values that the caller will pass along to the closure when running it.
 pub struct Callbacks<T> {
   sound_source_completion_callbacks: BTreeMap<*mut CSoundSource, Box<dyn Fn(T)>>,
-  menu_item_callbacks: BTreeMap<*mut c_void, Box<dyn Fn(T)>>,
+  menu_item_callbacks: BTreeMap<usize, Box<dyn Fn(T)>>,
   removed: Rc<RefCell<Vec<CallbackKey>>>,
 }
 impl<T> Callbacks<T> {
@@ -114,11 +114,12 @@ impl<T> Callbacks<T> {
 }
 
 impl<T> Callbacks<T> {
+  #[must_use]
   pub(crate) fn add_sound_source_completion(
     &mut self,
     key: *mut CSoundSource,
     cb: impl Fn(T) + 'static,
-  ) -> (extern "C" fn(*mut CSoundSource), RegisteredCallback) {
+  ) -> (unsafe extern "C" fn(*mut CSoundSource), RegisteredCallback) {
     self.sound_source_completion_callbacks.insert(key, Box::new(cb));
     (
       CCallbacks::on_sound_source_completion_callback,
@@ -129,11 +130,12 @@ impl<T> Callbacks<T> {
     )
   }
 
+  #[must_use]
   pub(crate) fn add_menu_item(
     &mut self,
-    key: *mut c_void,
+    key: usize,
     cb: impl Fn(T) + 'static,
-  ) -> (extern "C" fn(*mut c_void), RegisteredCallback) {
+  ) -> (unsafe extern "C" fn(*mut c_void), RegisteredCallback) {
     self.menu_item_callbacks.insert(key, Box::new(cb));
     (
       CCallbacks::on_menu_item_callback,
@@ -163,6 +165,50 @@ impl CCallbacks {
   }
 
   pub extern "C" fn on_menu_item_callback(key: *mut c_void) {
-    Self::run_callback(CallbackArguments::MenuItem(key))
+    Self::run_callback(CallbackArguments::MenuItem(key as usize))
+  }
+}
+
+pub enum NoNull {}
+pub enum AllowNull {}
+pub enum Unconstructed {}
+pub enum WithCallacks {}
+pub enum Constructed {}
+
+pub struct CallbackBuilder<'a, T = (), F: Fn(T) + 'static = fn(T), Rule = AllowNull, State = Unconstructed> {
+  callbacks: Option<&'a mut Callbacks<T>>,
+  cb: Option<F>,
+  _marker: core::marker::PhantomData<(&'a u8, T, F, Rule, State)>,
+}
+impl<'a> CallbackBuilder<'a, (), fn(()), AllowNull, Unconstructed> {
+  pub fn none() -> CallbackBuilder<'a, (), fn(()), AllowNull, Constructed> {
+    CallbackBuilder {
+      callbacks: None,
+      cb: None,
+      _marker: core::marker::PhantomData,
+    }
+  }
+}
+impl<'a, T, F: Fn(T) + 'static, Rule> CallbackBuilder<'a, T, F, Rule, Unconstructed> {
+  pub fn with(callbacks: &'a mut Callbacks<T>) -> CallbackBuilder<'a, T, F, Rule, WithCallacks> {
+    CallbackBuilder {
+      callbacks: Some(callbacks),
+      cb: None,
+      _marker: core::marker::PhantomData,
+    }
+  }
+}
+impl<'a, T, F: Fn(T) + 'static, Rule> CallbackBuilder<'a, T, F, Rule, WithCallacks> {
+  pub fn call(self, cb: F) -> CallbackBuilder<'a, T, F, Rule, Constructed> {
+    CallbackBuilder {
+      callbacks: self.callbacks,
+      cb: Some(cb),
+      _marker: core::marker::PhantomData,
+    }
+  }
+}
+impl<'a, T, F: Fn(T) + 'static, Rule> CallbackBuilder<'a, T, F, Rule, Constructed> {
+  pub(crate) fn into_inner(self) -> Option<(&'a mut Callbacks<T>, F)> {
+    self.callbacks.zip(self.cb)
   }
 }

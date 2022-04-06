@@ -6,6 +6,8 @@ use crate::ctypes::*;
 use crate::null_terminated::ToNullTerminatedString;
 use crate::*;
 
+pub type SoundCompletionCallback<'a, T, F, S> = crate::callbacks::CallbackBuilder<'a, T, F, AllowNull, S>;
+
 #[derive(Debug)]
 pub struct Sound {
   default_channel: SoundChannelRef,
@@ -140,6 +142,17 @@ pub struct SoundSourceVolume {
   pub left: f32,  // TODO: Replace with some Type<f32> that clamps the value to 0-1.
   pub right: f32, // TODO: Replace with some Type<f32> that clamps the value to 0-1.
 }
+impl SoundSourceVolume {
+  pub fn new(left: f32, right: f32) -> Self {
+    SoundSourceVolume { left, right }
+  }
+  pub fn zero() -> Self {
+    Self::new(0.0, 0.0)
+  }
+  pub fn one() -> Self {
+    Self::new(1.0, 1.0)
+  }
+}
 
 pub struct SoundSource {
   ptr: *mut CSoundSource,
@@ -212,24 +225,22 @@ impl SoundSource {
     unsafe { (*CApiState::get().csound.source).isPlaying.unwrap()(self.ptr) != 0 }
   }
 
-  pub fn set_completion_callback<T>(
+  pub fn set_completion_callback<'a, T, F: Fn(T) + 'static>(
     &mut self,
-    callbacks: &mut Callbacks<T>,
-    cb: impl Fn(T) + 'static,
+    completion_callback: SoundCompletionCallback<'a, T, F, Constructed>,
   ) {
-    let (func, reg) = callbacks.add_sound_source_completion(self.ptr, cb);
-    self.completion_callback = Some(reg);
-    unsafe { (*CApiState::get().csound.source).setFinishCallback.unwrap()(self.ptr, Some(func)) }
-  }
-  pub fn clear_completion_callback(&mut self) {
-    unsafe { (*CApiState::get().csound.source).setFinishCallback.unwrap()(self.ptr, None) }
-    self.completion_callback = None;
+    let func = completion_callback.into_inner().and_then(|(callbacks, cb)| {
+      let (func, reg) = callbacks.add_sound_source_completion(self.ptr, cb);
+      self.completion_callback = Some(reg);
+      Some(func)
+    });
+    unsafe { (*CApiState::get().csound.source).setFinishCallback.unwrap()(self.ptr, func) }
   }
 }
 
 impl Drop for SoundSource {
   fn drop(&mut self) {
-    self.clear_completion_callback();
+    self.set_completion_callback(SoundCompletionCallback::none());
 
     if let Some(weak_ptr) = self.channel.take() {
       if let Some(rc_ptr) = weak_ptr.upgrade() {
@@ -257,6 +268,7 @@ impl Drop for SoundSource {
 pub struct FilePlayer {
   source: ManuallyDrop<SoundSource>,
   ptr: *mut CFilePlayer,
+  fade_callback: Option<RegisteredCallback>,
 }
 impl FilePlayer {
   /// Prepares the player to steam the file at `path`.
@@ -274,6 +286,7 @@ impl FilePlayer {
     FilePlayer {
       source: ManuallyDrop::new(SoundSource::new(ptr as *mut CSoundSource)),
       ptr,
+      fade_callback: None,
     }
   }
   fn as_ptr(&self) -> *const CFilePlayer {
@@ -385,19 +398,25 @@ impl FilePlayer {
   }
   /// Changes the volume of the fileplayer to `volume` over a length of `num_samples` sample frames.
   ///
-  /// TODO: then calls the provided callback (if given).
-  pub fn fade_volume(
+  /// TODO: Change the duration to a time, and compute the number of samples from it.
+  pub fn fade_volume<'a, T, F: Fn(T) + 'static>(
     &mut self,
     volume: SoundSourceVolume,
-    num_samples: i32, /* TODO: callback */
+    num_samples: i32,
+    completion_callback: SoundCompletionCallback<'a, T, F, Constructed>,
   ) {
+    let func = completion_callback.into_inner().and_then(|(callbacks, cb)| {
+      let (func, reg) = callbacks.add_sound_source_completion(self.as_source_mut().ptr, cb);
+      self.fade_callback = Some(reg);
+      Some(func)
+    });
     unsafe {
       (*CApiState::get().csound.fileplayer).fadeVolume.unwrap()(
         self.as_mut_ptr(),
         volume.left.clamp(0f32, 1f32),
         volume.right.clamp(0f32, 1f32),
         num_samples,
-        None,
+        func,
       )
     }
   }
