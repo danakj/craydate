@@ -78,11 +78,8 @@ impl CApiState {
 
   pub fn add_system_event(&self, event: SystemEvent) {
     let state = self.system_event_watcher_state.borrow_mut();
-    crate::debug::log("state: borrowed");
     assert!(state.next_event.take().is_none());
-    crate::debug::log("state: next taken");
     state.next_event.set(Some(event));
-    crate::debug::log("state: next set");
   }
 }
 
