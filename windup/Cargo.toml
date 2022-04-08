@@ -11,12 +11,14 @@ members = [
   "playdate-macro",
   "playdate-sys",
   "windup-build",
+  "windup-map",
 ]
 
 [dependencies]
 playdate = {path = "playdate"}
 static_assertions = "1"
 float-ord = "0.3.2"
+windup-map = {path = "windup-map"}
 
 [dependencies.euclid]
 version = "0.22"
