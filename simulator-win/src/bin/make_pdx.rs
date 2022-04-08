@@ -1,5 +1,5 @@
 fn main() {
-  if let Err(e) = asset_build::generate_assets(env!("PDX_SOURCE_DIR")) {
+  if let Err(e) = windup_build::generate_assets(env!("PDX_SOURCE_DIR")) {
     println!("Failed to build assets\n{}", e);
     return;
   }

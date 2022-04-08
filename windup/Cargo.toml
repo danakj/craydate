@@ -5,12 +5,12 @@ version = "0.1.0"
 
 [workspace]
 members = [
-  "asset-build",
   "dynpath",
   "playdate",
   "playdate-build",
   "playdate-macro",
   "playdate-sys",
+  "windup-build",
 ]
 
 [dependencies]

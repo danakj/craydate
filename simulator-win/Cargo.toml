@@ -12,7 +12,7 @@ windup = {path = "../windup"}
 # These crates use `std`, so can not be refered to in the library target,
 # but is used by the bins.
 playdate-build = {path = "../windup/playdate-build"}
-asset-build = {path = "../windup/asset-build"}
+windup-build = {path = "../windup/windup-build"}
 
 [build-dependencies]
 playdate-build = {path = "../windup/playdate-build"}

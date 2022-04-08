@@ -19,8 +19,8 @@ fn sync<P: AsRef<Path>, Q: AsRef<Path>>(source: P, destination: Q) -> Result<(),
 pub fn generate_assets(pdx_source_dir: &str) -> Result<(), Error> {
   const RAW_ASSET_DIR: &str = "assets/raw/";
 
-  let asset_build_dir = env!("CARGO_MANIFEST_DIR");
-  let raw_asset_dir = PathBuf::from(asset_build_dir).join(RAW_ASSET_DIR);
+  let windup_build_dir = env!("CARGO_MANIFEST_DIR");
+  let raw_asset_dir = PathBuf::from(windup_build_dir).join(RAW_ASSET_DIR);
 
   sync(raw_asset_dir, pdx_source_dir)?;
 
