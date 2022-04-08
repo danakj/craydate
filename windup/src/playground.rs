@@ -183,7 +183,14 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   fileplayer.fade_volume(
     SoundSourceVolume::zero(),
     TimeDelta::from_seconds(1),
-    SoundCompletionCallback::with(&mut i32callbacks).call(|(_i, system)| system.log("fade done!")),
+    /*SoundCompletionCallback::with(&mut i32callbacks).call(|(_i, system)| {
+      system.log("fade done!");
+      system.log(">> getting time");
+      let t = system.current_time();
+      system.log("<< getting time");
+      system.log(format!("time {}", t));
+    }),*/
+    SoundCompletionCallback::none(),
   );
 
   let action_item = MenuItem::new_action(
