@@ -1,4 +1,5 @@
 use alloc::rc::{Rc, Weak};
+use core::marker::PhantomData;
 use core::mem::ManuallyDrop;
 
 use crate::capi_state::CApiState;
@@ -8,7 +9,33 @@ use crate::*;
 
 const SAMPLE_FRAMES_PER_SEC: i32 = 44_100;
 
-pub type SoundCompletionCallback<'a, T, F, S> = crate::callbacks::CallbackBuilder<'a, T, F, AllowNull, S>;
+pub type SoundCompletionCallback<'a, T, F, S> =
+  crate::callbacks::CallbackBuilder<'a, T, F, AllowNull, S>;
+
+/// Returns whether a SoundFormat is stereo. Otherwise, it is mono.
+pub fn sound_format_is_stereo(sound_format: SoundFormat) -> bool {
+  sound_format.0 & 1 == 1
+}
+
+/// Returns whether a SoundFormat is 16 bit. Otherwise, it is 8 bit.
+pub fn sound_format_is_16_bit(sound_format: SoundFormat) -> bool {
+  sound_format.0 >= SoundFormat::kSound16bitMono.0
+}
+
+/// Returns the number of bytes per sample frame for the SoundFormat.
+pub fn sound_format_bytes_per_frame(sound_format: SoundFormat) -> usize {
+  let stereo = if sound_format_is_stereo(sound_format) {
+    2
+  } else {
+    1
+  };
+  let bytes = if sound_format_is_16_bit(sound_format) {
+    2
+  } else {
+    1
+  };
+  stereo * bytes
+}
 
 #[derive(Debug)]
 pub struct Sound {
@@ -73,6 +100,10 @@ impl SoundChannel {
       added: false,
     }
   }
+
+  fn set_added(&mut self, added: bool) {
+    self.added = added
+  }
 }
 
 #[derive(Debug)]
@@ -80,12 +111,6 @@ pub struct SoundChannelRef {
   // This class holds an Rc but is not Clone. This allows it to know when the Rc is going away, in
   // order to clean up other related stuff.
   ptr: Rc<*mut CSoundChannel>,
-}
-
-impl SoundChannel {
-  fn set_added(&mut self, added: bool) {
-    self.added = added
-  }
 }
 
 impl SoundChannelRef {
@@ -438,5 +463,87 @@ impl AsRef<SoundSource> for FilePlayer {
 impl AsMut<SoundSource> for FilePlayer {
   fn as_mut(&mut self) -> &mut SoundSource {
     &mut self.source
+  }
+}
+
+pub struct AudioSample<'a> {
+  ptr: *mut CAudioSample,
+  _marker: PhantomData<&'a u8>,
+}
+impl AudioSample<'_> {
+  /// Creates a new AudioSample with a buffer large enough to load a file of length
+  /// `bytes`.
+  pub fn with_bytes(bytes: usize) -> Self {
+    let ptr = unsafe { (*CApiState::get().csound.sample).newSampleBuffer.unwrap()(bytes as i32) };
+    AudioSample {
+      ptr,
+      _marker: PhantomData,
+    }
+  }
+
+  /// Creates a new AudioSample, with the sound data loaded in memory. If there is no file at path,
+  /// the function returns None.
+  pub fn from_file<'a>(path: &str) -> Option<AudioSample<'a>> {
+    let ptr = unsafe {
+      (*CApiState::get().csound.sample).load.unwrap()(path.to_null_terminated_utf8().as_ptr())
+    };
+    if ptr.is_null() {
+      None
+    } else {
+      Some(AudioSample {
+        ptr,
+        _marker: PhantomData,
+      })
+    }
+  }
+
+  /// Creates a new AudioSample referencing the given audio data.
+  ///
+  /// The AudioSample keeps a pointer to the data instead of copying it.
+  pub fn from_data<'a>(data: &'a [u8], format: SoundFormat, sample_rate: u32) -> AudioSample<'a> {
+    assert!(
+      format == SoundFormat::kSound8bitMono
+        || format == SoundFormat::kSound8bitStereo
+        || format == SoundFormat::kSound16bitMono
+        || format == SoundFormat::kSound16bitStereo
+        || format == SoundFormat::kSoundADPCMMono
+        || format == SoundFormat::kSound16bitStereo
+    );
+    let ptr = unsafe {
+      (*CApiState::get().csound.sample).newSampleFromData.unwrap()(
+        data.as_ptr() as *mut u8, // the CAudioSample holds a reference to the `data`.
+        format,
+        sample_rate,
+        data.len() as i32,
+      )
+    };
+    AudioSample {
+      ptr,
+      _marker: PhantomData,
+    }
+  }
+
+  /// Loads the sound data from the file at `path` into the existing AudioSample.
+  pub fn load_file(&mut self, path: &str) {
+    unsafe {
+      (*CApiState::get().csound.sample).loadIntoSample.unwrap()(
+        self.ptr,
+        path.to_null_terminated_utf8().as_ptr(),
+      )
+    };
+  }
+
+  /// Returns the length of the AudioSample.
+  pub fn len(&self) -> TimeTicks {
+    TimeTicks::from_seconds_lossy(unsafe {
+      (*CApiState::get().csound.sample).getLength.unwrap()(self.ptr)
+    })
+  }
+
+  // TODO: getData
+}
+impl Drop for AudioSample<'_> {
+  fn drop(&mut self) {
+    unsafe { (*CApiState::get().csound.sample).freeSample.unwrap()(self.ptr) }
   }
 }
