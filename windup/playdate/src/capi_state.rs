@@ -1,6 +1,6 @@
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
-use alloc::rc::{Rc, Weak};
+use alloc::rc::Rc;
 use alloc::vec::Vec;
 use core::cell::{Cell, RefCell};
 use core::ptr::NonNull;
@@ -30,7 +30,7 @@ pub(crate) struct CApiState {
   pub stencil_generation: Cell<usize>,
   // Tracks how many times the font was set.
   pub font_generation: Cell<usize>,
-  pub system_event_watcher_state: Cell<Weak<SystemEventWatcherState>>,
+  pub system_event_watcher_state: RefCell<Rc<SystemEventWatcherState>>,
 }
 impl CApiState {
   pub fn new(capi: &'static CPlaydateApi) -> CApiState {
@@ -47,7 +47,7 @@ impl CApiState {
       stack: RefCell::new(ContextStack::new()),
       stencil_generation: Cell::new(0),
       font_generation: Cell::new(0),
-      system_event_watcher_state: Cell::new(Weak::new()),
+      system_event_watcher_state: RefCell::new(Rc::new(SystemEventWatcherState::new())),
     }
   }
   pub fn set_instance(capi: &'static CApiState) {
@@ -77,12 +77,12 @@ impl CApiState {
   }
 
   pub fn add_system_event(&self, event: SystemEvent) {
-    let watcher_state = self.system_event_watcher_state.take().upgrade();
-    if let Some(state) = watcher_state {
-      assert!(state.next_event.take().is_none());
-      state.next_event.set(Some(event));
-      self.system_event_watcher_state.set(Rc::downgrade(&state));
-    }
+    let state = self.system_event_watcher_state.borrow_mut();
+    crate::debug::log("state: borrowed");
+    assert!(state.next_event.take().is_none());
+    crate::debug::log("state: next taken");
+    state.next_event.set(Some(event));
+    crate::debug::log("state: next set");
   }
 }
 

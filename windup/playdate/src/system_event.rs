@@ -68,12 +68,7 @@ pub struct SystemEventWatcher {
 impl SystemEventWatcher {
   pub(crate) fn new() -> Self {
     let capi = CApiState::get();
-    let state = match capi.system_event_watcher_state.take().upgrade() {
-      Some(rc) => rc,
-      None => Rc::new(SystemEventWatcherState::new()),
-    };
-    capi.system_event_watcher_state.set(Rc::downgrade(&state));
-
+    let state = capi.system_event_watcher_state.borrow().clone();
     SystemEventWatcher { state }
   }
 
