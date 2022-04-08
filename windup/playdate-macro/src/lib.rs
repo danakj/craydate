@@ -37,7 +37,7 @@ pub fn main(_attr: TokenStream, item: TokenStream) -> TokenStream {
         let config = GameConfig {
           main_fn: main_wrapper,
         };
-        initialize(eh1, eh2, eh3, config);
+        event_handler(eh1, eh2, eh3, config);
         0  // What does it do? We don't know.
       }
 

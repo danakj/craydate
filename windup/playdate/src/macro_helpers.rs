@@ -27,7 +27,7 @@ pub struct EventHandler2(CSystemEvent);
 #[repr(transparent)]
 pub struct EventHandler3(u32);
 
-pub fn initialize(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3, config: GameConfig) {
+pub fn event_handler(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3, config: GameConfig) {
   let api_ptr = eh1.0;
   let event = eh2.0;
   let arg = eh3.0;
@@ -101,7 +101,7 @@ pub fn initialize(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3, co
 }
 
 extern "C" fn update_callback(_: *mut c_void) -> i32 {
-  // The CApiState is constructed in initialize() and then never destroyed, so references can be
+  // The CApiState is constructed in event_handler() and then never destroyed, so references can be
   // 'static lifetime.
   let capi = CApiState::get();
 
