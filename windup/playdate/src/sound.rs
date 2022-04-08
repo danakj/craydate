@@ -6,6 +6,8 @@ use crate::ctypes::*;
 use crate::null_terminated::ToNullTerminatedString;
 use crate::*;
 
+const SAMPLE_FRAMES_PER_SEC: i32 = 44_100;
+
 pub type SoundCompletionCallback<'a, T, F, S> = crate::callbacks::CallbackBuilder<'a, T, F, AllowNull, S>;
 
 #[derive(Debug)]
@@ -396,13 +398,11 @@ impl FilePlayer {
       )
     }
   }
-  /// Changes the volume of the fileplayer to `volume` over a length of `num_samples` sample frames.
-  ///
-  /// TODO: Change the duration to a time, and compute the number of samples from it.
+  /// Changes the volume of the fileplayer to `volume` over a length of `duration`.
   pub fn fade_volume<'a, T, F: Fn(T) + 'static>(
     &mut self,
     volume: SoundSourceVolume,
-    num_samples: i32,
+    duration: TimeDelta,
     completion_callback: SoundCompletionCallback<'a, T, F, Constructed>,
   ) {
     let func = completion_callback.into_inner().and_then(|(callbacks, cb)| {
@@ -410,6 +410,7 @@ impl FilePlayer {
       self.fade_callback = Some(reg);
       Some(func)
     });
+    let num_samples = duration.total_whole_milliseconds() * SAMPLE_FRAMES_PER_SEC / 1000;
     unsafe {
       (*CApiState::get().csound.fileplayer).fadeVolume.unwrap()(
         self.as_mut_ptr(),

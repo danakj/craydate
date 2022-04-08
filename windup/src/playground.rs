@@ -182,7 +182,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   ));
   fileplayer.fade_volume(
     SoundSourceVolume::zero(),
-    100,
+    TimeDelta::from_seconds(1),
     SoundCompletionCallback::with(&mut i32callbacks).call(|(_i, system)| system.log("fade done!")),
   );
 
