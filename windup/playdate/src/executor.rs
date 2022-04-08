@@ -84,7 +84,7 @@ impl Executor {
 
   pub fn wake_system_wakers(exec_ptr: *mut Executor) {
     let exec = unsafe { Self::as_mut_ref(exec_ptr) };
-    let wakers = core::mem::replace(&mut exec.system_wakers, Vec::with_capacity(1)).into_iter();
+    let wakers = core::mem::replace(&mut exec.system_wakers, Vec::with_capacity(1));
     drop(exec);
 
     for w in wakers {
