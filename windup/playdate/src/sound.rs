@@ -1,6 +1,6 @@
 use alloc::rc::{Rc, Weak};
 use core::marker::PhantomData;
-use core::mem::ManuallyDrop;
+use core::mem::{ManuallyDrop, MaybeUninit};
 
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
@@ -540,7 +540,51 @@ impl AudioSample<'_> {
     })
   }
 
-  // TODO: getData
+  fn all_data(&self) -> (*mut u8, SoundFormat, u32, u32) {
+    let mut ptr = MaybeUninit::uninit();
+    let mut format = MaybeUninit::uninit();
+    let mut sample_rate = MaybeUninit::uninit();
+    let mut bytes = MaybeUninit::uninit();
+    unsafe {
+      (*CApiState::get().csound.sample).getData.unwrap()(
+        self.ptr,
+        ptr.as_mut_ptr(),
+        format.as_mut_ptr(),
+        sample_rate.as_mut_ptr(),
+        bytes.as_mut_ptr(),
+      )
+    };
+    unsafe {
+      (
+        ptr.assume_init(),
+        format.assume_init(),
+        sample_rate.assume_init(),
+        bytes.assume_init(),
+      )
+    }
+  }
+
+  /// Retrieves the sample’s data.
+  pub fn data(&self) -> &[u8] {
+    let (ptr, _, _, bytes) = self.all_data();
+    unsafe { core::slice::from_raw_parts(ptr, bytes as usize) }
+  }
+  /// Retrieves the sample’s data.
+  pub fn data_mut(&mut self) -> &mut [u8] {
+    let (ptr, _, _, bytes) = self.all_data();
+    unsafe { core::slice::from_raw_parts_mut(ptr, bytes as usize) }
+  }
+
+  /// Retrieves the sample’s SoundFormat.
+  pub fn sound_format(&self) -> SoundFormat {
+    let (_, format, _, _) = self.all_data();
+    format
+  }
+  /// Retrieves the sample’s SoundFormat.
+  pub fn sample_rate(&self) -> u32 {
+    let (_, _, sample_rate, _) = self.all_data();
+    sample_rate
+  }
 }
 impl Drop for AudioSample<'_> {
   fn drop(&mut self) {
