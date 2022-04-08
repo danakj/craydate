@@ -466,11 +466,11 @@ impl AsMut<SoundSource> for FilePlayer {
   }
 }
 
-pub struct AudioSample<'a> {
+pub struct AudioSample<'data> {
   ptr: *mut CAudioSample,
-  _marker: PhantomData<&'a u8>,
+  _marker: PhantomData<&'data u8>,
 }
-impl AudioSample<'_> {
+impl<'data> AudioSample<'data> {
   /// Creates a new AudioSample with a buffer large enough to load a file of length
   /// `bytes`.
   pub fn with_bytes(bytes: usize) -> Self {
@@ -565,14 +565,15 @@ impl AudioSample<'_> {
   }
 
   /// Retrieves the sample’s data.
-  pub fn data(&self) -> &[u8] {
+  // Note: No mutable access to the buffer is provided for 2 reasons:
+  // 1) The from_data() constructor allows the caller to keep a shared reference on the data, so we
+  //    must not make an aliased mutable reference. We could instead own the data in this struct,
+  //    but...
+  // 2) Audio runs on a different thread, so changing data in the AudioSample is probably not
+  //    intended and would be a data race.
+  pub fn data(&self) -> &'data [u8] {
     let (ptr, _, _, bytes) = self.all_data();
     unsafe { core::slice::from_raw_parts(ptr, bytes as usize) }
-  }
-  /// Retrieves the sample’s data.
-  pub fn data_mut(&mut self) -> &mut [u8] {
-    let (ptr, _, _, bytes) = self.all_data();
-    unsafe { core::slice::from_raw_parts_mut(ptr, bytes as usize) }
   }
 
   /// Retrieves the sample’s SoundFormat.
