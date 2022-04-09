@@ -1,13 +1,15 @@
+use alloc::string::ToString;
 use alloc::vec::Vec;
 use core::cmp;
 
 use float_ord::FloatOrd;
 use num_traits::float::FloatCore;
 use playdate::*;
+use windup_map::*;
 
 const INITIAL_X: i32 = 50;
-const INITIAL_Y: i32 = 50;
-const FLOOR_Y: i32 = 200;
+const INITIAL_Y: i32 = -100;
+const FLOOR_Y: i32 = 600;
 // delta velocity per second
 const GRAVITY: f32 = 3.0;
 
@@ -182,9 +184,18 @@ impl GameObj {
   }
 }
 
+fn load_map(file: &mut File) -> Result<Map, Error> {
+  const MAP_FILE: &str = "map.bin";
+
+  let bytes = file.read_file(MAP_FILE)?;
+  Map::from_bytes(&bytes).map_err(|e| Error::String(e.to_string()))
+}
+
 pub async fn run(mut api: playdate::Api) -> ! {
   let system = &mut api.system;
   let graphics = &mut api.graphics;
+
+  let map = load_map(&mut api.file).unwrap();
 
   let mut world = World {
     player: GameObj {
@@ -194,39 +205,12 @@ pub async fn run(mut api: playdate::Api) -> ! {
       vel: euclid::vec2(0.0, 0.0),
       grounded: false,
     },
-    blocks: Vec::from(
-      [
-        // the floor
-        [0, 6],
-        [1, 6],
-        [2, 6],
-        [3, 6],
-        [4, 6],
-        [5, 6],
-        [6, 6],
-        [7, 6],
-        [8, 6],
-        [9, 6],
-        [10, 6],
-        [11, 6],
-        [12, 6],
-        [13, 6],
-        [14, 6],
-        [15, 6],
-        [16, 6],
-        [17, 6],
-        [18, 6],
-        [19, 6],
-        // small bump
-        [4, 5],
-        [18, 5],
-        // large bump
-        [7, 5],
-        [7, 4],
-        [7, 3],
-      ]
-      .map(|[x, y]| euclid::rect(x * 32, y * 32, 32, 32)),
-    ),
+    // FIXME: this +400 is a giant hack until the camera follows the player vertically OOPS
+    blocks: map.layers[0]
+      .blocks
+      .iter()
+      .map(|tile| euclid::rect(tile.x * 32, tile.y * 32 + 400, 32, 32))
+      .collect(),
     block_bmp: Bitmap::from_file("images/box").unwrap(),
   };
 

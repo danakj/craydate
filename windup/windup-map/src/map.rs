@@ -1,7 +1,6 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use anyhow::{anyhow, Error};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
@@ -31,7 +30,10 @@ pub struct Map {
 }
 
 impl Map {
-  pub fn to_vec(&self) -> Result<Vec<u8>, Error> {
-    postcard::to_allocvec(&self).map_err(|e| anyhow!(e))
+  pub fn to_vec(&self) -> Result<Vec<u8>, postcard::Error> {
+    postcard::to_allocvec(&self)
+  }
+  pub fn from_bytes<'a>(s: &'a [u8]) -> Result<Self, postcard::Error> {
+    postcard::from_bytes(s)
   }
 }

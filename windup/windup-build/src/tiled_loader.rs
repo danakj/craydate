@@ -1,7 +1,8 @@
-use anyhow::{anyhow, Error};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+
+use anyhow::{anyhow, Error};
 
 #[derive(Clone, Copy)]
 pub struct Extents {
@@ -118,7 +119,7 @@ fn load(tmx_map_file: &Path, extents: Extents) -> Result<windup_map::Map, Error>
 }
 
 fn write(map: windup_map::Map, filename: &Path) -> Result<(), Error> {
-  let bytes = map.to_vec()?;
+  let bytes = map.to_vec().map_err(|e| anyhow!(e))?;
   fs::write(filename, bytes).map_err(|e| anyhow!(e))
 }
 

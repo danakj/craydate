@@ -975,7 +975,6 @@ dependencies = [
 name = "windup-map"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "postcard",
  "serde",
 ]
