@@ -18,7 +18,7 @@ static mut CURRENT_CALLBACK: CallbackArguments = CallbackArguments::None;
 /// user-provided closure from the key.
 #[derive(Debug)]
 enum CallbackKey {
-  SoundSourceCompletion(*mut CSoundSource),
+  SoundSourceCompletion(usize),
   MenuItem(usize),
 }
 
@@ -31,7 +31,7 @@ enum CallbackKey {
 enum CallbackArguments {
   /// Indicates that no callback is active.
   None,
-  SoundSourceCompletion(*mut CSoundSource),
+  SoundSourceCompletion(usize),
   MenuItem(usize),
 }
 impl CallbackArguments {
@@ -47,6 +47,7 @@ impl CallbackArguments {
 /// would prevent the closure from ever being called. Typically held as a field as long as a
 /// callback is registered.
 #[must_use]
+#[derive(Debug)]
 pub(crate) struct RegisteredCallback {
   cb_type: Option<CallbackKey>,
   weak_removed: Weak<RefCell<Vec<CallbackKey>>>,
@@ -63,7 +64,7 @@ impl Drop for RegisteredCallback {
 /// callback is ready to be run via `SystemEvent::Callback`. This type uses its type argument `T` to
 /// define the values that the caller will pass along to the closure when running it.
 pub struct Callbacks<T> {
-  sound_source_completion_callbacks: BTreeMap<*mut CSoundSource, Box<dyn Fn(T)>>,
+  sound_source_completion_callbacks: BTreeMap<usize, Box<dyn Fn(T)>>,
   menu_item_callbacks: BTreeMap<usize, Box<dyn Fn(T)>>,
   removed: Rc<RefCell<Vec<CallbackKey>>>,
 }
@@ -117,7 +118,7 @@ impl<T> Callbacks<T> {
   #[must_use]
   pub(crate) fn add_sound_source_completion(
     &mut self,
-    key: *mut CSoundSource,
+    key: usize,
     cb: impl Fn(T) + 'static,
   ) -> (unsafe extern "C" fn(*mut CSoundSource), RegisteredCallback) {
     self.sound_source_completion_callbacks.insert(key, Box::new(cb));
@@ -161,7 +162,7 @@ impl CCallbacks {
   }
 
   pub extern "C" fn on_sound_source_completion_callback(key: *mut CSoundSource) {
-    Self::run_callback(CallbackArguments::SoundSourceCompletion(key))
+    Self::run_callback(CallbackArguments::SoundSourceCompletion(key as usize))
   }
 
   pub extern "C" fn on_menu_item_callback(key: *mut c_void) {
@@ -175,7 +176,13 @@ pub enum Unconstructed {}
 pub enum WithCallacks {}
 pub enum Constructed {}
 
-pub struct CallbackBuilder<'a, T = (), F: Fn(T) + 'static = fn(T), Rule = AllowNull, State = Unconstructed> {
+pub struct CallbackBuilder<
+  'a,
+  T = (),
+  F: Fn(T) + 'static = fn(T),
+  Rule = AllowNull,
+  State = Unconstructed,
+> {
   callbacks: Option<&'a mut Callbacks<T>>,
   cb: Option<F>,
   _marker: core::marker::PhantomData<(&'a u8, T, F, Rule, State)>,

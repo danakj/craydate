@@ -59,7 +59,7 @@ pub use inputs::*;
 pub use menu::*;
 pub use sound::*;
 pub use system_event::*;
-pub use time::{TimeDelta, TimeTicks};
+pub use time::{SoundTicks, TimeDelta, TimeTicks};
 
 #[global_allocator]
 pub static mut GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();

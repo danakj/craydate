@@ -2,6 +2,8 @@ use core::cell::Cell;
 
 use crate::ctypes::*;
 
+pub type SoundTicks = TimeTicks;
+
 /// Represents the current device time, which is a monotonically increasing value.
 ///
 /// At this time the highest resolution available is milliseconds, so callers that need a raw
@@ -44,7 +46,7 @@ impl TimeTicks {
 /// The difference between two TimeTicks.
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct TimeDelta(i32);
+pub struct TimeDelta(i32); // Stores milliseconds.
 impl TimeDelta {
   /// Constructs a TimeDelta that represents the given number of days.
   pub const fn from_days(h: i32) -> Self {
@@ -65,6 +67,10 @@ impl TimeDelta {
   /// Constructs a TimeDelta that represents the given number of milliseconds.
   pub const fn from_milliseconds(s: i32) -> Self {
     TimeDelta(s)
+  }
+
+  pub fn from_seconds_lossy(sec: f32) -> Self {
+    TimeDelta((sec * 1000f32) as i32)
   }
 
   // Returns the number of hours in the delta, truncating any non-whole hours.

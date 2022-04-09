@@ -181,7 +181,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
     fileplayer.file_len().to_seconds(),
   ));
   fileplayer.fade_volume(
-    SoundSourceVolume::zero(),
+    StereoVolume::zero(),
     TimeDelta::from_seconds(1),
     /*SoundCompletionCallback::with(&mut i32callbacks).call(|(_i, system)| {
       system.log("fade done!");
@@ -192,6 +192,10 @@ pub async fn _run(mut api: playdate::Api) -> ! {
     }),*/
     SoundCompletionCallback::none(),
   );
+
+  let sample = AudioSample::with_bytes(100000);
+  let mut splayer = SamplePlayer::new(&sample);
+  splayer.play(1, 1.0);
 
   let action_item = MenuItem::new_action(
     "hello world",
