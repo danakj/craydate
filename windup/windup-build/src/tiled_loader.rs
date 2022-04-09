@@ -1,7 +1,7 @@
+use anyhow::{anyhow, Error};
 use std::collections::HashMap;
+use std::fs;
 use std::path::{Path, PathBuf};
-
-use anyhow::Error;
 
 #[derive(Clone, Copy)]
 pub struct Extents {
@@ -70,7 +70,7 @@ pub fn relative_image_path(path: &PathBuf) -> Option<String> {
   }
 }
 
-pub fn load_map<P: AsRef<Path>>(tmx_map_file: P, extents: Extents) -> Result<(), Error> {
+fn load(tmx_map_file: &Path, extents: Extents) -> Result<windup_map::Map, Error> {
   let mut output = windup_map::Map {
     tiles: Vec::new(),
     layers: Vec::new(),
@@ -81,7 +81,7 @@ pub fn load_map<P: AsRef<Path>>(tmx_map_file: P, extents: Extents) -> Result<(),
   let mut tile_map: HashMap<(usize, u32), windup_map::TileId> = HashMap::new();
 
   let mut loader = tiled::Loader::new();
-  let src_map = loader.load_tmx_map(tmx_map_file.as_ref())?;
+  let src_map = loader.load_tmx_map(tmx_map_file)?;
 
   for (set_idx, tileset) in src_map.tilesets().iter().enumerate() {
     for (id, tile) in tileset.tiles() {
@@ -114,7 +114,19 @@ pub fn load_map<P: AsRef<Path>>(tmx_map_file: P, extents: Extents) -> Result<(),
     output.layers.push(output_layer);
   }
 
-  // TODO: write output to a file.
+  Ok(output)
+}
 
-  Ok(())
+fn write(map: windup_map::Map, filename: &Path) -> Result<(), Error> {
+  let bytes = map.to_vec()?;
+  fs::write(filename, bytes).map_err(|e| anyhow!(e))
+}
+
+pub fn write_map<P: AsRef<Path>, Q: AsRef<Path>>(
+  tmx_map_file: P,
+  extents: Extents,
+  output_file: Q,
+) -> Result<(), Error> {
+  let map = load(tmx_map_file.as_ref(), extents)?;
+  write(map, output_file.as_ref())
 }

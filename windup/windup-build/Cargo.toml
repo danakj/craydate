@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0"
+anyhow = { version = "1.0", default-features = false }
 tiled = "0.10.1"
 rusync = "0.7.2"
 playdate-build = {path = "../playdate-build"}

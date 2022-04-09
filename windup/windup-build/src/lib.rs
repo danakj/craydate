@@ -20,6 +20,7 @@ fn sync<P: AsRef<Path>, Q: AsRef<Path>>(source: P, destination: Q) -> Result<(),
 pub fn generate_assets(pdx_source_dir: &str) -> Result<(), Error> {
   const RAW_ASSET_DIR: &str = "assets/raw/";
   const TMX_MAP_FILE: &str = "assets/map/map.tmx";
+  const OUTPUT_MAP_FILE: &str = "map.bin";
 
   let extents = tiled_loader::Extents {
     min_x: -40,
@@ -34,8 +35,9 @@ pub fn generate_assets(pdx_source_dir: &str) -> Result<(), Error> {
   sync(raw_asset_dir, pdx_source_dir)?;
 
   let tmx_map_file = PathBuf::from(windup_build_dir).join(TMX_MAP_FILE);
+  let output_file = PathBuf::from(pdx_source_dir).join(OUTPUT_MAP_FILE);
 
-  tiled_loader::load_map(tmx_map_file, extents)?;
+  tiled_loader::write_map(tmx_map_file, extents, output_file)?;
 
   Ok(())
 }
