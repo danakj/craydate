@@ -46,7 +46,7 @@ pub use alloc::{borrow::ToOwned, format, string::String};
 
 pub use api::*;
 pub use bitmap::*;
-pub use callbacks::*;
+pub use callbacks::{CallbackBuilder, Callbacks};
 pub use color::*;
 pub use ctypes_enums::*;
 pub use display::*;
