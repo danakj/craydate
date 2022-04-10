@@ -1,13 +1,14 @@
 use core::mem::ManuallyDrop;
 
-use super::super::{SoundCompletionCallback, StereoVolume, SAMPLE_FRAMES_PER_SEC};
+use super::super::sound_range::LoopSoundRange;
+use super::super::{SoundCompletionCallback, StereoVolume};
 use super::sound_source::SoundSource;
 use crate::callbacks::{Constructed, RegisteredCallback};
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::error::Error;
 use crate::null_terminated::ToNullTerminatedString;
-use crate::time::TimeDelta;
+use crate::time::{TimeDelta, TimeTicks};
 
 /// FilePlayer is used for streaming audio from a file on disk.
 ///
@@ -61,15 +62,15 @@ impl FilePlayer {
   }
 
   /// Returns the length, in seconds, of the file loaded into player.
-  pub fn file_len(&self) -> TimeDelta {
+  pub fn file_len(&self) -> TimeTicks {
     let f = unsafe {
       (*CApiState::get().csound.fileplayer).getLength.unwrap()(self.as_ptr() as *mut CFilePlayer)
     };
-    TimeDelta::from_seconds_lossy(f)
+    TimeTicks::from_seconds_lossy(f)
   }
 
   /// Sets the length of the buffer which will be filled from the file.
-  pub fn set_buffer_len(&mut self, length: TimeDelta) {
+  pub fn set_buffer_len(&mut self, length: TimeTicks) {
     unsafe {
       (*CApiState::get().csound.fileplayer).setBufferLength.unwrap()(
         self.as_mut_ptr(),
@@ -107,17 +108,17 @@ impl FilePlayer {
   /// Sets the start and end of the loop region for playback.
   ///
   /// If `end` is `None`, the end of the player's buffer is used.
-  pub fn set_loop_range(&mut self, start: TimeDelta, end: Option<TimeDelta>) {
+  pub fn set_loop_range(&mut self, loop_range: LoopSoundRange) {
     unsafe {
       (*CApiState::get().csound.fileplayer).setLoopRange.unwrap()(
         self.as_mut_ptr(),
-        start.to_seconds(),
-        end.map_or(0f32, TimeDelta::to_seconds),
+        loop_range.start().to_seconds(),
+        loop_range.end().map_or(0f32, TimeTicks::to_seconds),
       )
     }
   }
   /// Sets the current offset for the player.
-  pub fn set_offset(&mut self, offset: TimeDelta) {
+  pub fn set_offset(&mut self, offset: TimeTicks) {
     unsafe {
       (*CApiState::get().csound.fileplayer).setOffset.unwrap()(
         self.as_mut_ptr(),
@@ -126,8 +127,8 @@ impl FilePlayer {
     }
   }
   /// Gets the current offset for the player.
-  pub fn offset(&self) -> TimeDelta {
-    TimeDelta::from_seconds_lossy(unsafe {
+  pub fn offset(&self) -> TimeTicks {
+    TimeTicks::from_seconds_lossy(unsafe {
       (*CApiState::get().csound.fileplayer).getOffset.unwrap()(self.as_ptr() as *mut CFilePlayer)
     })
   }
@@ -167,13 +168,12 @@ impl FilePlayer {
       self.fade_callback = Some(reg);
       Some(func)
     });
-    let num_samples = duration.total_whole_milliseconds() * SAMPLE_FRAMES_PER_SEC / 1000;
     unsafe {
       (*CApiState::get().csound.fileplayer).fadeVolume.unwrap()(
         self.as_mut_ptr(),
         volume.left.clamp(0f32, 1f32),
         volume.right.clamp(0f32, 1f32),
-        num_samples,
+        duration.to_sample_frames(),
         func,
       )
     }

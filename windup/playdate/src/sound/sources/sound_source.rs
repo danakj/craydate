@@ -54,7 +54,7 @@ impl SoundSource {
         return Ok(());
       }
     }
-    Err(Error::NotFoundError())
+    Err(Error::NotFoundError)
   }
 
   /// Gets the playback volume (0.0 - 1.0) for left and right channels of the source.

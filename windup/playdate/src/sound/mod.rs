@@ -2,6 +2,7 @@ pub(crate) mod audio_sample;
 pub(crate) mod sample_frames;
 pub(crate) mod sound_channel;
 pub(crate) mod sound_format;
+pub(crate) mod sound_range;
 pub(crate) mod sources;
 pub(crate) mod stereo_volume;
 
@@ -9,16 +10,18 @@ pub use audio_sample::AudioSample;
 pub use sample_frames::SampleFrames;
 pub use sound_channel::{SoundChannel, SoundChannelRef};
 pub use sound_format::*;
+pub use sound_range::{SoundRange, SignedSoundRange};
 pub use sources::file_player::FilePlayer;
 pub use sources::sample_player::SamplePlayer;
 pub use sources::sound_source::SoundSource;
+pub use sources::synth::Synth;
 pub use stereo_volume::StereoVolume;
 
 use crate::callbacks::AllowNull;
 use crate::capi_state::CApiState;
-use crate::time::TimeDelta;
+use crate::time::TimeTicks;
 
-const SAMPLE_FRAMES_PER_SEC: i32 = 44_100;
+pub(crate) const SAMPLE_FRAMES_PER_SEC: i32 = 44_100;
 
 pub type SoundCompletionCallback<'a, T, F, S> =
   crate::callbacks::CallbackBuilder<'a, T, F, AllowNull, S>;
@@ -53,9 +56,9 @@ impl Sound {
   }
 
   /// Returns the sound engine’s current time value.
-  pub fn current_sound_time(&self) -> TimeDelta {
+  pub fn current_sound_time(&self) -> TimeTicks {
     let frames = self.current_sound_time_frames();
-    TimeDelta::from_milliseconds(frames.0 as i32 * SAMPLE_FRAMES_PER_SEC * 1000)
+    TimeTicks::from_sample_frames(frames.0)
   }
 
   /// Returns the sound engine’s current time value, in units of sample frames, 44,100 per second.

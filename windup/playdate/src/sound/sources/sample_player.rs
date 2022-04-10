@@ -1,13 +1,14 @@
 use core::marker::PhantomData;
 use core::mem::ManuallyDrop;
 
-use crate::time::TimeDelta;
-use crate::callbacks::{Constructed, RegisteredCallback};
 use super::super::audio_sample::AudioSample;
-use super::super::{SAMPLE_FRAMES_PER_SEC, SoundCompletionCallback, StereoVolume};
+use super::super::sound_range::SignedSoundRange;
+use super::super::{SoundCompletionCallback, StereoVolume};
 use super::sound_source::SoundSource;
+use crate::callbacks::{Constructed, RegisteredCallback};
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
+use crate::time::TimeDelta;
 
 #[derive(Debug)]
 pub struct SamplePlayer<'sample, 'data> {
@@ -78,10 +79,14 @@ impl<'data> SamplePlayer<'_, 'data> {
   }
 
   /// Sets the ping-pong range when `play()` is called with `repeat` of `-1`.
-  pub fn set_play_range(&mut self, start: TimeDelta, end: TimeDelta) {
-    let start_frame = start.total_whole_milliseconds() * SAMPLE_FRAMES_PER_SEC / 1000;
-    let end_frame = end.total_whole_milliseconds() * SAMPLE_FRAMES_PER_SEC / 1000;
-    unsafe { Self::fns().setPlayRange.unwrap()(self.ptr, start_frame, end_frame) };
+  pub fn set_play_range(&mut self, play_range: SignedSoundRange) {
+    unsafe {
+      Self::fns().setPlayRange.unwrap()(
+        self.ptr,
+        play_range.start.to_sample_frames(),
+        play_range.end.to_sample_frames(),
+      )
+    };
   }
 
   /// Sets the playback rate for the SamplePlayer.

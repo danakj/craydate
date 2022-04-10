@@ -41,6 +41,15 @@ impl TimeTicks {
   pub fn to_seconds(self) -> f32 {
     (self.0 as f32) / 1000f32
   }
+
+  /// Constructs a time from the number of sound sample frames.
+  pub(crate) fn from_sample_frames(frames: u32) -> Self {
+    TimeTicks(frames * 1000 / crate::sound::SAMPLE_FRAMES_PER_SEC as u32)
+  }
+  /// Returns the time in the number of sound sample frames.
+  pub(crate) fn to_sample_frames(self) -> u32 {
+    self.total_whole_milliseconds() * crate::sound::SAMPLE_FRAMES_PER_SEC as u32 / 1000
+  }
 }
 
 /// The difference between two TimeTicks.
@@ -93,6 +102,16 @@ impl TimeDelta {
   /// Returns the time delta represented as seconds.
   pub fn to_seconds(self) -> f32 {
     (self.0 as f32) / 1000f32
+  }
+
+  /// Constructs a time delta from the number of sound sample frames.
+  #[allow(dead_code)]  // Not currently used.
+  pub(crate) fn from_sample_frames(frames: i32) -> Self {
+    TimeDelta(frames * 1000 / crate::sound::SAMPLE_FRAMES_PER_SEC)
+  }
+  /// Returns the time delta in the number of sound sample frames.
+  pub(crate) fn to_sample_frames(self) -> i32 {
+    self.total_whole_milliseconds() * crate::sound::SAMPLE_FRAMES_PER_SEC / 1000
   }
 }
 
