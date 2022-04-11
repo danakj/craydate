@@ -1,3 +1,5 @@
+use alloc::boxed::Box;
+
 use playdate::*;
 
 /// A testing function to dump new functionality into for manual verification.
@@ -196,6 +198,25 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   let sample = AudioSample::with_bytes(100000);
   let mut splayer = SamplePlayer::new(&sample);
   splayer.play(1, 1.0);
+
+  // TODO: This crashes?
+  // https://devforum.play.date/t/c-api-playdate-sound-synth-setgenerator-has-incorrect-api/4482
+  struct GeneratorData {}
+  let data = Box::new(GeneratorData {});
+  static VTABLE: SynthGeneratorVtable = SynthGeneratorVtable {
+    render_func: |_data, _r| 0,
+    note_on_func: |_data, _note, _velocity, _len| {},
+    release_func: |_data, _ended| {},
+    set_parameter_func: |_data, _parameter, _value| false,
+    dealloc_func: |data| unsafe { drop(Box::from_raw(data as *mut GeneratorData)) },
+  };
+  let generator = unsafe { SynthGenerator::new(Box::into_raw(data) as *const (), &VTABLE) };
+  drop(generator);
+  /*
+  let mut synth = Synth::from_generator(generator);
+  synth.play_frequency_note(0.0, 1.0, None, None);
+  api.system.log(format!("synth playing: {}", synth.as_source().is_playing()));
+  */
 
   let action_item = MenuItem::new_action(
     "hello world",

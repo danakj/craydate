@@ -10,11 +10,11 @@ pub use audio_sample::AudioSample;
 pub use sample_frames::SampleFrames;
 pub use sound_channel::{SoundChannel, SoundChannelRef};
 pub use sound_format::*;
-pub use sound_range::{SoundRange, SignedSoundRange};
+pub use sound_range::{SignedSoundRange, SoundRange};
 pub use sources::file_player::FilePlayer;
 pub use sources::sample_player::SamplePlayer;
 pub use sources::sound_source::SoundSource;
-pub use sources::synth::Synth;
+pub use sources::synth::{Synth, SynthGenerator, SynthGeneratorVtable, SynthRender};
 pub use stereo_volume::StereoVolume;
 
 use crate::callbacks::AllowNull;
