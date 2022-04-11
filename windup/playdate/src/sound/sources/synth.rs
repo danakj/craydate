@@ -132,8 +132,8 @@ impl<'sample, 'data> Synth<'sample, 'data> {
   ///
   /// `i` is 0-based, so the first parameter is `0`, the second is `1`, etc. Returns
   /// `Error::NotFoundError` is the parameter `i` is not valid.
-  pub fn set_parameter(&mut self, i: u8, value: f32) -> Result<(), Error> {
-    let r = unsafe { Self::fns().setParameter.unwrap()(self.ptr, i as i32, value) };
+  pub fn set_parameter(&mut self, i: i32, value: f32) -> Result<(), Error> {
+    let r = unsafe { Self::fns().setParameter.unwrap()(self.ptr, i, value) };
     match r {
       0 => Err(Error::NotFoundError),
       _ => Ok(()),
@@ -242,31 +242,59 @@ pub struct SynthRender<'a> {
   dr: i32,
 }
 
-pub struct SynthGeneratorVtable {
+/// A virtual function pointer table (vtable) that specifies the behaviour of a `SynthGenerator`.
+///
+/// The `userdata` pointer passed to all the methods is the pointer given when constructing the
+/// SynthGenerator. The pointer must stay alive until `dealloc_func` is called, which is responsible
+/// for cleaning up the `userdata`.
+///
+/// The functions are only meant to be called as part of a SynthGenerator, and calling them in any
+/// other context will cause undefined behaviour.
+pub struct SynthGeneratorVTable {
+  /// The data provider callback for a generator. The generator should add its samples to the data
+  /// already in the `left` and `right` buffers in the `SynthRender`.
+  /// 
+  /// TODO: What is the return value?
   pub render_func: fn(userdata: *const (), SynthRender<'_>) -> i32,
+  /// TODO: What is this?
   pub note_on_func: fn(userdata: *const (), note: f32, velocity: f32, length: Option<TimeTicks>),
+  /// TODO: What is this?
   pub release_func: fn(userdata: *const (), ended: bool),
+  /// TODO: Is this called in response to set_parameter()? What parameters go here verses elsewhere?
+  /// How does get_parameters() know what to return? What is the return value? Is `bool` even right,
+  ///  or should be it `i32` like the C function?
   pub set_parameter_func: fn(userdata: *const (), parameter: u8, value: f32) -> bool,
+  /// Called to deallocate the `userdata`. This is called when the other generator functions will no
+  /// longer be called for this `userdata`.
   pub dealloc_func: fn(userdata: *const ()),
 }
 
+/// The implementation of a generator for a `Synth`.
 pub struct SynthGenerator {
   data: *const (),
-  vtable: &'static SynthGeneratorVtable,
+  vtable: &'static SynthGeneratorVTable,
 }
 impl SynthGenerator {
   /// Construct a `SynthGenerator` that generates the sample data for a `Synth`.
   ///
+  /// The `data` can point to arbitrary data, and will be passed to all the methods in the
+  /// `vtable` as the first parameter.
+  ///
   /// The `vtable` defines the behaviour of the generator, and the `data` is a pointer that will
   /// passed to each function in the `vtable`. The `data` pointer is deallocated by the
-  /// `SynthGeneratorVtable::dealloc` function.
-  pub const unsafe fn new(data: *const (), vtable: &'static SynthGeneratorVtable) -> Self {
+  /// `SynthGeneratorVTable::dealloc` function.
+  ///
+  /// The behavior of the returned SynthGenerator is undefined if the contract defined in
+  /// SynthGeneratorVTable’s documentation is not upheld, or if the `data` pointer is not kept alive
+  /// until `SynthGeneratorVTable::dealloc_func()` is called with the `data` as its parameter.
+  /// Therefore this method is unsafe.
+  pub const unsafe fn new(data: *const (), vtable: &'static SynthGeneratorVTable) -> Self {
     SynthGenerator { data, vtable }
   }
 }
 impl Drop for SynthGenerator {
   fn drop(&mut self) {
-    // The `c_dealloc_func()` will call into there to drop `data` as well.
+    // The `c_dealloc_func()` will call into here to drop `data` as well.
     (self.vtable.dealloc_func)(self.data)
   }
 }

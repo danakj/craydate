@@ -203,7 +203,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   // https://devforum.play.date/t/c-api-playdate-sound-synth-setgenerator-has-incorrect-api/4482
   struct GeneratorData {}
   let data = Box::new(GeneratorData {});
-  static VTABLE: SynthGeneratorVtable = SynthGeneratorVtable {
+  static VTABLE: SynthGeneratorVTable = SynthGeneratorVTable {
     render_func: |_data, _r| 0,
     note_on_func: |_data, _note, _velocity, _len| {},
     release_func: |_data, _ended| {},
