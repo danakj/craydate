@@ -34,3 +34,8 @@
    in the simulator found at `$PLAYDATE_SDK_PATH`.
 1. Add it to `"rust-analyzer.linkedProjects"` in `.vscode/settings.json`. Then rust-analyzer will
    index it.
+
+# TODOs
+- Turn all `*mut T` into `NonNull<T>` where it makes sense.
+- Add a `Self::fns() -> &'static capithing` fn to all the types.
+- Add a `Self::cptr(&self) -> *mut T` to all the types.
