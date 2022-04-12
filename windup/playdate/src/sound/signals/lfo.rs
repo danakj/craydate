@@ -8,6 +8,10 @@ use super::synth_signal::{SynthSignal, SynthSignalSubclass};
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 
+struct LfoFunctionData {
+  f: Box<dyn FnMut() -> f32>,
+}
+
 struct LfoSubclass {
   ptr: NonNull<CSynthLfo>,
   function_data: RefCell<Option<LfoFunctionData>>,
@@ -18,10 +22,6 @@ impl Drop for LfoSubclass {
   }
 }
 impl SynthSignalSubclass for LfoSubclass {}
-
-struct LfoFunctionData {
-  f: Box<dyn FnMut() -> f32>,
-}
 
 pub enum LfoFixedFunction {
   Square,
@@ -44,7 +44,7 @@ impl LfoFixedFunction {
   }
 }
 
-/// An Lfo is used to modulate sounds with a function.
+/// An Lfo is used to modulate sounds in a `Synth` with a function.
 pub struct Lfo {
   signal: SynthSignal,
   subclass: Rc<LfoSubclass>,
@@ -151,6 +151,11 @@ impl Lfo {
         interpolate as i32,
       )
     }
+  }
+
+  /// Return the current output value of the LFO.
+  pub fn get_value(&self) -> f32 {
+    unsafe { Self::fns().getValue.unwrap()(self.cptr()) }
   }
 
   pub fn as_signal(&self) -> &SynthSignal {

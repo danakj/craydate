@@ -9,6 +9,7 @@ pub(crate) mod stereo_volume;
 
 pub use audio_sample::AudioSample;
 pub use sample_frames::SampleFrames;
+pub use signals::envelope::Envelope;
 pub use signals::lfo::Lfo;
 pub use signals::synth_signal::SynthSignal;
 pub use sound_channel::{SoundChannel, SoundChannelRef};
