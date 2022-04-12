@@ -290,7 +290,7 @@ pub struct SynthGeneratorVTable {
   /// TODO: What is the return value?
   pub render_func: fn(userdata: *const (), SynthRender<'_>) -> i32,
   /// TODO: What is this?
-  pub note_on_func: fn(userdata: *const (), note: f32, velocity: f32, length: Option<TimeTicks>),
+  pub note_on_func: fn(userdata: *const (), note: f32, volume: f32, length: Option<TimeTicks>),
   /// TODO: What is this?
   pub release_func: fn(userdata: *const (), ended: bool),
   /// TODO: Is this called in response to set_parameter()? What parameters go here verses elsewhere?
@@ -364,7 +364,7 @@ unsafe extern "C" fn c_render_func(
   )
 }
 type CNoteOnFunc = unsafe extern "C" fn(*mut c_void, f32, f32, f32);
-unsafe extern "C" fn c_note_on_func(generator: *mut c_void, note: f32, velocity: f32, length: f32) {
+unsafe extern "C" fn c_note_on_func(generator: *mut c_void, note: f32, volume: f32, length: f32) {
   let generator = generator as *const SynthGenerator;
   let func = (*generator).vtable.note_on_func;
   let userdata = (*generator).data;
@@ -375,7 +375,7 @@ unsafe extern "C" fn c_note_on_func(generator: *mut c_void, note: f32, velocity:
   } else {
     Some(TimeTicks::from_seconds_lossy(length))
   };
-  func(userdata, note, velocity, length)
+  func(userdata, note, volume, length)
 }
 type CReleaseFunc = unsafe extern "C" fn(*mut c_void, i32);
 unsafe extern "C" fn c_release_func(generator: *mut c_void, ended: i32) {
