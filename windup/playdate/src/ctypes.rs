@@ -45,7 +45,7 @@ pub use playdate_sys::PDMenuItem as CMenuItem;
 pub use playdate_sys::PDSynth as CSynth;
 pub use playdate_sys::PDSynthEnvelope as CSynthEnvelope;
 pub use playdate_sys::PDSynthInstrument as CSynthInstrument;
-pub use playdate_sys::PDSynthLFO as CSynthLFO;
+pub use playdate_sys::PDSynthLFO as CSynthLfo;
 pub use playdate_sys::PDSynthSignalValue as CSynthSignalValue;
 pub use playdate_sys::PDSystemEvent as CSystemEvent;
 pub use playdate_sys::PlaydateAPI as CPlaydateApi;
@@ -60,6 +60,7 @@ pub use playdate_sys::SoundSequence as CSoundSequence;
 pub use playdate_sys::SoundSource as CSoundSource;
 pub use playdate_sys::SoundWaveform as CSoundWaveform;
 pub use playdate_sys::TwoPoleFilter as CTwoPoleFilter;
+pub use playdate_sys::LFOType as CSynthLfoType;
 
 pub use crate::ctypes_enums::*;
 

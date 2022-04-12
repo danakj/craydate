@@ -1,5 +1,6 @@
 pub(crate) mod audio_sample;
 pub(crate) mod sample_frames;
+pub(crate) mod signals;
 pub(crate) mod sound_channel;
 pub(crate) mod sound_format;
 pub(crate) mod sound_range;
@@ -8,6 +9,8 @@ pub(crate) mod stereo_volume;
 
 pub use audio_sample::AudioSample;
 pub use sample_frames::SampleFrames;
+pub use signals::lfo::Lfo;
+pub use signals::synth_signal::SynthSignal;
 pub use sound_channel::{SoundChannel, SoundChannelRef};
 pub use sound_format::*;
 pub use sound_range::{SignedSoundRange, SoundRange};
