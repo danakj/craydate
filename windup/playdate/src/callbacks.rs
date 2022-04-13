@@ -20,6 +20,7 @@ static mut CURRENT_CALLBACK: CallbackArguments = CallbackArguments::None;
 enum CallbackKey {
   SoundSourceCompletion(usize),
   MenuItem(usize),
+  SequenceFinished(usize),
 }
 
 /// The arguments given to the C callback function for each type of function. These are used to find
@@ -33,6 +34,7 @@ enum CallbackArguments {
   None,
   SoundSourceCompletion(usize),
   MenuItem(usize),
+  SequenceFinished(usize),
 }
 impl CallbackArguments {
   fn is_none(&self) -> bool {
@@ -66,6 +68,7 @@ impl Drop for RegisteredCallback {
 pub struct Callbacks<T> {
   sound_source_completion_callbacks: BTreeMap<usize, Box<dyn Fn(T)>>,
   menu_item_callbacks: BTreeMap<usize, Box<dyn Fn(T)>>,
+  sequence_finished_callbacks: BTreeMap<usize, Box<dyn Fn(T)>>,
   removed: Rc<RefCell<Vec<CallbackKey>>>,
 }
 impl<T> Callbacks<T> {
@@ -74,6 +77,7 @@ impl<T> Callbacks<T> {
     Callbacks {
       sound_source_completion_callbacks: BTreeMap::new(),
       menu_item_callbacks: BTreeMap::new(),
+      sequence_finished_callbacks: BTreeMap::new(),
       removed: Rc::new(RefCell::new(Vec::new())),
     }
   }
@@ -85,6 +89,7 @@ impl<T> Callbacks<T> {
           self.sound_source_completion_callbacks.remove(key)
         }
         CallbackKey::MenuItem(key) => self.menu_item_callbacks.remove(key),
+        CallbackKey::SequenceFinished(key) => self.sequence_finished_callbacks.remove(key),
       };
     }
   }
@@ -102,12 +107,16 @@ impl<T> Callbacks<T> {
 
     match unsafe { &CURRENT_CALLBACK } {
       CallbackArguments::None => false,
-      CallbackArguments::SoundSourceCompletion(source_ptr) => {
-        let cb = self.sound_source_completion_callbacks.get(source_ptr);
+      CallbackArguments::SoundSourceCompletion(key) => {
+        let cb = self.sound_source_completion_callbacks.get(key);
         cb.and_then(|f| Some(f(t))).is_some()
       }
-      CallbackArguments::MenuItem(menu_item_ptr) => {
-        let cb = self.menu_item_callbacks.get(menu_item_ptr);
+      CallbackArguments::MenuItem(key) => {
+        let cb = self.menu_item_callbacks.get(key);
+        cb.and_then(|f| Some(f(t))).is_some()
+      }
+      CallbackArguments::SequenceFinished(key) => {
+        let cb = self.sequence_finished_callbacks.get(key);
         cb.and_then(|f| Some(f(t))).is_some()
       }
     }
@@ -146,6 +155,22 @@ impl<T> Callbacks<T> {
       },
     )
   }
+
+  #[must_use]
+  pub(crate) fn add_sequence_finished(
+    &mut self,
+    key: usize,
+    cb: impl Fn(T) + 'static,
+  ) -> (unsafe extern "C" fn(*mut CSoundSequence, *mut c_void), RegisteredCallback) {
+    self.sound_source_completion_callbacks.insert(key, Box::new(cb));
+    (
+      CCallbacks::on_sequence_finished_callback,
+      RegisteredCallback {
+        cb_type: Some(CallbackKey::SequenceFinished(key)),
+        weak_removed: Rc::downgrade(&self.removed),
+      },
+    )
+  }
 }
 
 struct CCallbacks;
@@ -167,6 +192,10 @@ impl CCallbacks {
 
   pub extern "C" fn on_menu_item_callback(key: *mut c_void) {
     Self::run_callback(CallbackArguments::MenuItem(key as usize))
+  }
+
+  pub extern "C" fn on_sequence_finished_callback(seq: *mut CSoundSequence, _data: *mut c_void) {
+    Self::run_callback(CallbackArguments::SequenceFinished(seq as usize))
   }
 }
 

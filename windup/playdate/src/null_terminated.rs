@@ -9,12 +9,12 @@ pub trait ToNullTerminatedString {
 
 impl ToNullTerminatedString for &str {
   fn to_null_terminated_utf8(&self) -> Vec<u8> {
-    let num_bytes_without_nul = self.as_bytes().len();
-    let mut v = Vec::with_capacity(num_bytes_without_nul + 1);
+    let bytes_without_nul_count = self.as_bytes().len();
+    let mut v = Vec::with_capacity(bytes_without_nul_count + 1);
     unsafe {
-      core::ptr::copy_nonoverlapping(self.as_ptr(), v.as_mut_ptr(), num_bytes_without_nul);
-      *v.as_mut_ptr().add(num_bytes_without_nul) = 0;
-      v.set_len(num_bytes_without_nul + 1);
+      core::ptr::copy_nonoverlapping(self.as_ptr(), v.as_mut_ptr(), bytes_without_nul_count);
+      *v.as_mut_ptr().add(bytes_without_nul_count) = 0;
+      v.set_len(bytes_without_nul_count + 1);
     }
     v
   }
@@ -54,8 +54,8 @@ pub unsafe fn parse_null_terminated_utf8<'a>(
   p: *const u8,
 ) -> Result<&'a str, core::str::Utf8Error> {
   let slice = {
-    let num_bytes_without_nul = strlen(p);
-    core::slice::from_raw_parts::<'a>(p, num_bytes_without_nul)
+    let bytes_without_nul_count = strlen(p);
+    core::slice::from_raw_parts::<'a>(p, bytes_without_nul_count)
   };
   core::str::from_utf8(slice)
 }

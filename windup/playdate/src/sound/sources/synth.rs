@@ -155,7 +155,7 @@ impl<'sample, 'data> Synth<'sample, 'data> {
   }
 
   /// Returns the number of parameters advertised by the Synth.
-  pub fn num_parameters(&self) -> i32 {
+  pub fn parameter_count(&self) -> i32 {
     unsafe { Self::fns().getParameterCount.unwrap()(self.cptr()) }
   }
   /// Set the Synth's `i`th parameter to `value`.

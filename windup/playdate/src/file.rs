@@ -247,7 +247,7 @@ impl OpenFile {
         0 => break,
         // Return immediately on an error.
         -1 => Err(format!("error reading from file (Playdate: {}", last_err()))?,
-        num_read_bytes => num_read_bytes as usize,
+        read_bytes_count => read_bytes_count as usize,
       };
       out.extend(buf[0..bytes].into_iter());
     }
@@ -274,7 +274,7 @@ impl OpenFile {
         written_from_buffer += match result {
           // Return immediately on an error.
           -1 => Err(format!("error writing to file (Playdate: {}", last_err()))?,
-          num_written_bytes => num_written_bytes as usize,
+          written_bytes_count => written_bytes_count as usize,
         };
         if written_from_buffer == buf.len() {
           break;

@@ -4,6 +4,7 @@ pub enum Error {
   BorrowError(core::cell::BorrowError),
   BorrowMutError(core::cell::BorrowMutError),
   NotFoundError,
+  LoadMidiFileError,
   String(String),
 }
 impl From<core::cell::BorrowError> for Error {
@@ -37,7 +38,8 @@ impl core::fmt::Debug for Error {
     match self {
       Error::BorrowError(e) => write!(f, "Error(BorrowError({:?}))", e),
       Error::BorrowMutError(e) => write!(f, "Error(BorrowMutError({:?}))", e),
-      Error::NotFoundError => write!(f, "Error(NotFoundError())"),
+      Error::NotFoundError => write!(f, "Error(NotFoundError)"),
+      Error::LoadMidiFileError => write!(f, "Error(LoadMidiFileError"),
       Error::String(e) => write!(f, "Error(String({:?}))", e),
     }
   }
@@ -48,6 +50,7 @@ impl core::fmt::Display for Error {
       Error::BorrowError(e) => write!(f, "{}", e),
       Error::BorrowMutError(e) => write!(f, "{}", e),
       Error::NotFoundError => write!(f, "not found"),
+      Error::LoadMidiFileError => write!(f, "MIDI file failed to load"),
       Error::String(e) => write!(f, "{}", e),
     }
   }

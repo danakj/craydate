@@ -1,4 +1,5 @@
 pub(crate) mod audio_sample;
+pub(crate) mod midi;
 pub(crate) mod sample_frames;
 pub(crate) mod signals;
 pub(crate) mod sound_channel;
@@ -8,7 +9,10 @@ pub(crate) mod sources;
 pub(crate) mod stereo_volume;
 
 pub use audio_sample::AudioSample;
+pub use midi::sequence::{Sequence, SequenceBuilder};
+pub use midi::sequence_track::SequenceTrack;
 pub use sample_frames::SampleFrames;
+pub use signals::control::Control;
 pub use signals::envelope::Envelope;
 pub use signals::lfo::Lfo;
 pub use signals::synth_signal::SynthSignal;

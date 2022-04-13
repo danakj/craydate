@@ -218,6 +218,14 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   api.system.log(format!("synth playing: {}", synth.as_source().is_playing()));
   */
 
+  let track = SequenceTrack::new();
+  let mut sequence = SequenceBuilder::new()
+    .add_track_at_index(0, &track)
+    .add_track_at_index(1, &track)
+    .add_track_at_index(2, &track)
+    .build();
+  sequence.play(SoundCompletionCallback::none());
+
   let action_item = MenuItem::new_action(
     "hello world",
     MenuCallback::with(&mut i32callbacks).call(|(i, system)| {
