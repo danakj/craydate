@@ -17,6 +17,7 @@ use crate::null_terminated::ToNullTerminatedString;
 // don't have to worry about unowned tracks being added to a Sequence, which would get weird
 // otherwise.
 
+/// Build a Sequence from a set of SequenceTracks.
 pub struct SequenceBuilder<'a> {
   tracks: Vec<(Option<u32>, &'a SequenceTrackRef)>,
 }
@@ -25,11 +26,15 @@ impl<'a> SequenceBuilder<'a> {
     SequenceBuilder { tracks: Vec::new() }
   }
 
+  /// Add a track at a given index.
+  /// 
+  /// If another track was already specified at the same index, it would be replaced.
   pub fn add_track_at_index(mut self, index: u32, track: &'a SequenceTrackRef) -> Self {
     self.tracks.push((Some(index), track));
     self
   }
 
+  /// Consume the `SequenceBuilder` and construct the `Sequence`.
   pub fn build(self) -> Sequence<'a> {
     let seq = Sequence::new();
     for (index, track) in self.tracks {
@@ -48,7 +53,7 @@ impl<'a> SequenceBuilder<'a> {
   }
 }
 
-/// Represents a MIDI music file, as a collection of `SequenceTrack`s.
+/// Represents a MIDI music file, as a collection of `SequenceTrack`s that can be played together.
 pub struct Sequence<'a> {
   ptr: NonNull<CSoundSequence>,
   finished_callback: Option<RegisteredCallback>,
@@ -177,7 +182,6 @@ impl Sequence<'_> {
     // TODO: The step numbers should be u32 but Playdate has them as `int`.
     unsafe { Self::fns().setLoops.unwrap()(self.cptr(), start_step as i32, end_step as i32, count) }
   }
-  // TODO: setLoops
 
   fn cptr(&self) -> *mut CSoundSequence {
     self.ptr.as_ptr()
