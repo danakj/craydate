@@ -36,6 +36,27 @@ impl SequenceTrackRef {
     unsafe { Self::fns().getLength.unwrap()(self.cptr()) }
   }
 
+  /// Adds a single note event to the track.
+  pub fn add_note_event(&mut self, step: u32, note: TrackNote) {
+    unsafe {
+      Self::fns().addNoteEvent.unwrap()(
+        self.cptr(),
+        step,
+        note.length,
+        note.midi_note,
+        note.velocity,
+      )
+    }
+  }
+  /// Removes the event at `step` playing `midi_note`.
+  pub fn remove_note_event(&mut self, step: u32, midi_note: f32) {
+    unsafe { Self::fns().removeNoteEvent.unwrap()(self.cptr(), step, midi_note) }
+  }
+  /// Remove all notes from the track.
+  pub fn remove_all_notes(&mut self) {
+    unsafe { Self::fns().clearNotes.unwrap()(self.cptr()) }
+  }
+
   pub fn notes_at_step(&self, step: u32) -> impl Iterator<Item = TrackNote> {
     let mut v = Vec::new();
     let first_index = unsafe { Self::fns().getIndexForStep.unwrap()(self.cptr(), step) };
@@ -66,26 +87,12 @@ impl SequenceTrackRef {
     v.into_iter()
   }
 
-  /// Adds a single note event to the track.
-  pub fn add_note_event(&mut self, step: u32, note: TrackNote) {
-    unsafe {
-      Self::fns().addNoteEvent.unwrap()(
-        self.cptr(),
-        step,
-        note.length,
-        note.midi_note,
-        note.velocity,
-      )
-    }
-  }
-  /// Removes the event at `step` playing `midi_note`.
-  pub fn remove_note_event(&mut self, step: u32, midi_note: f32) {
-    unsafe { Self::fns().removeNoteEvent.unwrap()(self.cptr(), step, midi_note) }
-  }
-  /// Remove all notes from the track.
-  pub fn remove_all_notes(&mut self) {
-    unsafe { Self::fns().clearNotes.unwrap()(self.cptr()) }
-  }
+  // TODO: Iterator over all notes.
+
+  // TODO: Lots more functions here.
+  
+  // TODO: Missing addControlSignal() in the C API:
+  // https://devforum.play.date/t/c-api-sequencetrack-is-missing-addcontrolsignal/4508
 }
 
 /// An immutable unowned `SequenceTrack`.
