@@ -40,7 +40,7 @@ impl OnePoleFilter {
     unsafe { Self::fns().setParameterModulator.unwrap()(self.cptr(), modulator_ptr) }
     self.parameter_modulator = signal.map(|signal| signal.as_ref().clone());
   }
-  /// Gets the current signal modulating the filter resonance.
+  /// Gets the current signal modulating the filter parameter.
   pub fn parameter_modulator(&mut self) -> Option<&SynthSignal> {
     self.parameter_modulator.as_ref()
   }
