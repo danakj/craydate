@@ -154,6 +154,9 @@ impl Drop for SoundSource {
         // Synth claims that it removes itself from the sound system, and there's no function to
         // remove it from the Instrument ourselves:
         // https://sdk.play.date/1.9.3/Inside%20Playdate%20with%20C.html#f-sound.synth.freeSynth
+        
+        // TODO: It's wrong, Playdate plays garbage if you drop the Synths that were added to
+        // instruments.
       }
     }
   }
