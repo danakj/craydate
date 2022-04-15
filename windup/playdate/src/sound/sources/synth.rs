@@ -130,12 +130,12 @@ impl<'sample, 'data> Synth<'sample, 'data> {
   /// 
   /// The signal is cloned, which is a shallow copy, so the caller can retain the ability to mutate
   /// the signal.
-  pub fn set_frequency_modulator<T>(&mut self, signal: &SynthSignal) {
-    unsafe { Self::fns().setFrequencyModulator.unwrap()(self.cptr(), signal.ptr.as_ptr()) }
-    self.frequency_modulator = Some(signal.clone());
+  pub fn set_frequency_modulator<T: AsRef<SynthSignal>>(&mut self, signal: &T) {
+    unsafe { Self::fns().setFrequencyModulator.unwrap()(self.cptr(), signal.as_ref().cptr()) }
+    self.frequency_modulator = Some(signal.as_ref().clone());
   }
   /// Gets the current signal modulating the `Synth`'s frequency.
-  pub fn get_frequency_modulator<T>(&mut self) -> Option<&SynthSignal> {
+  pub fn frequency_modulator(&mut self) -> Option<&SynthSignal> {
     self.frequency_modulator.as_ref()
   }
 
@@ -143,12 +143,12 @@ impl<'sample, 'data> Synth<'sample, 'data> {
   /// 
   /// The signal is cloned, which is a shallow copy, so the caller can retain the ability to mutate
   /// the signal.
-  pub fn set_amplitude_modulator<T>(&mut self, signal: &SynthSignal) {
-    unsafe { Self::fns().setAmplitudeModulator.unwrap()(self.cptr(), signal.ptr.as_ptr()) }
-    self.amplitude_modulator = Some(signal.clone());
+  pub fn set_amplitude_modulator<T: AsRef<SynthSignal>>(&mut self, signal: &T) {
+    unsafe { Self::fns().setAmplitudeModulator.unwrap()(self.cptr(), signal.as_ref().cptr()) }
+    self.amplitude_modulator = Some(signal.as_ref().clone());
   }
   /// Gets the current signal modulating the `Synth`’s output amplitude.
-  pub fn get_amplitude_modulator<T>(&mut self) -> Option<&SynthSignal> {
+  pub fn amplitude_modulator(&mut self) -> Option<&SynthSignal> {
     self.amplitude_modulator.as_ref()
   }
 
@@ -156,12 +156,12 @@ impl<'sample, 'data> Synth<'sample, 'data> {
   /// 
   /// The signal is cloned, which is a shallow copy, so the caller can retain the ability to mutate
   /// the signal.
-  pub fn set_parameter_modulator<T>(&mut self, i: i32, signal: &SynthSignal) {
-    unsafe { Self::fns().setParameterModulator.unwrap()(self.cptr(), i, signal.ptr.as_ptr()) }
-    self.parameter_modulators.insert(i, signal.clone());
+  pub fn set_parameter_modulator<T: AsRef<SynthSignal>>(&mut self, i: i32, signal: &T) {
+    unsafe { Self::fns().setParameterModulator.unwrap()(self.cptr(), i, signal.as_ref().cptr()) }
+    self.parameter_modulators.insert(i, signal.as_ref().clone());
   }
   /// Gets the current signal modulating the parameter at index `i`.
-  pub fn get_parameter_modulator<T>(&mut self, i: i32) -> Option<&SynthSignal> {
+  pub fn parameter_modulator(&mut self, i: i32) -> Option<&SynthSignal> {
     self.parameter_modulators.get(&i)
   }
 

@@ -1,4 +1,5 @@
 pub(crate) mod audio_sample;
+pub(crate) mod effects;
 pub(crate) mod midi;
 pub(crate) mod sample_frames;
 pub(crate) mod signals;
@@ -9,6 +10,8 @@ pub(crate) mod sources;
 pub(crate) mod stereo_volume;
 
 pub use audio_sample::AudioSample;
+pub use effects::sound_effect::SoundEffect;
+pub use effects::two_pole_filter::TwoPoleFilter;
 pub use midi::midi_note_range::MidiNoteRange;
 pub use midi::sequence::{Sequence, SequenceBuilder};
 pub use midi::sequence_track::SequenceTrack;

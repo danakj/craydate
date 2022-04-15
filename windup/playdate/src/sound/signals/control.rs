@@ -25,10 +25,7 @@ impl Control {
     let subclass = Rc::new(ControlSubclass {
       ptr: NonNull::new(ptr).unwrap(),
     });
-    let signal = SynthSignal {
-      ptr: NonNull::new(ptr as *mut CSynthSignalValue).unwrap(),
-      _subclass: subclass.clone(),
-    };
+    let signal = SynthSignal::new(ptr as *mut CSynthSignalValue, subclass.clone());
     Control { signal, subclass }
   }
 

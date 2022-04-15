@@ -10,11 +10,20 @@ use crate::ctypes::*;
 #[derive(Clone)]
 pub struct SynthSignal {
   // Non-owning pointer, attached to the lifetime of the `subclass` object.
-  pub(crate) ptr: NonNull<CSynthSignalValue>,
+  ptr: NonNull<CSynthSignalValue>,
   // An opaque trait object which is present just to manage the lifetime of any resources owned by
   // the subclass. Once a SynthSignal subclass is converted to a SynthSignal, its type is lost but
   // it continues to function and this trait object holds the data needed by it.
-  pub(crate) _subclass: Rc<dyn SynthSignalSubclass>,
+  _subclass: Rc<dyn SynthSignalSubclass>,
+}
+impl SynthSignal {
+  pub(crate) fn new(ptr: *mut CSynthSignalValue, subclass: Rc<dyn SynthSignalSubclass>) -> Self {
+    SynthSignal { ptr: NonNull::new(ptr).unwrap(), _subclass: subclass }
+  }
+
+  pub(crate) fn cptr(&self) -> *mut CSynthSignalValue {
+    self.ptr.as_ptr()
+  }
 }
 
 impl core::fmt::Debug for SynthSignal {

@@ -171,7 +171,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   let mut i32callbacks = Callbacks::<(i32, &System)>::new();
 
   let mut fileplayer = FilePlayer::from_file("sounds/mojojojo.pda");
-  api.sound.default_channel_mut().attach_source(&mut fileplayer).unwrap();
+  api.sound.default_channel_mut().add_source(&mut fileplayer).unwrap();
   fileplayer.as_mut().set_completion_callback(
     SoundCompletionCallback::with(&mut i32callbacks).call(|(i, system)| {
       system.log(format!("finished playback of mojojojo {}", i));
@@ -224,7 +224,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   for mut track in sequence.tracks_mut() {
     let mut instrument = Instrument::new();
     instrument.set_volume(StereoVolume { left: 0.3, right: 0.3 });
-    api.sound.default_channel_mut().attach_source(&mut instrument).unwrap();
+    api.sound.default_channel_mut().add_source(&mut instrument).unwrap();
     track.set_instrument(&mut instrument);
 
     api.system.log(format!("polyphony: {}", track.polyphony()));

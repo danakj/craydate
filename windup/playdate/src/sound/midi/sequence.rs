@@ -99,7 +99,7 @@ impl Sequence<'_> {
   /// for mut track in sequence.tracks_mut() {
   ///   let mut instrument = Instrument::new();
   ///   instrument.set_volume(StereoVolume { left: 0.3, right: 0.3 });
-  ///   api.sound.default_channel_mut().attach_source(&mut instrument).unwrap();
+  ///   api.sound.default_channel_mut().add_source(&mut instrument).unwrap();
   ///   track.set_instrument(&mut instrument);
   /// 
   ///   for _ in 0..track.polyphony() {

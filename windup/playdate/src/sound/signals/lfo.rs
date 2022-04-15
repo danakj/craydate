@@ -55,10 +55,7 @@ impl Lfo {
       ptr: NonNull::new(ptr).unwrap(),
       function_data: RefCell::new(None),
     });
-    let signal = SynthSignal {
-      ptr: NonNull::new(ptr as *mut CSynthSignalValue).unwrap(),
-      _subclass: subclass.clone(),
-    };
+    let signal = SynthSignal::new(ptr as *mut CSynthSignalValue, subclass.clone());
     Lfo { signal, subclass }
   }
 

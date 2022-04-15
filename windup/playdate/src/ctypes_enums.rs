@@ -9,6 +9,7 @@ pub use playdate_sys::PDPeripherals as Peripherals;
 pub use playdate_sys::PDStringEncoding as StringEncoding;
 pub use playdate_sys::SoundFormat as SoundFormat;
 pub use playdate_sys::SoundWaveform as SoundWaveform;
+pub use playdate_sys::TwoPoleFilterType as TwoPoleFilterType;
 
 pub const LCD_COLUMNS: u32 = playdate_sys::LCD_COLUMNS;
 pub const LCD_ROWS: u32 = playdate_sys::LCD_ROWS;

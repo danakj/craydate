@@ -1,5 +1,8 @@
+use core::ptr::NonNull;
+
 use alloc::rc::Rc;
 
+use super::effects::sound_effect::SoundEffect;
 use super::sources::sound_source::SoundSource;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
@@ -22,9 +25,6 @@ impl SoundChannel {
 
   pub(crate) fn set_added(&mut self, added: bool) {
     self.added = added
-  }
-  pub(crate) fn cptr(&self) -> *mut CSoundChannel {
-    *self.ptr
   }
 }
 
@@ -64,33 +64,60 @@ impl AsRef<SoundChannelRef> for SoundChannel {
 pub struct SoundChannelRef {
   // This class holds an Rc but is not Clone. This allows it to know when the Rc is going away, in
   // order to clean up other related stuff.
-  ptr: Rc<*mut CSoundChannel>,
+  ptr: Rc<NonNull<CSoundChannel>>,
 }
 impl SoundChannelRef {
   pub(crate) fn from_ptr(ptr: *mut CSoundChannel) -> Self {
-    SoundChannelRef { ptr: Rc::new(ptr) }
+    SoundChannelRef { ptr: Rc::new(NonNull::new(ptr).unwrap()) }
   }
 
   /// Gets the volume for the channel, in the range [0-1].
   // TODO: Replace the ouput with a Type<f32> that clamps the value to 0-1.
   pub fn volume(&self) -> f32 {
-    unsafe { (*CApiState::get().csound.channel).getVolume.unwrap()(*self.ptr) }
+    unsafe { (*CApiState::get().csound.channel).getVolume.unwrap()(self.cptr()) }
   }
   /// Sets the volume for the channel, in the range [0-1].
   // TODO: Replace the ouput with a Type<f32> that clamps the value to 0-1.
   pub fn set_volume(&mut self, volume: f32) {
-    unsafe { (*CApiState::get().csound.channel).setVolume.unwrap()(*self.ptr, volume) }
+    unsafe { (*CApiState::get().csound.channel).setVolume.unwrap()(self.cptr(), volume) }
   }
 
-  /// Attach the `source` to this channel.
+  /// Adds the `source` to this channel, so it plays into the channel.
   ///
   /// # Return
   /// Returns `Error::AlreadyAttachedError` if the `source` is already attached to a channel or (for
   /// a Synth) to an Instrument.
-  pub fn attach_source<T: AsMut<SoundSource>>(&mut self, source: &mut T) -> Result<(), Error> {
+  pub fn add_source<T: AsMut<SoundSource>>(&mut self, source: &mut T) -> Result<(), Error> {
     source.as_mut().attach_to_channel(&self.ptr)
   }
-  pub fn detach_source<T: AsMut<SoundSource>>(&mut self, source: &mut T) -> Result<(), Error> {
+  /// Remove the `source` from this channel.
+  ///
+  /// # Return
+  /// Returns `Error::NotFoundError` if the `source` is not attached to the the channel.
+  pub fn remove_source<T: AsMut<SoundSource>>(&mut self, source: &mut T) -> Result<(), Error> {
     source.as_mut().detach_from_channel(&self.ptr)
+  }
+
+  /// Attach the `sound_effect` to this channel, so it plays into the channel.
+  ///
+  /// # Return
+  /// Returns `Error::AlreadyAttachedError` if the `source` is already attached to a channel or (for
+  /// a Synth) to an Instrument.
+  pub fn add_sound_effect<T: AsMut<SoundEffect>>(
+    &mut self,
+    sound_effect: &mut T,
+  ) -> Result<(), Error> {
+    sound_effect.as_mut().attach_to_channel(&self.ptr)
+  }
+  /// Remove the `sound_effect` from this channel.
+  ///
+  /// # Return
+  /// Returns `Error::NotFoundError` if the `source` is not attached to the the channel.
+  pub fn remove_sound_effect<T: AsMut<SoundEffect>>(&mut self, sound_effect: &mut T) -> Result<(), Error> {
+    sound_effect.as_mut().detach_from_channel(&self.ptr)
+  }
+
+  pub(crate) fn cptr(&self) -> *mut CSoundChannel {
+    self.ptr.as_ptr()
   }
 }
