@@ -12,6 +12,7 @@ pub(crate) mod stereo_volume;
 pub use audio_sample::AudioSample;
 pub use effects::bit_crusher::BitCrusher;
 pub use effects::one_pole_filter::OnePoleFilter;
+pub use effects::overdrive::Overdrive;
 pub use effects::ring_modulator::RingModulator;
 pub use effects::sound_effect::SoundEffect;
 pub use effects::two_pole_filter::TwoPoleFilter;
