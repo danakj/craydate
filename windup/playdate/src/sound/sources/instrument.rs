@@ -199,7 +199,7 @@ impl<'data> Instrument {
   pub fn new() -> Self {
     let ptr = unsafe { Self::fns().newInstrument.unwrap()() };
     Instrument {
-      source: ManuallyDrop::new(SoundSource::new(ptr as *mut CSoundSource)),
+      source: ManuallyDrop::new(SoundSource::from_ptr(ptr as *mut CSoundSource)),
       iref: InstrumentRef::from_ptr(ptr),
     }
   }

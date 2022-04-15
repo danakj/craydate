@@ -36,7 +36,7 @@ pub struct SoundSource {
   completion_callback: Option<RegisteredCallback>,
 }
 impl SoundSource {
-  pub(crate) fn new(ptr: *mut CSoundSource) -> Self {
+  pub(crate) fn from_ptr(ptr: *mut CSoundSource) -> Self {
     SoundSource {
       ptr,
       attachment: Attachment::None,

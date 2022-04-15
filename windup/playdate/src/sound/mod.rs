@@ -11,6 +11,7 @@ pub(crate) mod stereo_volume;
 
 pub use audio_sample::AudioSample;
 pub use effects::bit_crusher::BitCrusher;
+pub use effects::delay_line::DelayLine;
 pub use effects::one_pole_filter::OnePoleFilter;
 pub use effects::overdrive::Overdrive;
 pub use effects::ring_modulator::RingModulator;
@@ -27,6 +28,7 @@ pub use signals::synth_signal::SynthSignal;
 pub use sound_channel::{SoundChannel, SoundChannelRef};
 pub use sound_format::*;
 pub use sound_range::{SignedSoundRange, SoundRange};
+pub use sources::delay_line_tap::DelayLineTap;
 pub use sources::file_player::FilePlayer;
 pub use sources::instrument::Instrument;
 pub use sources::sample_player::SamplePlayer;

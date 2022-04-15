@@ -28,7 +28,7 @@ impl<'sample, 'data> Synth<'sample, 'data> {
   fn new() -> Synth<'sample, 'data> {
     let ptr = unsafe { Self::fns().newSynth.unwrap()() };
     Synth {
-      source: ManuallyDrop::new(SoundSource::new(ptr as *mut CSoundSource)),
+      source: ManuallyDrop::new(SoundSource::from_ptr(ptr as *mut CSoundSource)),
       ptr,
       frequency_modulator: None,
       amplitude_modulator: None,

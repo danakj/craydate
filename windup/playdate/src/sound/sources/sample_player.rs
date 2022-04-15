@@ -30,7 +30,7 @@ impl<'data> SamplePlayer<'_, 'data> {
     let ptr = unsafe { Self::fns().newPlayer.unwrap()() };
     unsafe { Self::fns().setSample.unwrap()(ptr, sample.cptr()) }
     SamplePlayer {
-      source: ManuallyDrop::new(SoundSource::new(ptr as *mut CSoundSource)),
+      source: ManuallyDrop::new(SoundSource::from_ptr(ptr as *mut CSoundSource)),
       ptr,
       loop_callback: None,
       _marker: PhantomData,

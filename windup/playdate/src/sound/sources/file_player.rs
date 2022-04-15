@@ -43,7 +43,7 @@ impl FilePlayer {
     // https://devforum.play.date/t/playing-sounds-using-c-api/4228/3, and we should surface errors
     // somehow.
     FilePlayer {
-      source: ManuallyDrop::new(SoundSource::new(ptr as *mut CSoundSource)),
+      source: ManuallyDrop::new(SoundSource::from_ptr(ptr as *mut CSoundSource)),
       ptr,
       fade_callback: None,
     }
