@@ -40,11 +40,12 @@ impl TwoPoleFilter {
     unsafe { Self::fns().setFrequency.unwrap()(self.cptr(), frequency) }
   }
   /// Sets a signal to modulate the effect’s frequency.
-  /// 
+  ///
   /// The signal is scaled so that a value of 1.0 corresponds to half the sample rate.
-  pub fn set_frequency_modulator<T: AsRef<SynthSignal>>(&mut self, signal: &T) {
-    unsafe { Self::fns().setFrequencyModulator.unwrap()(self.cptr(), signal.as_ref().cptr()) }
-    self.frequency_modulator = Some(signal.as_ref().clone());
+  pub fn set_frequency_modulator<T: AsRef<SynthSignal>>(&mut self, signal: Option<&T>) {
+    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| signal.as_ref().cptr());
+    unsafe { Self::fns().setFrequencyModulator.unwrap()(self.cptr(), modulator_ptr) }
+    self.frequency_modulator = signal.map(|signal| signal.as_ref().clone());
   }
   /// Gets the current signal modulating the effect’s frequency.
   pub fn frequency_modulator(&mut self) -> Option<&SynthSignal> {
@@ -56,14 +57,15 @@ impl TwoPoleFilter {
     unsafe { Self::fns().setGain.unwrap()(self.cptr(), gain) }
   }
 
- /// Sets the center/corner resonance of the filter. Value is in Hz.
- pub fn set_resonance(&mut self, resonance: f32) {
+  /// Sets the center/corner resonance of the filter. Value is in Hz.
+  pub fn set_resonance(&mut self, resonance: f32) {
     unsafe { Self::fns().setResonance.unwrap()(self.cptr(), resonance) }
   }
   /// Sets a signal to modulate the effect’s filter resonance.
-  pub fn set_resonance_modulator<T: AsRef<SynthSignal>>(&mut self, signal: &T) {
-    unsafe { Self::fns().setResonanceModulator.unwrap()(self.cptr(), signal.as_ref().cptr()) }
-    self.resonance_modulator = Some(signal.as_ref().clone());
+  pub fn set_resonance_modulator<T: AsRef<SynthSignal>>(&mut self, signal: Option<&T>) {
+    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| signal.as_ref().cptr());
+    unsafe { Self::fns().setResonanceModulator.unwrap()(self.cptr(), modulator_ptr) }
+    self.resonance_modulator = signal.map(|signal| signal.as_ref().clone());
   }
   /// Gets the current signal modulating the effect’s filter resonance.
   pub fn resonance_modulator(&mut self) -> Option<&SynthSignal> {

@@ -124,15 +124,16 @@ impl<'sample, 'data> Synth<'sample, 'data> {
   }
 
   /// Sets a signal to modulate the `Synth`’s frequency.
-  /// 
+  ///
   /// The signal is scaled so that a value of 1 doubles the synth pitch (i.e. an octave up) and -1
   /// halves it (an octave down).
-  /// 
+  ///
   /// The signal is cloned, which is a shallow copy, so the caller can retain the ability to mutate
   /// the signal.
-  pub fn set_frequency_modulator<T: AsRef<SynthSignal>>(&mut self, signal: &T) {
-    unsafe { Self::fns().setFrequencyModulator.unwrap()(self.cptr(), signal.as_ref().cptr()) }
-    self.frequency_modulator = Some(signal.as_ref().clone());
+  pub fn set_frequency_modulator<T: AsRef<SynthSignal>>(&mut self, signal: Option<&T>) {
+    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| signal.as_ref().cptr());
+    unsafe { Self::fns().setFrequencyModulator.unwrap()(self.cptr(), modulator_ptr) }
+    self.frequency_modulator = signal.map(|signal| signal.as_ref().clone());
   }
   /// Gets the current signal modulating the `Synth`'s frequency.
   pub fn frequency_modulator(&mut self) -> Option<&SynthSignal> {
@@ -140,12 +141,13 @@ impl<'sample, 'data> Synth<'sample, 'data> {
   }
 
   /// Sets a signal to modulate the `Synth`’s output amplitude.
-  /// 
+  ///
   /// The signal is cloned, which is a shallow copy, so the caller can retain the ability to mutate
   /// the signal.
-  pub fn set_amplitude_modulator<T: AsRef<SynthSignal>>(&mut self, signal: &T) {
-    unsafe { Self::fns().setAmplitudeModulator.unwrap()(self.cptr(), signal.as_ref().cptr()) }
-    self.amplitude_modulator = Some(signal.as_ref().clone());
+  pub fn set_amplitude_modulator<T: AsRef<SynthSignal>>(&mut self, signal: Option<&T>) {
+    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| signal.as_ref().cptr());
+    unsafe { Self::fns().setAmplitudeModulator.unwrap()(self.cptr(), modulator_ptr) }
+    self.amplitude_modulator = signal.map(|signal| signal.as_ref().clone());
   }
   /// Gets the current signal modulating the `Synth`’s output amplitude.
   pub fn amplitude_modulator(&mut self) -> Option<&SynthSignal> {
@@ -153,12 +155,16 @@ impl<'sample, 'data> Synth<'sample, 'data> {
   }
 
   /// Sets a signal to modulate the parameter at index `i`.
-  /// 
+  ///
   /// The signal is cloned, which is a shallow copy, so the caller can retain the ability to mutate
   /// the signal.
-  pub fn set_parameter_modulator<T: AsRef<SynthSignal>>(&mut self, i: i32, signal: &T) {
-    unsafe { Self::fns().setParameterModulator.unwrap()(self.cptr(), i, signal.as_ref().cptr()) }
-    self.parameter_modulators.insert(i, signal.as_ref().clone());
+  pub fn set_parameter_modulator<T: AsRef<SynthSignal>>(&mut self, i: i32, signal: Option<&T>) {
+    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| signal.as_ref().cptr());
+    unsafe { Self::fns().setParameterModulator.unwrap()(self.cptr(), i, modulator_ptr) }
+    match signal.map(|signal| signal.as_ref().clone()) {
+      Some(signal) => self.parameter_modulators.insert(i, signal),
+      None => self.parameter_modulators.remove(&i),
+    };
   }
   /// Gets the current signal modulating the parameter at index `i`.
   pub fn parameter_modulator(&mut self, i: i32) -> Option<&SynthSignal> {

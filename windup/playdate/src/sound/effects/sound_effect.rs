@@ -27,7 +27,7 @@ impl SoundEffect {
   }
 
   /// Sets the wet/dry mix for the effect.
-  /// 
+  ///
   /// A level of 1 (full wet) replaces the input with the effect output; 0 leaves the effect out of
   /// the mix (which is useful if you’re using a delay line with taps and don’t want to hear the
   /// delay line itself).
@@ -36,9 +36,10 @@ impl SoundEffect {
   }
 
   /// Sets a signal to modulate the effect’s mix level.
-  pub fn set_mix_modulator<T: AsRef<SynthSignal>>(&mut self, signal: &T) {
-    unsafe { Self::fns().setMixModulator.unwrap()(self.cptr(), signal.as_ref().cptr()) }
-    self.mix_modulator = Some(signal.as_ref().clone());
+  pub fn set_mix_modulator<T: AsRef<SynthSignal>>(&mut self, signal: Option<&T>) {
+    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| signal.as_ref().cptr());
+    unsafe { Self::fns().setMixModulator.unwrap()(self.cptr(), modulator_ptr) }
+    self.mix_modulator = signal.map(|signal| signal.as_ref().clone());
   }
   /// Gets the current signal modulating the effect’s mix level.
   pub fn mix_modulator(&mut self) -> Option<&SynthSignal> {
