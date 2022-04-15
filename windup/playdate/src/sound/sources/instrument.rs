@@ -15,10 +15,8 @@ pub struct InstrumentRef {
   ptr: NonNull<CSynthInstrument>,
 }
 impl InstrumentRef {
-  pub(crate) fn from_ptr(ptr: *mut CSynthInstrument) -> Self {
-    InstrumentRef {
-      ptr: NonNull::new(ptr).unwrap(),
-    }
+  pub(crate) fn from_ptr(ptr: NonNull<CSynthInstrument>) -> Self {
+    InstrumentRef { ptr }
   }
 
   /// Adds the given `Synth` to the instrument.
@@ -198,10 +196,22 @@ impl<'data> Instrument {
   /// Destroying an instrument removes it from all SequenceTracks it may have been added to.
   pub fn new() -> Self {
     let ptr = unsafe { Self::fns().newInstrument.unwrap()() };
+    unsafe { Self::from_raw(NonNull::new(ptr).unwrap()) }
+  }
+
+  // Constructs an Instrument from a pointer that was released through `into_raw()`.
+  pub(crate) unsafe fn from_raw(ptr: NonNull<CSynthInstrument>) -> Self {
     Instrument {
-      source: ManuallyDrop::new(SoundSource::from_ptr(ptr as *mut CSoundSource)),
+      source: ManuallyDrop::new(SoundSource::from_ptr(ptr.as_ptr() as *mut CSoundSource)),
       iref: InstrumentRef::from_ptr(ptr),
     }
+  }
+  // Releases the pointer without dropping anything. The pointer should later be freed by calling
+  // `from_raw()` with it.
+  pub(crate) fn into_raw(self) -> NonNull<CSynthInstrument> {
+    let ptr = self.iref.ptr;
+    core::mem::forget(self);
+    ptr
   }
 
   fn fns() -> &'static playdate_sys::playdate_sound_instrument {

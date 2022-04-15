@@ -219,13 +219,11 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   */
 
   let mut synths = Vec::new();
-  let mut instruments = Vec::new();
   let mut sequence = Sequence::from_midi_file("sounds/pirate.mid").unwrap();
   for mut track in sequence.tracks_mut() {
     let mut instrument = Instrument::new();
     instrument.set_volume(StereoVolume { left: 0.3, right: 0.3 });
     api.sound.default_channel_mut().add_source(&mut instrument).unwrap();
-    track.set_instrument(&mut instrument);
 
     api.system.log(format!("polyphony: {}", track.polyphony()));
     for _ in 0..track.polyphony() {
@@ -234,11 +232,11 @@ pub async fn _run(mut api: playdate::Api) -> ! {
       synth.set_decay_time(TimeDelta::from_milliseconds(200));
       synth.set_sustain_level(0.3);
       synth.set_release_time(TimeDelta::from_milliseconds(500));
-      let instrument = track.instrument_mut().unwrap();
       instrument.add_voice(&mut synth, MidiNoteRange::All, 0.0).unwrap();
       synths.push(synth);
     }
-    instruments.push(instrument);
+
+    track.set_instrument(instrument);
   }
   // TODO: Dropping the synths or the instruments does bad things. We need to keep them alive inside
   // the instrument and the track, or clean them up...
