@@ -87,9 +87,10 @@ impl Sequence<'_> {
   ///    `Sequence`.
   /// 3. Attach each `Instrument` to a `SoundChannel` to hear the MIDI play there, such as the
   ///    `SoundChannel` returned from `Sound::default_channel_mut()`.
-  /// 3. Create one or more (up to `SequenceTrack::polyphony() many) `Synth` objects for each
-  ///   `SequenceTrack`, with a `SoundWaveform`. Set the various parameters to taste.
-  /// 4. Attach the `Synth` objects to the `SequenceTrack`. And now you can `play()` the `Sequence`.
+  /// 3. Create one or more (up to the sum of `SequenceTrack::polyphony()` for all `SequenceTrack`s
+  ///   many) `Synth` objects, with a `SoundWaveform`. Set the various parameters to taste.
+  /// 4. Attach the `Synth` objects to the `Instruments`. 
+  /// 5. And now you can `play()` the `Sequence`.
   pub fn from_midi_file(path: &str) -> Result<Self, Error> {
     let seq = Self::new();
     let r = unsafe {
