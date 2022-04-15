@@ -3,7 +3,10 @@ use core::ptr::NonNull;
 
 use crate::ctypes::*;
 
-/// A SynthSignal represents a signal that can be used as a modulator for a Synth.
+/// A `SynthSignal` represents a signal that can be used as a modulator for a `Synth`.
+/// 
+/// Cloning a `SynthSignal` makes a shallow copy, where operations on the original or on the clone
+/// both act on the same underlying signal.
 #[derive(Clone)]
 pub struct SynthSignal {
   // Non-owning pointer, attached to the lifetime of the `subclass` object.

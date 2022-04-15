@@ -153,6 +153,8 @@ impl Lfo {
     }
   }
 
+  // TODO: setGlobal in a future update.
+
   /// Return the current output value of the LFO.
   pub fn get_value(&self) -> f32 {
     unsafe { Self::fns().getValue.unwrap()(self.cptr()) }

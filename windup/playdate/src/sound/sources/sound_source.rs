@@ -6,11 +6,30 @@ use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::error::Error;
 
+/// Represents a weak connection to whatever is playing the SoundSource.
+///
+/// Note that we avoid holding a borrow on the player, or ownership of its Rc, so that it can be
+/// destroyed while playing a SoundSource.
+#[derive(Debug)]
+enum Attachment {
+  None,
+  Channel(Weak<*mut CSoundChannel>),
+  Instrument,
+}
+impl Attachment {
+  fn is_none(&self) -> bool {
+    match self {
+      Self::None => true,
+      _ => false,
+    }
+  }
+}
+
 #[derive(Debug)]
 pub struct SoundSource {
   ptr: *mut CSoundSource,
   // The `channel` is set when the SoundSource has been added to the SoundChannel.
-  channel: Option<Weak<*mut CSoundChannel>>, // Don't hold a borrow on SoundChannel.
+  attachment: Attachment,
   // When the RegisteredCallback is destroyed, the user-given closure will be destroyed as well.
   completion_callback: Option<RegisteredCallback>,
 }
@@ -18,7 +37,7 @@ impl SoundSource {
   pub(crate) fn new(ptr: *mut CSoundSource) -> Self {
     SoundSource {
       ptr,
-      channel: None,
+      attachment: Attachment::None,
       completion_callback: None,
     }
   }
@@ -26,35 +45,57 @@ impl SoundSource {
     self.ptr
   }
 
-  /// Attach the SoundSource to the `channel` if it is not already attached to a channel.
-  pub(crate) fn attach_to_channel(&mut self, channel: Weak<*mut CSoundChannel>) {
+  /// Attach the SoundSource to the `channel` if it is not already attached to a `SoundChannel` or
+  /// `Instrument`.
+  pub(crate) fn attach_to_channel(
+    &mut self,
+    channel: &Rc<*mut CSoundChannel>,
+  ) -> Result<(), Error> {
     // Mimic the Playdate API behaviour. Attaching a Source to a Channel when it's already attached
     // does nothing.
-    if self.channel.is_none() {
+    if self.attachment.is_none() {
       // The SoundSource holds a Weak pointer to the SoundChannel so it knows whether to remove
       // itself in drop().
-      let rc_ptr = unsafe { channel.upgrade().unwrap_unchecked() };
-      unsafe { (*CApiState::get().csound.channel).addSource.unwrap()(*rc_ptr, self.ptr) };
-      self.channel = Some(channel);
+      self.attachment = Attachment::Channel(Rc::downgrade(channel));
+      let r =
+        unsafe { (*CApiState::get().csound.channel).addSource.unwrap()(**channel, self.cptr()) };
+      assert!(r != 0);
+      Ok(())
+    } else {
+      Err(Error::AlreadyAttachedError)
     }
   }
-
   /// Removes the SoundSource from the `channel` if it was currently attached.
   ///
   /// If the SoundSource is not attached to `channel`, then `Error::NotFoundError` is returned.
   pub(crate) fn detach_from_channel(
     &mut self,
-    channel: Rc<*mut CSoundChannel>,
+    channel: &Rc<*mut CSoundChannel>,
   ) -> Result<(), Error> {
-    if let Some(attached_channel) = &mut self.channel {
+    if let Attachment::Channel(attached_channel) = &mut self.attachment {
       if attached_channel.ptr_eq(&Rc::downgrade(&channel)) {
-        let r =
-          unsafe { (*CApiState::get().csound.channel).removeSource.unwrap()(*channel, self.ptr) };
+        let r = unsafe {
+          (*CApiState::get().csound.channel).removeSource.unwrap()(**channel, self.cptr())
+        };
+        self.attachment = Attachment::None;
         assert!(r != 0);
         return Ok(());
       }
     }
     Err(Error::NotFoundError)
+  }
+
+  /// Attach the SoundSource to the `instrument` if it is not already attached to a `SoundChannel`
+  /// or `Instrument`.
+  pub(crate) fn attach_to_instrument(&mut self) -> bool {
+    // Mimic the Playdate API behaviour. Attaching a Source to a Channel when it's already attached
+    // does nothing.
+    if self.attachment.is_none() {
+      self.attachment = Attachment::Instrument;
+      true
+    } else {
+      false
+    }
   }
 
   /// Gets the playback volume (0.0 - 1.0) for left and right channels of the source.
@@ -101,10 +142,18 @@ impl Drop for SoundSource {
   fn drop(&mut self) {
     self.set_completion_callback(SoundCompletionCallback::none());
 
-    if let Some(weak_ptr) = self.channel.take() {
-      if let Some(rc_ptr) = weak_ptr.upgrade() {
-        let r = self.detach_from_channel(rc_ptr);
-        assert!(r.is_ok()); // Otherwise, `self.channel` was lying.
+    match &self.attachment {
+      Attachment::None => (),
+      Attachment::Channel(weak_ptr) => {
+        if let Some(rc_ptr) = weak_ptr.upgrade() {
+          let r = self.detach_from_channel(&rc_ptr);
+          assert!(r.is_ok()); // Otherwise, `self.channel` was lying.
+        }
+      }
+      Attachment::Instrument => {
+        // Synth claims that it removes itself from the sound system, and there's no function to
+        // remove it from the Instrument ourselves:
+        // https://sdk.play.date/1.9.3/Inside%20Playdate%20with%20C.html#f-sound.synth.freeSynth
       }
     }
   }

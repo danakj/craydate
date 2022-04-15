@@ -3,7 +3,7 @@ use core::mem::ManuallyDrop;
 
 use super::super::audio_sample::AudioSample;
 use super::super::sound_range::SignedSoundRange;
-use super::super::{SoundCompletionCallback, StereoVolume};
+use super::super::SoundCompletionCallback;
 use super::sound_source::SoundSource;
 use crate::callbacks::{Constructed, RegisteredCallback};
 use crate::capi_state::CApiState;
@@ -98,17 +98,6 @@ impl<'data> SamplePlayer<'_, 'data> {
   /// Gets the playback rate for the SamplePlayer.
   pub fn rate(&self) -> f32 {
     unsafe { Self::fns().getRate.unwrap()(self.ptr) }
-  }
-
-  /// Sets the playback volume for left and right channels.
-  pub fn set_volume(&mut self, volume: StereoVolume) {
-    unsafe { Self::fns().setVolume.unwrap()(self.ptr, volume.left, volume.right) }
-  }
-  /// Gets the current left and right channel volume of the SamplePlayer.
-  pub fn volume(&self) -> StereoVolume {
-    let mut volume = StereoVolume::default();
-    unsafe { Self::fns().getVolume.unwrap()(self.ptr, &mut volume.left, &mut volume.right) };
-    volume
   }
 
   /// Sets a function to be called every time the sample loops.

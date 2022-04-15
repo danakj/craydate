@@ -2,44 +2,72 @@ use alloc::vec::Vec;
 use core::marker::PhantomData;
 use core::ptr::NonNull;
 
+use super::super::sources::instrument::{Instrument, InstrumentRef};
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 
+#[derive(Debug)]
 pub struct TrackNote {
+  /// The length of the note in steps, not time - ​that is, it follows the sequence’s tempo.
   length: u32,
+  // TODO: Support MIDI string notation (e.g. "Db3").
   midi_note: f32,
   velocity: f32,
+}
+impl Default for TrackNote {
+  fn default() -> Self {
+    Self {
+      length: 1,
+      midi_note: 0.0,
+      velocity: 1.0,
+    }
+  }
 }
 
 pub struct SequenceTrackRef {
   ptr: NonNull<CSequenceTrack>,
+  instrument_ref: Option<InstrumentRef>,
 }
 impl SequenceTrackRef {
-  pub fn from_ptr(ptr: *mut CSequenceTrack) -> Self {
+  pub fn new(ptr: *mut CSequenceTrack, instrument_ref: Option<InstrumentRef>) -> Self {
     SequenceTrackRef {
       ptr: NonNull::new(ptr).unwrap(),
+      instrument_ref,
     }
   }
   pub(crate) fn cptr(&self) -> *mut CSequenceTrack {
     self.ptr.as_ptr()
   }
-  fn fns() -> &'static playdate_sys::playdate_sound_track {
-    unsafe { &*CApiState::get().csound.track }
+
+  /// Gets the `Instrument` assigned to the track.
+  /// 
+  /// New tracks do not have an instrument.
+  pub fn instrument(&self) -> Option<&InstrumentRef> {
+    self.instrument_ref.as_ref()
+  }
+  /// Gets the `Instrument` assigned to the track.
+  /// 
+  /// New tracks do not have an instrument.
+  pub fn instrument_mut(&mut self) -> Option<&mut InstrumentRef> {
+    self.instrument_ref.as_mut()
   }
 
-  // TODO: getInstrument
-  // TODO: setInstrument
+  pub fn set_instrument(&mut self, instrument: &mut InstrumentRef) {
+    unsafe { SequenceTrack::fns().setInstrument.unwrap()(self.cptr(), instrument.cptr()) };
+    self.instrument_ref = Some(InstrumentRef::from_ptr(instrument.cptr()))
+  }
+
 
   /// Returns the length, in steps, of the track - ​that is, the step where the last note in the
   /// track ends.
   pub fn steps_count(&self) -> u32 {
-    unsafe { Self::fns().getLength.unwrap()(self.cptr()) }
+    unsafe { SequenceTrack::fns().getLength.unwrap()(self.cptr()) }
   }
 
-  /// Adds a single note event to the track.
-  pub fn add_note_event(&mut self, step: u32, note: TrackNote) {
+  /// Adds a single note to the track.
+  pub fn add_note(&mut self, step: u32, note: TrackNote) {
     unsafe {
-      Self::fns().addNoteEvent.unwrap()(
+      SequenceTrack::fns().addNoteEvent.unwrap()(
         self.cptr(),
         step,
         note.length,
@@ -50,23 +78,23 @@ impl SequenceTrackRef {
   }
   /// Removes the event at `step` playing `midi_note`.
   pub fn remove_note_event(&mut self, step: u32, midi_note: f32) {
-    unsafe { Self::fns().removeNoteEvent.unwrap()(self.cptr(), step, midi_note) }
+    unsafe { SequenceTrack::fns().removeNoteEvent.unwrap()(self.cptr(), step, midi_note) }
   }
   /// Remove all notes from the track.
   pub fn remove_all_notes(&mut self) {
-    unsafe { Self::fns().clearNotes.unwrap()(self.cptr()) }
+    unsafe { SequenceTrack::fns().clearNotes.unwrap()(self.cptr()) }
   }
 
   pub fn notes_at_step(&self, step: u32) -> impl Iterator<Item = TrackNote> {
     let mut v = Vec::new();
-    let first_index = unsafe { Self::fns().getIndexForStep.unwrap()(self.cptr(), step) };
+    let first_index = unsafe { SequenceTrack::fns().getIndexForStep.unwrap()(self.cptr(), step) };
     for index in first_index.. {
       let mut out_step = 0;
       let mut length = 0;
       let mut midi_note = 0.0;
       let mut velocity = 0.0;
       let r = unsafe {
-        Self::fns().getNoteAtIndex.unwrap()(
+        SequenceTrack::fns().getNoteAtIndex.unwrap()(
           self.cptr(),
           index,
           &mut out_step,
@@ -87,12 +115,69 @@ impl SequenceTrackRef {
     v.into_iter()
   }
 
-  // TODO: Iterator over all notes.
+  pub fn notes(&self) -> impl Iterator<Item = TrackNote> {
+    let mut v = Vec::new();
+    for index in 0.. {
+      let mut out_step = 0;
+      let mut length = 0;
+      let mut midi_note = 0.0;
+      let mut velocity = 0.0;
+      let r = unsafe {
+        SequenceTrack::fns().getNoteAtIndex.unwrap()(
+          self.cptr(),
+          index,
+          &mut out_step,
+          &mut length,
+          &mut midi_note,
+          &mut velocity,
+        )
+      };
+      if r == 0 {
+        break;
+      }
+      v.push(TrackNote {
+        length,
+        midi_note,
+        velocity,
+      });
+    }
+    v.into_iter()
+  }
 
-  // TODO: Lots more functions here.
-  
-  // TODO: Missing addControlSignal() in the C API:
+  pub fn control_signal_count(&self) -> i32 {
+    unsafe { SequenceTrack::fns().getControlSignalCount.unwrap()(self.cptr()) }
+  }
+  // TODO: Do something to expose the Control objects here, like an iterator or a slice.
+  pub fn control_signal_at_index(&self, index: i32) {
+    unsafe { SequenceTrack::fns().getControlSignal.unwrap()(self.cptr(), index) };
+  }
+  pub fn clear_control_signals(&mut self) {
+    unsafe { SequenceTrack::fns().clearControlEvents.unwrap()(self.cptr()) }
+  }
+
+  // TODO: getSignalForController in a future update.
   // https://devforum.play.date/t/c-api-sequencetrack-is-missing-addcontrolsignal/4508
+
+  /// Returns the maximum number of notes simultaneously active in the track.
+  ///
+  /// Known bug: this currently only works for midi files.
+  pub fn polyphony(&self) -> i32 {
+    unsafe { SequenceTrack::fns().getPolyphony.unwrap()(self.cptr()) }
+  }
+
+  /// Returns the current number of active notes in the track.
+  pub fn active_notes_count(&self) -> i32 {
+    unsafe { SequenceTrack::fns().activeVoiceCount.unwrap()(self.cptr()) }
+  }
+
+  /// Mutes the track.
+  pub fn set_muted(&mut self) {
+    unsafe { SequenceTrack::fns().setMuted.unwrap()(self.cptr(), true as i32) }
+  }
+  /// Unmutes the track.
+  pub fn set_unmuted(&mut self) {
+    unsafe { SequenceTrack::fns().setMuted.unwrap()(self.cptr(), false as i32) }
+  }
 }
 
 /// An immutable unowned `SequenceTrack`.
@@ -101,9 +186,9 @@ pub struct UnownedSequenceTrack<'a> {
   _marker: PhantomData<&'a u8>,
 }
 impl UnownedSequenceTrack<'_> {
-  pub(crate) fn from_ptr(ptr: *mut CSequenceTrack) -> Self {
+  pub(crate) fn new(ptr: *mut CSequenceTrack, inst_ref: Option<InstrumentRef>) -> Self {
     UnownedSequenceTrack {
-      tref: SequenceTrackRef::from_ptr(ptr),
+      tref: SequenceTrackRef::new(ptr, inst_ref),
       _marker: PhantomData,
     }
   }
@@ -132,9 +217,9 @@ pub struct UnownedSequenceTrackMut<'a> {
   _marker: PhantomData<&'a u8>,
 }
 impl UnownedSequenceTrackMut<'_> {
-  pub(crate) fn from_ptr(ptr: *mut CSequenceTrack) -> Self {
+  pub(crate) fn new(ptr: *mut CSequenceTrack, inst_ref: Option<InstrumentRef>) -> Self {
     UnownedSequenceTrackMut {
-      tref: SequenceTrackRef::from_ptr(ptr),
+      tref: SequenceTrackRef::new(ptr, inst_ref),
       _marker: PhantomData,
     }
   }
@@ -177,12 +262,14 @@ pub struct SequenceTrack {
 impl SequenceTrack {
   pub fn new() -> SequenceTrack {
     let ptr = unsafe { Self::fns().newTrack.unwrap()() };
+    let instrument = Instrument::new();
+    unsafe { Self::fns().setInstrument.unwrap()(ptr, instrument.cptr()) };
     SequenceTrack {
-      tref: SequenceTrackRef::from_ptr(ptr),
+      tref: SequenceTrackRef::new(ptr, Some(InstrumentRef::from_ptr(instrument.cptr()))),
     }
   }
 
-  fn fns() -> &'static playdate_sys::playdate_sound_track {
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_track {
     unsafe { &*CApiState::get().csound.track }
   }
 }

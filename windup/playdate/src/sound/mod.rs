@@ -9,6 +9,7 @@ pub(crate) mod sources;
 pub(crate) mod stereo_volume;
 
 pub use audio_sample::AudioSample;
+pub use midi::midi_note_range::MidiNoteRange;
 pub use midi::sequence::{Sequence, SequenceBuilder};
 pub use midi::sequence_track::SequenceTrack;
 pub use sample_frames::SampleFrames;
@@ -20,6 +21,7 @@ pub use sound_channel::{SoundChannel, SoundChannelRef};
 pub use sound_format::*;
 pub use sound_range::{SignedSoundRange, SoundRange};
 pub use sources::file_player::FilePlayer;
+pub use sources::instrument::Instrument;
 pub use sources::sample_player::SamplePlayer;
 pub use sources::sound_source::SoundSource;
 pub use sources::synth::{Synth, SynthGenerator, SynthGeneratorVTable, SynthRender};

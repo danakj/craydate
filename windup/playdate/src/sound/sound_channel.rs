@@ -82,10 +82,15 @@ impl SoundChannelRef {
     unsafe { (*CApiState::get().csound.channel).setVolume.unwrap()(*self.ptr, volume) }
   }
 
-  pub fn attach_source<T: AsMut<SoundSource>>(&mut self, source: &mut T) {
-    source.as_mut().attach_to_channel(Rc::downgrade(&self.ptr));
+  /// Attach the `source` to this channel.
+  ///
+  /// # Return
+  /// Returns `Error::AlreadyAttachedError` if the `source` is already attached to a channel or (for
+  /// a Synth) to an Instrument.
+  pub fn attach_source<T: AsMut<SoundSource>>(&mut self, source: &mut T) -> Result<(), Error> {
+    source.as_mut().attach_to_channel(&self.ptr)
   }
   pub fn detach_source<T: AsMut<SoundSource>>(&mut self, source: &mut T) -> Result<(), Error> {
-    source.as_mut().detach_from_channel(self.ptr.clone())
+    source.as_mut().detach_from_channel(&self.ptr)
   }
 }

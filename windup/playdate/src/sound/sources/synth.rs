@@ -45,7 +45,7 @@ impl<'sample, 'data> Synth<'sample, 'data> {
   }
 
   /// Creates a new Synth that plays a waveform.
-  pub fn from_waveform(waveform: SoundWaveform) -> Synth<'sample, 'data> {
+  pub fn new_with_waveform(waveform: SoundWaveform) -> Synth<'sample, 'data> {
     let synth = Self::new();
     unsafe { Self::fns().setWaveform.unwrap()(synth.ptr, waveform) };
     synth
@@ -55,7 +55,7 @@ impl<'sample, 'data> Synth<'sample, 'data> {
   ///
   /// An optional sustain region defines a loop to play while the note is on. Sample data must be
   /// uncompressed PCM, not ADPCM.
-  pub fn from_sample(
+  pub fn new_with_sample(
     sample: &'sample AudioSample<'data>,
     sustain_region: Option<SoundRange>,
   ) -> Synth<'sample, 'data> {
@@ -79,7 +79,7 @@ impl<'sample, 'data> Synth<'sample, 'data> {
   ///
   /// The SynthGenerator is a set of functions that are called in order to fill the sample buffers
   /// with data and react to events on the Synth object.
-  pub fn from_generator(generator: SynthGenerator) -> Synth<'sample, 'data> {
+  pub fn new_with_generator(generator: SynthGenerator) -> Synth<'sample, 'data> {
     let synth = Self::new();
     unsafe {
       Self::fns().setGenerator.unwrap()(
@@ -123,8 +123,13 @@ impl<'sample, 'data> Synth<'sample, 'data> {
     unsafe { Self::fns().setTranspose.unwrap()(self.cptr(), half_steps) }
   }
 
-  /// Sets a signal to modulate the `Synth`’s frequency. The signal is scaled so that a value of 1
-  /// doubles the synth pitch (i.e. an octave up) and -1 halves it (an octave down).
+  /// Sets a signal to modulate the `Synth`’s frequency.
+  /// 
+  /// The signal is scaled so that a value of 1 doubles the synth pitch (i.e. an octave up) and -1
+  /// halves it (an octave down).
+  /// 
+  /// The signal is cloned, which is a shallow copy, so the caller can retain the ability to mutate
+  /// the signal.
   pub fn set_frequency_modulator<T>(&mut self, signal: &SynthSignal) {
     unsafe { Self::fns().setFrequencyModulator.unwrap()(self.cptr(), signal.ptr.as_ptr()) }
     self.frequency_modulator = Some(signal.clone());
@@ -135,6 +140,9 @@ impl<'sample, 'data> Synth<'sample, 'data> {
   }
 
   /// Sets a signal to modulate the `Synth`’s output amplitude.
+  /// 
+  /// The signal is cloned, which is a shallow copy, so the caller can retain the ability to mutate
+  /// the signal.
   pub fn set_amplitude_modulator<T>(&mut self, signal: &SynthSignal) {
     unsafe { Self::fns().setAmplitudeModulator.unwrap()(self.cptr(), signal.ptr.as_ptr()) }
     self.amplitude_modulator = Some(signal.clone());
@@ -145,6 +153,9 @@ impl<'sample, 'data> Synth<'sample, 'data> {
   }
 
   /// Sets a signal to modulate the parameter at index `i`.
+  /// 
+  /// The signal is cloned, which is a shallow copy, so the caller can retain the ability to mutate
+  /// the signal.
   pub fn set_parameter_modulator<T>(&mut self, i: i32, signal: &SynthSignal) {
     unsafe { Self::fns().setParameterModulator.unwrap()(self.cptr(), i, signal.ptr.as_ptr()) }
     self.parameter_modulators.insert(i, signal.clone());
@@ -193,7 +204,7 @@ impl<'sample, 'data> Synth<'sample, 'data> {
     }
   }
 
-  /// Plays a MIDI note on the Synth, where for `note`: 'C4' is `60.0`.
+  /// Plays a MIDI note on the Synth, where 'C4' is `60.0` for the `note`.
   ///
   /// If `length` is `None`, the note will continue playing until a subsequent `stop()` call. If
   /// `when` is None, the note is played immediately, otherwise the note is scheduled for the given
@@ -224,7 +235,7 @@ impl<'sample, 'data> Synth<'sample, 'data> {
     unsafe { Self::fns().noteOff.unwrap()(self.cptr(), when.map_or(0, |w| w.to_sample_frames())) }
   }
 
-  fn cptr(&self) -> *mut CSynth {
+  pub(crate) fn cptr(&self) -> *mut CSynth {
     self.ptr
   }
   fn fns() -> &'static playdate_sys::playdate_sound_synth {

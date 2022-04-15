@@ -2,8 +2,9 @@ use alloc::vec::Vec;
 use core::marker::PhantomData;
 use core::ptr::NonNull;
 
+use super::super::sources::instrument::InstrumentRef;
 use super::super::SoundCompletionCallback;
-use super::sequence_track::{SequenceTrackRef, UnownedSequenceTrack,
+use super::sequence_track::{SequenceTrack, SequenceTrackRef, UnownedSequenceTrack,
                             UnownedSequenceTrackMut};
 use crate::callbacks::{Constructed, RegisteredCallback};
 use crate::capi_state::CApiState;
@@ -27,7 +28,7 @@ impl<'a> SequenceBuilder<'a> {
   }
 
   /// Add a track at a given index.
-  /// 
+  ///
   /// If another track was already specified at the same index, it would be replaced.
   pub fn add_track_at_index(mut self, index: u32, track: &'a SequenceTrackRef) -> Self {
     self.tracks.push((Some(index), track));
@@ -46,7 +47,7 @@ impl<'a> SequenceBuilder<'a> {
           // TODO: When we have addTrack() available. But it's missing a parameter:
           // https://devforum.play.date/t/c-api-soundsequence-addtrack-missing-parameter/4509
           unreachable!()
-        },
+        }
       }
     }
     seq
@@ -78,6 +79,17 @@ impl Sequence<'_> {
   ///
   /// Returns an `Error::LoadMidiFileError` if loading the file did not succeed. No further
   /// information about why the load failed is available.
+  ///
+  /// # Example
+  /// To load a midi file and connect it to the sound system, there are a few steps:
+  /// 1. Load the MIDI file with this function.
+  /// 2. Create an `Instrument` and set it as the `Instrument` for each `SequenceTrack` in the
+  ///    `Sequence`.
+  /// 3. Attach each `Instrument` to a `SoundChannel` to hear the MIDI play there, such as the
+  ///    `SoundChannel` returned from `Sound::default_channel_mut()`.
+  /// 3. Create one or more (up to `SequenceTrack::polyphony() many) `Synth` objects for each
+  ///   `SequenceTrack`, with a `SoundWaveform`. Set the various parameters to taste.
+  /// 4. Attach the `Synth` objects to the `SequenceTrack`. And now you can `play()` the `Sequence`.
   pub fn from_midi_file(path: &str) -> Result<Self, Error> {
     let seq = Self::new();
     let r = unsafe {
@@ -212,7 +224,13 @@ impl<'a> Iterator for SequenceTrackIter<'a, '_> {
       let i = self.next;
       self.next += 1;
       let track_ptr = unsafe { Sequence::fns().getTrackAtIndex.unwrap()(self.seq.cptr(), i) };
-      Some(UnownedSequenceTrack::from_ptr(track_ptr))
+      let inst_ptr = unsafe { SequenceTrack::fns().getInstrument.unwrap()(track_ptr) };
+      let inst_ref = if inst_ptr.is_null() {
+        None
+      } else {
+        Some(InstrumentRef::from_ptr(inst_ptr))
+      };
+      Some(UnownedSequenceTrack::new(track_ptr, inst_ref))
     }
   }
 }
@@ -232,7 +250,13 @@ impl<'a> Iterator for SequenceTrackIterMut<'a, '_> {
       let i = self.next;
       self.next += 1;
       let track_ptr = unsafe { Sequence::fns().getTrackAtIndex.unwrap()(self.seq.cptr(), i) };
-      Some(UnownedSequenceTrackMut::from_ptr(track_ptr))
+      let inst_ptr = unsafe { SequenceTrack::fns().getInstrument.unwrap()(track_ptr) };
+      let inst_ref = if inst_ptr.is_null() {
+        None
+      } else {
+        Some(InstrumentRef::from_ptr(inst_ptr))
+      };
+      Some(UnownedSequenceTrackMut::new(track_ptr, inst_ref))
     }
   }
 }

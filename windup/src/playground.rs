@@ -1,4 +1,4 @@
-use alloc::boxed::Box;
+use alloc::{boxed::Box, vec::Vec};
 
 use playdate::*;
 
@@ -171,7 +171,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   let mut i32callbacks = Callbacks::<(i32, &System)>::new();
 
   let mut fileplayer = FilePlayer::from_file("sounds/mojojojo.pda");
-  api.sound.default_channel_mut().attach_source(&mut fileplayer);
+  api.sound.default_channel_mut().attach_source(&mut fileplayer).unwrap();
   fileplayer.as_mut().set_completion_callback(
     SoundCompletionCallback::with(&mut i32callbacks).call(|(i, system)| {
       system.log(format!("finished playback of mojojojo {}", i));
@@ -218,12 +218,30 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   api.system.log(format!("synth playing: {}", synth.as_source().is_playing()));
   */
 
-  let track = SequenceTrack::new();
-  let mut sequence = SequenceBuilder::new()
-    .add_track_at_index(0, &track)
-    .add_track_at_index(1, &track)
-    .add_track_at_index(2, &track)
-    .build();
+  let mut synths = Vec::new();
+  let mut instruments = Vec::new();
+  let mut sequence = Sequence::from_midi_file("sounds/pirate.mid").unwrap();
+  for mut track in sequence.tracks_mut() {
+    let mut instrument = Instrument::new();
+    instrument.set_volume(StereoVolume { left: 0.3, right: 0.3 });
+    api.sound.default_channel_mut().attach_source(&mut instrument).unwrap();
+    track.set_instrument(&mut instrument);
+
+    api.system.log(format!("polyphony: {}", track.polyphony()));
+    for _ in 0..track.polyphony() {
+      let mut synth = Synth::new_with_waveform(SoundWaveform::kWaveformSquare);
+      synth.set_attack_time(TimeDelta::from_milliseconds(0));
+      synth.set_decay_time(TimeDelta::from_milliseconds(200));
+      synth.set_sustain_level(0.3);
+      synth.set_release_time(TimeDelta::from_milliseconds(500));
+      let instrument = track.instrument_mut().unwrap();
+      instrument.add_voice(&mut synth, MidiNoteRange::All, 0.0).unwrap();
+      synths.push(synth);
+    }
+    instruments.push(instrument);
+  }
+  // TODO: Dropping the synths or the instruments does bad things. We need to keep them alive inside
+  // the instrument and the track, or clean them up...
   sequence.play(SoundCompletionCallback::none());
 
   let action_item = MenuItem::new_action(
