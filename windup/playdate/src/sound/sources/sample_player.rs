@@ -11,13 +11,13 @@ use crate::ctypes::*;
 use crate::time::TimeDelta;
 
 #[derive(Debug)]
-pub struct SamplePlayer<'sample, 'data> {
+pub struct SamplePlayer<'sample> {
   source: ManuallyDrop<SoundSource>,
   ptr: *mut CSamplePlayer,
   loop_callback: Option<RegisteredCallback>,
-  _marker: PhantomData<&'sample AudioSample<'data>>,
+  _marker: PhantomData<&'sample AudioSample>,
 }
-impl<'data> SamplePlayer<'_, 'data> {
+impl SamplePlayer<'_> {
   pub fn as_source(&self) -> &SoundSource {
     self.as_ref()
   }
@@ -26,7 +26,7 @@ impl<'data> SamplePlayer<'_, 'data> {
   }
 
   /// Creates a new SamplePlayer.
-  pub fn new(sample: &AudioSample<'data>) -> Self {
+  pub fn new(sample: &AudioSample) -> Self {
     let ptr = unsafe { Self::fns().newPlayer.unwrap()() };
     unsafe { Self::fns().setSample.unwrap()(ptr, sample.cptr()) }
     SamplePlayer {
@@ -119,7 +119,7 @@ impl<'data> SamplePlayer<'_, 'data> {
     unsafe { &*CApiState::get().csound.sampleplayer }
   }
 }
-impl Drop for SamplePlayer<'_, '_> {
+impl Drop for SamplePlayer<'_> {
   fn drop(&mut self) {
     self.set_loop_callback(SoundCompletionCallback::none());
     // Ensure the SoundSource has a chance to clean up before it is freed.
@@ -127,12 +127,12 @@ impl Drop for SamplePlayer<'_, '_> {
     unsafe { Self::fns().freePlayer.unwrap()(self.ptr) }
   }
 }
-impl AsRef<SoundSource> for SamplePlayer<'_, '_> {
+impl AsRef<SoundSource> for SamplePlayer<'_> {
   fn as_ref(&self) -> &SoundSource {
     &self.source
   }
 }
-impl AsMut<SoundSource> for SamplePlayer<'_, '_> {
+impl AsMut<SoundSource> for SamplePlayer<'_> {
   fn as_mut(&mut self) -> &mut SoundSource {
     &mut self.source
   }

@@ -88,9 +88,9 @@ impl Sequence<'_> {
   ///    `SoundChannel` returned from `Sound::default_channel_mut()`.
   /// 3. Create one or more (up to the sum of `SequenceTrack::polyphony()` for all `SequenceTrack`s
   ///   many) `Synth` objects, with a `SoundWaveform`. Set the various parameters to taste.
-  /// 4. Attach the `Synth` objects to the `Instruments`. 
+  /// 4. Attach the `Synth` objects to the `Instruments`.
   /// 5. And now you can `play()` the `Sequence`.
-  /// 
+  ///
   /// # Example
   /// ```
   /// let mut synths = Vec::new();
@@ -101,7 +101,7 @@ impl Sequence<'_> {
   ///   instrument.set_volume(StereoVolume { left: 0.3, right: 0.3 });
   ///   api.sound.default_channel_mut().add_source(&mut instrument).unwrap();
   ///   track.set_instrument(&mut instrument);
-  /// 
+  ///
   ///   for _ in 0..track.polyphony() {
   ///     let mut synth = Synth::new_with_waveform(SoundWaveform::kWaveformSquare);
   ///     synth.set_attack_time(TimeDelta::from_milliseconds(0));

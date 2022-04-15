@@ -15,17 +15,17 @@ use crate::error::Error;
 use crate::time::{TimeDelta, TimeTicks};
 
 #[derive(Debug)]
-pub struct Synth<'sample, 'data> {
+pub struct Synth<'sample> {
   source: ManuallyDrop<SoundSource>,
   ptr: *mut CSynth,
   frequency_modulator: Option<SynthSignal>,
   amplitude_modulator: Option<SynthSignal>,
   parameter_modulators: BTreeMap<i32, SynthSignal>,
-  _marker: PhantomData<&'sample AudioSample<'data>>,
+  _marker: PhantomData<&'sample AudioSample>,
 }
-impl<'sample, 'data> Synth<'sample, 'data> {
+impl<'sample> Synth<'sample> {
   /// Creates a new Synth.
-  fn new() -> Synth<'sample, 'data> {
+  fn new() -> Self {
     let ptr = unsafe { Self::fns().newSynth.unwrap()() };
     Synth {
       source: ManuallyDrop::new(SoundSource::from_ptr(ptr as *mut CSoundSource)),
@@ -45,7 +45,7 @@ impl<'sample, 'data> Synth<'sample, 'data> {
   }
 
   /// Creates a new Synth that plays a waveform.
-  pub fn new_with_waveform(waveform: SoundWaveform) -> Synth<'sample, 'data> {
+  pub fn new_with_waveform(waveform: SoundWaveform) -> Self {
     let synth = Self::new();
     unsafe { Self::fns().setWaveform.unwrap()(synth.ptr, waveform) };
     synth
@@ -56,9 +56,9 @@ impl<'sample, 'data> Synth<'sample, 'data> {
   /// An optional sustain region defines a loop to play while the note is on. Sample data must be
   /// uncompressed PCM, not ADPCM.
   pub fn new_with_sample(
-    sample: &'sample AudioSample<'data>,
+    sample: &'sample AudioSample,
     sustain_region: Option<SoundRange>,
-  ) -> Synth<'sample, 'data> {
+  ) -> Synth<'sample> {
     let synth = Self::new();
     unsafe {
       Self::fns().setSample.unwrap()(
@@ -79,7 +79,7 @@ impl<'sample, 'data> Synth<'sample, 'data> {
   ///
   /// The SynthGenerator is a set of functions that are called in order to fill the sample buffers
   /// with data and react to events on the Synth object.
-  pub fn new_with_generator(generator: SynthGenerator) -> Synth<'sample, 'data> {
+  pub fn new_with_generator(generator: SynthGenerator) -> Self {
     let synth = Self::new();
     unsafe {
       Self::fns().setGenerator.unwrap()(
@@ -249,7 +249,7 @@ impl<'sample, 'data> Synth<'sample, 'data> {
   }
 }
 
-impl Drop for Synth<'_, '_> {
+impl Drop for Synth<'_> {
   fn drop(&mut self) {
     // Ensure the SoundSource has a chance to clean up before it is freed.
     unsafe { ManuallyDrop::drop(&mut self.source) };
@@ -258,12 +258,12 @@ impl Drop for Synth<'_, '_> {
   }
 }
 
-impl AsRef<SoundSource> for Synth<'_, '_> {
+impl AsRef<SoundSource> for Synth<'_> {
   fn as_ref(&self) -> &SoundSource {
     &self.source
   }
 }
-impl AsMut<SoundSource> for Synth<'_, '_> {
+impl AsMut<SoundSource> for Synth<'_> {
   fn as_mut(&mut self) -> &mut SoundSource {
     &mut self.source
   }
