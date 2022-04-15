@@ -10,6 +10,7 @@ pub(crate) mod sources;
 pub(crate) mod stereo_volume;
 
 pub use audio_sample::AudioSample;
+pub use effects::one_pole_filter::OnePoleFilter;
 pub use effects::sound_effect::SoundEffect;
 pub use effects::two_pole_filter::TwoPoleFilter;
 pub use midi::midi_note_range::MidiNoteRange;
