@@ -233,6 +233,8 @@ pub async fn _run(mut api: playdate::Api) -> ! {
       synth.set_sustain_level(0.3);
       synth.set_release_time(TimeDelta::from_milliseconds(500));
       instrument.add_voice(&mut synth, MidiNoteRange::All, 0.0).unwrap();
+      // TODO: Instrument must keep the synths alive, so it must own at least a reference onto each
+      // synth.
       synths.push(synth);
     }
 
