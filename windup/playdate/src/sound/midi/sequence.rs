@@ -80,7 +80,6 @@ impl Sequence<'_> {
   /// Returns an `Error::LoadMidiFileError` if loading the file did not succeed. No further
   /// information about why the load failed is available.
   ///
-  /// # Example
   /// To load a midi file and connect it to the sound system, there are a few steps:
   /// 1. Load the MIDI file with this function.
   /// 2. Create an `Instrument` and set it as the `Instrument` for each `SequenceTrack` in the
@@ -91,6 +90,33 @@ impl Sequence<'_> {
   ///   many) `Synth` objects, with a `SoundWaveform`. Set the various parameters to taste.
   /// 4. Attach the `Synth` objects to the `Instruments`. 
   /// 5. And now you can `play()` the `Sequence`.
+  /// 
+  /// # Example
+  /// ```
+  /// let mut synths = Vec::new();
+  /// let mut instruments = Vec::new();
+  /// let mut sequence = Sequence::from_midi_file("song.mid").unwrap();
+  /// for mut track in sequence.tracks_mut() {
+  ///   let mut instrument = Instrument::new();
+  ///   instrument.set_volume(StereoVolume { left: 0.3, right: 0.3 });
+  ///   api.sound.default_channel_mut().attach_source(&mut instrument).unwrap();
+  ///   track.set_instrument(&mut instrument);
+  /// 
+  ///   for _ in 0..track.polyphony() {
+  ///     let mut synth = Synth::new_with_waveform(SoundWaveform::kWaveformSquare);
+  ///     synth.set_attack_time(TimeDelta::from_milliseconds(0));
+  ///     synth.set_decay_time(TimeDelta::from_milliseconds(200));
+  ///     synth.set_sustain_level(0.3);
+  ///     synth.set_release_time(TimeDelta::from_milliseconds(500));
+  ///     let instrument = track.instrument_mut().unwrap();
+  ///     instrument.add_voice(&mut synth, MidiNoteRange::All, 0.0).unwrap();
+  ///
+  ///     synths.push(synth);
+  ///   }
+  ///   instruments.push(instrument);
+  /// }
+  /// sequence.play(SoundCompletionCallback::none());
+  /// ```
   pub fn from_midi_file(path: &str) -> Result<Self, Error> {
     let seq = Self::new();
     let r = unsafe {
