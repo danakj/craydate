@@ -180,8 +180,10 @@ impl InstrumentRef {
   }
 }
 
-/// `Instrument` collects a number of `Synth` objects together to provide polyphony. It can be
-/// attached to a `SequenceTrack`.
+/// `Instrument` collects a number of `Synth` objects together to provide polyphony.
+/// 
+/// An `Instrument` is a `SoundSource` that can be attached to a `SoundChannel` to play there. It
+/// can also be attached to a `SequenceTrack` in order to play the notes from the track.
 #[derive(Debug)]
 pub struct Instrument {
   iref: InstrumentRef,
