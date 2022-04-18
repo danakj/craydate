@@ -10,12 +10,16 @@ use crate::ctypes::*;
 use crate::error::Error;
 use crate::time::{TimeDelta, TimeTicks};
 
+/// A borrow of an `Instrument`.
+/// 
+/// An `Instrument` collects a number of `Synth` objects together to provide polyphony. It is
+/// usually attached to a `SequenceTrack`. 
 #[derive(Debug)]
 pub struct InstrumentRef {
   ptr: NonNull<CSynthInstrument>,
 }
 impl InstrumentRef {
-  pub(crate) fn from_ptr(ptr: NonNull<CSynthInstrument>) -> Self {
+  fn from_ptr(ptr: NonNull<CSynthInstrument>) -> Self {
     InstrumentRef { ptr }
   }
 
@@ -177,11 +181,11 @@ impl InstrumentRef {
 }
 
 /// `Instrument` collects a number of `Synth` objects together to provide polyphony. It can be
-/// attached to one or more `SequenceTrack`s.
+/// attached to a `SequenceTrack`.
 #[derive(Debug)]
 pub struct Instrument {
-  source: ManuallyDrop<SoundSource>,
   iref: InstrumentRef,
+  source: ManuallyDrop<SoundSource>,
 }
 impl<'data> Instrument {
   pub fn as_source(&self) -> &SoundSource {
@@ -192,26 +196,20 @@ impl<'data> Instrument {
   }
 
   /// Creates a new Instrument.
-  ///
-  /// Destroying an instrument removes it from all SequenceTracks it may have been added to.
   pub fn new() -> Self {
     let ptr = unsafe { Self::fns().newInstrument.unwrap()() };
-    unsafe { Self::from_raw(NonNull::new(ptr).unwrap()) }
-  }
-
-  // Constructs an Instrument from a pointer that was released through `into_raw()`.
-  pub(crate) unsafe fn from_raw(ptr: NonNull<CSynthInstrument>) -> Self {
     Instrument {
-      source: ManuallyDrop::new(SoundSource::from_ptr(ptr.as_ptr() as *mut CSoundSource)),
-      iref: InstrumentRef::from_ptr(ptr),
+      iref: InstrumentRef::from_ptr(NonNull::new(ptr).unwrap()),
+      source: ManuallyDrop::new(SoundSource::from_ptr(ptr as *mut CSoundSource)),
     }
   }
-  // Releases the pointer without dropping anything. The pointer should later be freed by calling
-  // `from_raw()` with it.
-  pub(crate) fn into_raw(self) -> NonNull<CSynthInstrument> {
-    let ptr = self.iref.ptr;
-    core::mem::forget(self);
-    ptr
+
+  // SAFETY: The InstrumentRef must not outlive the instrument. The caller is responsible for
+  // ensuring that the InstrumentRef does not outlive the instrument it refers to. The InstrumentRef
+  // should be returned as a reference, so the borrow used to return the InstrumentRef should keep
+  // the InstrumentOwner alive.
+  pub(crate) unsafe fn make_ref(&self) -> InstrumentRef {
+    InstrumentRef::from_ptr(self.iref.ptr)
   }
 
   fn fns() -> &'static playdate_sys::playdate_sound_instrument {
@@ -220,13 +218,13 @@ impl<'data> Instrument {
 }
 
 impl Drop for Instrument {
-  fn drop(&mut self) {
-    // Ensure the SoundSource has a chance to clean up before it is freed.
-    unsafe { ManuallyDrop::drop(&mut self.source) };
-    unsafe { Self::fns().freeInstrument.unwrap()(self.iref.cptr()) }
+    fn drop(&mut self) {
+      // Ensure the SoundSource has a chance to clean up before it is freed.
+      unsafe { ManuallyDrop::drop(&mut self.source) };
+      unsafe { Instrument::fns().freeInstrument.unwrap()(self.iref.cptr()) }
+    }
   }
-}
-
+  
 impl AsRef<SoundSource> for Instrument {
   fn as_ref(&self) -> &SoundSource {
     &self.source

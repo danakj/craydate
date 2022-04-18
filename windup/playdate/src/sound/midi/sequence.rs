@@ -5,7 +5,8 @@ use core::ptr::NonNull;
 
 use super::super::sources::instrument::Instrument;
 use super::super::SoundCompletionCallback;
-use super::sequence_track::{SequenceTrackRef, UnownedSequenceTrack, UnownedSequenceTrackMut};
+use super::sequence_track::{SequenceTrack, SequenceTrackRef, UnownedSequenceTrack,
+                            UnownedSequenceTrackMut};
 use crate::callbacks::{Constructed, RegisteredCallback};
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
@@ -19,10 +20,10 @@ use crate::null_terminated::ToNullTerminatedString;
 // otherwise.
 
 /// Build a Sequence from a set of SequenceTracks.
-pub struct SequenceBuilder<'a> {
-  tracks: Vec<(Option<u32>, &'a SequenceTrackRef)>,
+pub struct SequenceBuilder {
+  tracks: Vec<(Option<u32>, SequenceTrack)>,
 }
-impl<'a> SequenceBuilder<'a> {
+impl SequenceBuilder {
   pub fn new() -> Self {
     SequenceBuilder { tracks: Vec::new() }
   }
@@ -30,18 +31,26 @@ impl<'a> SequenceBuilder<'a> {
   /// Add a track at a given index.
   ///
   /// If another track was already specified at the same index, it would be replaced.
-  pub fn add_track_at_index(mut self, index: u32, track: &'a SequenceTrackRef) -> Self {
+  pub fn add_track_at_index(mut self, index: u32, track: SequenceTrack) -> Self {
     self.tracks.push((Some(index), track));
     self
   }
 
   /// Consume the `SequenceBuilder` and construct the `Sequence`.
-  pub fn build(self) -> Sequence<'a> {
-    let seq = Sequence::new();
-    for (index, track) in self.tracks {
+  pub fn build<'a>(self) -> Sequence<'a> {
+    let mut seq = Sequence::new();
+    seq.user_created_tracks.reserve(self.tracks.len());
+    for (index, mut track) in self.tracks {
       match index {
         Some(index) => unsafe {
-          Sequence::fns().setTrackAtIndex.unwrap()(seq.cptr(), track.cptr(), index)
+          Sequence::fns().setTrackAtIndex.unwrap()(seq.cptr(), track.cptr(), index);
+
+          // Steal the instrument.
+          if let Some(instrument) = track.take_instrument() {
+            seq.set_track_instrument(index, instrument);
+          }
+          // And keep ownership of the track to keep it alive.
+          seq.user_created_tracks.push(track);
         },
         None => {
           // TODO: When we have addTrack() available. But it's missing a parameter:
@@ -50,18 +59,24 @@ impl<'a> SequenceBuilder<'a> {
         }
       }
     }
+    seq.create_instrument_for_each_track();
     seq
   }
 }
 
 /// Represents a MIDI music file, as a collection of `SequenceTrack`s that can be played together.
 pub struct Sequence<'tracks> {
+  // TODO: Remove 'tracks param
   ptr: NonNull<CSoundSequence>,
   finished_callback: Option<RegisteredCallback>,
   _marker: PhantomData<&'tracks SequenceTrackRef>,
 
-  // The set of instruments attached to tracks owned by the Sequence itself (inside Playdate).
-  instruments: BTreeMap</*track_index=*/ u32, NonNull<CSynthInstrument>>,
+  // Holds ownership of user-created tracks. Loading a MIDI file  generates Playdate-owned tracks
+  // which are not represented here.
+  user_created_tracks: Vec<SequenceTrack>,
+  // The set of instruments attached to tracks. Some of the tracks are owned by Playdate, and some
+  // are owned by the this Sequence type. But all instruments are owned by this Sequence.
+  instruments: BTreeMap<u32, Instrument>,
 }
 impl<'tracks> Sequence<'tracks> {
   fn from_ptr(ptr: *mut CSoundSequence) -> Self {
@@ -69,6 +84,7 @@ impl<'tracks> Sequence<'tracks> {
       ptr: NonNull::new(ptr).unwrap(),
       finished_callback: None,
       _marker: PhantomData,
+      user_created_tracks: Vec::new(),
       instruments: BTreeMap::new(),
     }
   }
@@ -83,53 +99,36 @@ impl<'tracks> Sequence<'tracks> {
   ///
   /// Returns an `Error::LoadMidiFileError` if loading the file did not succeed. No further
   /// information about why the load failed is available.
-  ///
-  /// To load a midi file and connect it to the sound system, there are a few steps:
-  /// 1. Load the MIDI file with this function.
-  /// 2. Create an `Instrument` and set it as the `Instrument` for each `SequenceTrack` in the
-  ///    `Sequence`.
-  /// 3. Attach each `Instrument` to a `SoundChannel` to hear the MIDI play there, such as the
-  ///    `SoundChannel` returned from `Sound::default_channel_mut()`.
-  /// 3. Create one or more (up to the sum of `SequenceTrack::polyphony()` for all `SequenceTrack`s
-  ///   many) `Synth` objects, with a `SoundWaveform`. Set the various parameters to taste.
-  /// 4. Attach the `Synth` objects to the `Instruments`.
-  /// 5. And now you can `play()` the `Sequence`.
-  ///
-  /// # Example
-  /// ```
-  /// let mut synths = Vec::new();
-  /// let mut instruments = Vec::new();
-  /// let mut sequence = Sequence::from_midi_file("song.mid").unwrap();
-  /// for mut track in sequence.tracks_mut() {
-  ///   let mut instrument = Instrument::new();
-  ///   instrument.set_volume(StereoVolume { left: 0.3, right: 0.3 });
-  ///   api.sound.default_channel_mut().add_source(&mut instrument).unwrap();
-  ///   track.set_instrument(&mut instrument);
-  ///
-  ///   for _ in 0..track.polyphony() {
-  ///     let mut synth = Synth::new_with_waveform(SoundWaveform::kWaveformSquare);
-  ///     synth.set_attack_time(TimeDelta::from_milliseconds(0));
-  ///     synth.set_decay_time(TimeDelta::from_milliseconds(200));
-  ///     synth.set_sustain_level(0.3);
-  ///     synth.set_release_time(TimeDelta::from_milliseconds(500));
-  ///     let instrument = track.instrument_mut().unwrap();
-  ///     instrument.add_voice(&mut synth, MidiNoteRange::All, 0.0).unwrap();
-  ///
-  ///     synths.push(synth);
-  ///   }
-  ///   instruments.push(instrument);
-  /// }
-  /// sequence.play(SoundCompletionCallback::none());
-  /// ```
   pub fn from_midi_file(path: &str) -> Result<Self, Error> {
-    let seq = Self::new();
+    let mut seq = Self::new();
     let r = unsafe {
       Self::fns().loadMidiFile.unwrap()(seq.cptr(), path.to_null_terminated_utf8().as_ptr())
     };
     match r {
       0 => Err(Error::LoadMidiFileError),
-      _ => Ok(seq),
+      _ => {
+        seq.create_instrument_for_each_track();
+        Ok(seq)
+      }
     }
+  }
+
+  fn create_instrument_for_each_track(&mut self) {
+    let mut instruments = BTreeMap::new();
+    for t in self.tracks() {
+      if !self.instruments.contains_key(&t.index()) {
+        assert!(unsafe { SequenceTrack::fns().getInstrument.unwrap()(t.cptr()) }.is_null());
+        instruments.insert(t.index(), Instrument::new());
+      }
+    }
+    self.instruments = instruments;
+  }
+
+  pub(crate) fn set_track_instrument(&mut self, index: u32, instrument: Instrument) {
+    self.instruments.insert(index, instrument);
+  }
+  pub(crate) fn track_instrument(&self, index: u32) -> &Instrument {
+    self.instruments.get(&index).unwrap()
   }
 
   /// Starts playing the sequence.
@@ -229,14 +228,6 @@ impl<'tracks> Sequence<'tracks> {
     unsafe { Self::fns().setLoops.unwrap()(self.cptr(), start_step as i32, end_step as i32, count) }
   }
 
-  pub(crate) fn add_seq_owned_track_instrument(
-    &mut self,
-    index: u32,
-    instrument: NonNull<CSynthInstrument>,
-  ) {
-    self.instruments.insert(index, instrument);
-  }
-
   fn cptr(&self) -> *mut CSoundSequence {
     self.ptr.as_ptr()
   }
@@ -247,11 +238,10 @@ impl<'tracks> Sequence<'tracks> {
 
 impl Drop for Sequence<'_> {
   fn drop(&mut self) {
+    // The instruments will be dropped after the sequence-owned tracks that refer to them.
     unsafe { Self::fns().freeSequence.unwrap()(self.cptr()) }
-    // Drop the instruments after the sequence-owned tracks that refer to them.
-    for instrument in self.instruments.values() {
-      drop(unsafe { Instrument::from_raw(*instrument) });
-    }
+    // The instruments will be dropped after the sequence-owned tracks that refer to them.
+    drop(core::mem::take(&mut self.user_created_tracks));
   }
 }
 
@@ -260,7 +250,7 @@ struct SequenceTrackIter<'a, 'tracks> {
   next: u32,
   count: u32,
 }
-impl<'a> Iterator for SequenceTrackIter<'a, '_> {
+impl<'a, 'tracks> Iterator for SequenceTrackIter<'a, 'tracks> {
   type Item = UnownedSequenceTrack<'a>;
 
   fn next(&mut self) -> Option<Self::Item> {
@@ -273,7 +263,7 @@ impl<'a> Iterator for SequenceTrackIter<'a, '_> {
         let track_ptr = unsafe { Sequence::fns().getTrackAtIndex.unwrap()(self.seq.cptr(), index) };
         if !track_ptr.is_null() {
           self.count -= 1;
-          return Some(UnownedSequenceTrack::new(track_ptr));
+          return Some(UnownedSequenceTrack::new(track_ptr, index, self.seq));
         }
       }
     }
