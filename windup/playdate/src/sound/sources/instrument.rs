@@ -184,6 +184,10 @@ impl InstrumentRef {
 /// 
 /// An `Instrument` is a `SoundSource` that can be attached to a `SoundChannel` to play there. It
 /// can also be attached to a `SequenceTrack` in order to play the notes from the track.
+/// 
+/// TODO: The `Instrument` loses access to being a `SoundSource` once attached to a `SequenceTrack`
+/// due to lifetime constraits. To avoid that we'd need `SequenceTrackRef` to hold an `&Instrument`
+/// but it would also need to hold an `&mut Instrument` sometimes.
 #[derive(Debug)]
 pub struct Instrument {
   iref: InstrumentRef,
