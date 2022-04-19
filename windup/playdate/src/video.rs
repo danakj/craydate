@@ -1,3 +1,4 @@
+use core::cell::Cell;
 use core::ptr::NonNull;
 
 use crate::capi_state::CApiState;
@@ -6,8 +7,16 @@ use crate::error::Error;
 use crate::format;
 use crate::null_terminated::ToNullTerminatedString;
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Context {
+  None,
+  Screen,
+  Bitmap(*mut CLCDBitmap),
+}
+
 pub struct Video {
   ptr: NonNull<CVideoPlayer>,
+  context: Cell<Context>,
 }
 impl Video {
   /// Opens the pdv file at path and returns a new video player object for rendering its frames.
@@ -19,35 +28,53 @@ impl Video {
       Err(Error::NotFoundError)
     } else {
       Ok(Video {
+        context: Cell::new(Context::None),
         ptr: NonNull::new(ptr).unwrap(),
       })
     }
   }
 
-  /// Sets the rendering destination for the video player to the screen.
-  pub fn set_context_is_screen(&mut self) {
-    unsafe { Self::fns().useScreenContext.unwrap()(self.cptr()) }
+  fn get_render_error(&self, fn_name: &str) -> Error {
+    let msg = unsafe {
+      crate::null_terminated::parse_null_terminated_utf8(Self::fns().getError.unwrap()(self.cptr()))
+    };
+    match msg {
+      Ok(err) => format!("{}: {}", fn_name, err).into(),
+      Err(err) => format!("{}: unknown error ({})", fn_name, err).into(),
+    }
   }
 
-  // TODO: setContext to bitmap.
-  // TODO: getContext
+  /// Renders frame number `n` into the screen.
+  pub fn render_frame_to_screen(&self, n: i32) -> Result<(), Error> {
+    if self.context.get() != Context::Screen {
+      unsafe { Self::fns().useScreenContext.unwrap()(self.cptr()) }
+      self.context.set(Context::Screen);
+    }
 
-  /// Renders frame number `n` into the current context.
-  pub fn render_frame(&self, n: i32) -> Result<(), Error> {
-    let r = unsafe { Self::fns().renderFrame.unwrap()(self.cptr(), n) };
-    if r != 0 {
-      Ok(())
-    } else {
-      let msg = unsafe {
-        crate::null_terminated::parse_null_terminated_utf8(Self::fns().getError.unwrap()(
-          self.cptr(),
-        ))
-      };
-      match msg {
-        Ok(err) => Err(format!("render_frame: {}", err).into()),
-        Err(err) => Err(format!("render_frame: unknown error ({})", err).into()),
+    if unsafe { Self::fns().renderFrame.unwrap()(self.cptr(), n) } == 0 {
+      return Err(self.get_render_error("render_frame_to_screen"));
+    }
+
+    return Ok(());
+  }
+
+  /// Renders frame number `n` into the `bitmap`.
+  pub fn render_frame_to_bitmap(
+    &self,
+    n: i32,
+    bitmap: &mut super::bitmap::BitmapRef,
+  ) -> Result<(), Error> {
+    if self.context.get() != Context::Bitmap(unsafe { bitmap.as_bitmap_ptr() }) {
+      if unsafe { Self::fns().setContext.unwrap()(self.cptr(), bitmap.as_bitmap_ptr()) } == 0 {
+        return Err(self.get_render_error("render_frame_to_bitmap"));
       }
     }
+
+    if unsafe { Self::fns().renderFrame.unwrap()(self.cptr(), n) } == 0 {
+      return Err(self.get_render_error("render_frame_to_bitmap"));
+    }
+
+    return Ok(());
   }
 
   fn info(&self) -> (i32, i32, f32, i32, i32) {
@@ -56,7 +83,16 @@ impl Video {
     let mut frame_rate = 0.0;
     let mut frame_count = 0;
     let mut current_frame = 0;
-    unsafe { Self::fns().getInfo.unwrap()(self.cptr(), &mut width, &mut height, &mut frame_rate, &mut frame_count, &mut current_frame) };
+    unsafe {
+      Self::fns().getInfo.unwrap()(
+        self.cptr(),
+        &mut width,
+        &mut height,
+        &mut frame_rate,
+        &mut frame_count,
+        &mut current_frame,
+      )
+    };
     (width, height, frame_rate, frame_count, current_frame)
   }
 
