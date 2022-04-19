@@ -2,55 +2,43 @@ use alloc::vec::Vec;
 use core::marker::PhantomData;
 use core::ptr::NonNull;
 
-use super::super::sources::instrument::{Instrument, InstrumentRef};
+use super::super::sources::instrument::Instrument;
 use super::sequence::Sequence;
+use super::track_note::TrackNote;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 
-#[derive(Debug)]
-pub struct TrackNote {
-  /// The length of the note in steps, not time - ​that is, it follows the sequence’s tempo.
-  length: u32,
-  // TODO: Support MIDI string notation (e.g. "Db3").
-  midi_note: f32,
-  velocity: f32,
-}
-impl Default for TrackNote {
-  fn default() -> Self {
-    Self {
-      length: 1,
-      midi_note: 0.0,
-      velocity: 1.0,
-    }
-  }
-}
-
-pub struct SequenceTrackRef {
+pub struct SequenceTrackRef<'a> {
   ptr: NonNull<CSequenceTrack>,
-  instrument_ref: Option<InstrumentRef>,
+  index: u32,
+  instrument: Option<*mut Instrument>,
+  _marker: PhantomData<&'a Instrument>,
 }
-impl SequenceTrackRef {
-  pub fn new(ptr: *mut CSequenceTrack, instrument_ref: Option<InstrumentRef>) -> Self {
+impl<'a> SequenceTrackRef<'a> {
+  pub fn new(ptr: *mut CSequenceTrack, index: u32, instrument: Option<*mut Instrument>) -> Self {
     SequenceTrackRef {
       ptr: NonNull::new(ptr).unwrap(),
-      instrument_ref,
+      index,
+      instrument,
+      _marker: PhantomData,
     }
   }
   pub(crate) fn cptr(&self) -> *mut CSequenceTrack {
     self.ptr.as_ptr()
   }
 
+  /// Returns the track's index in its `Sequence`.
+  pub fn index(&self) -> u32 {
+    self.index
+  }
+
   /// Gets the `Instrument` assigned to the track.
-  ///
-  /// New tracks do not have an instrument.
-  pub fn instrument(&self) -> Option<&InstrumentRef> {
-    self.instrument_ref.as_ref()
+  pub fn instrument(&self) -> Option<&'a Instrument> {
+    self.instrument.map(|p| unsafe { &*p })
   }
   /// Gets the `Instrument` assigned to the track.
-  ///
-  /// New tracks do not have an instrument.
-  pub fn instrument_mut(&mut self) -> Option<&mut InstrumentRef> {
-    self.instrument_ref.as_mut()
+  pub fn instrument_mut(&mut self) -> Option<&'a mut Instrument> {
+    self.instrument.map(|p| unsafe { &mut *p })
   }
 
   /// Returns the length, in steps, of the track - ​that is, the step where the last note in the
@@ -176,177 +164,84 @@ impl SequenceTrackRef {
 }
 
 /// An immutable unowned `SequenceTrack`.
-pub struct UnownedSequenceTrack<'a> {
-  tref: SequenceTrackRef,
-  index: u32,
-  _marker: PhantomData<&'a u8>,
+pub struct SequenceTrack<'a> {
+  tref: SequenceTrackRef<'a>,
+  _seq: &'a Sequence,
 }
-impl<'a> UnownedSequenceTrack<'a> {
-  pub(crate) fn new<'b>(ptr: *mut CSequenceTrack, index: u32, seq: &'a Sequence<'b>) -> Self {
-    // SAFETY: UnownedSequenceTrack holds a borrow on the Sequence which owns the instrument
-    // referred to here.
-    let instrument_ref = unsafe { seq.track_instrument(index).make_ref() };
-    UnownedSequenceTrack {
-      tref: SequenceTrackRef::new(ptr, Some(instrument_ref)),
-      index,
-      _marker: PhantomData,
-    }
-  }
-
-  pub fn index(&self) -> u32 {
-    self.index
-  }
-}
-impl core::ops::Deref for UnownedSequenceTrack<'_> {
-  type Target = SequenceTrackRef;
-
-  fn deref(&self) -> &Self::Target {
-    &self.tref
-  }
-}
-impl AsRef<SequenceTrackRef> for UnownedSequenceTrack<'_> {
-  fn as_ref(&self) -> &SequenceTrackRef {
-    self
-  }
-}
-impl core::borrow::Borrow<SequenceTrackRef> for UnownedSequenceTrack<'_> {
-  fn borrow(&self) -> &SequenceTrackRef {
-    self
-  }
-}
-
-/// A mutable unowned `SequenceTrack`.
-pub struct UnownedSequenceTrackMut<'a, 'b> {
-  tref: SequenceTrackRef,
-  index: u32,
-  seq: &'a mut Sequence<'b>,
-}
-impl<'a, 'b> UnownedSequenceTrackMut<'a, 'b> {
-  pub(crate) fn new(ptr: *mut CSequenceTrack, index: u32, seq: &'a mut Sequence<'b>) -> Self {
-    // SAFETY: UnownedSequenceTrack holds a borrow on the Sequence which owns the instrument
-    // referred to here.
-    let instrument_ref = unsafe { seq.track_instrument(index).make_ref() };
-    UnownedSequenceTrackMut {
-      tref: SequenceTrackRef::new(ptr, Some(instrument_ref)),
-      index,
-      seq,
-    }
-  }
-
-  pub fn index(&self) -> u32 {
-    self.index
-  }
-
-  /// Sets the `Instrument` assigned to the track, taking ownership of the instrument.
-  pub fn set_instrument(&mut self, instrument: Instrument) {
-    unsafe { SequenceTrack::fns().setInstrument.unwrap()(self.cptr(), instrument.cptr()) };
-    self.seq.set_track_instrument(self.index, instrument);
-    // SAFETY: UnownedSequenceTrack holds a borrow on the Sequence which owns the instrument
-    // referred to here.
-    self.tref.instrument_ref = Some(unsafe { self.seq.track_instrument(self.index).make_ref() });
-  }
-}
-
-impl core::ops::Deref for UnownedSequenceTrackMut<'_, '_> {
-  type Target = SequenceTrackRef;
-
-  fn deref(&self) -> &Self::Target {
-    &self.tref
-  }
-}
-impl core::ops::DerefMut for UnownedSequenceTrackMut<'_, '_> {
-  fn deref_mut(&mut self) -> &mut Self::Target {
-    &mut self.tref
-  }
-}
-impl AsRef<SequenceTrackRef> for UnownedSequenceTrackMut<'_, '_> {
-  fn as_ref(&self) -> &SequenceTrackRef {
-    self
-  }
-}
-impl AsMut<SequenceTrackRef> for UnownedSequenceTrackMut<'_, '_> {
-  fn as_mut(&mut self) -> &mut SequenceTrackRef {
-    self
-  }
-}
-impl core::borrow::Borrow<SequenceTrackRef> for UnownedSequenceTrackMut<'_, '_> {
-  fn borrow(&self) -> &SequenceTrackRef {
-    self
-  }
-}
-impl core::borrow::BorrowMut<SequenceTrackRef> for UnownedSequenceTrackMut<'_, '_> {
-  fn borrow_mut(&mut self) -> &mut SequenceTrackRef {
-    self
-  }
-}
-pub struct SequenceTrack {
-  tref: SequenceTrackRef,
-  instrument: Option<Instrument>,
-}
-impl SequenceTrack {
-  pub fn new() -> SequenceTrack {
-    let ptr = unsafe { Self::fns().newTrack.unwrap()() };
+impl<'a> SequenceTrack<'a> {
+  pub(crate) fn new<'b>(ptr: *mut CSequenceTrack, index: u32, seq: &'a Sequence) -> Self {
+    // SAFETY: This type only gives const access to the SequenceTrackRef so the pointee is not
+    // mutated.
+    let instrument = seq.track_instrument(index) as *const _ as *mut _;
     SequenceTrack {
-      tref: SequenceTrackRef::new(ptr, None),
-      instrument: None,
+      tref: SequenceTrackRef::new(ptr, index, Some(instrument)),
+      _seq: seq,
     }
-  }
-
-  /// Sets the `Instrument` assigned to the track, taking ownership of the instrument.
-  pub fn set_instrument(&mut self, instrument: Instrument) {
-    unsafe { SequenceTrack::fns().setInstrument.unwrap()(self.cptr(), instrument.cptr()) };
-    // SAFETY: The SequenceTrack holds the Instrument alive as long as the InstrumentRef is valid,
-    // and the InstrumentRef is only exposed through a borrow on the SequenceTrack.
-    self.tref.instrument_ref = Some(unsafe { instrument.make_ref() });
-    self.instrument = Some(instrument);
-  }
-
-  pub(crate) fn take_instrument(&mut self) -> Option<Instrument> {
-    self.tref.instrument_ref = None;
-    self.instrument.take()
   }
 
   pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_track {
     unsafe { &*CApiState::get().csound.track }
   }
 }
-
-impl Drop for SequenceTrack {
-  fn drop(&mut self) {
-    // The instrument (if there is one) will be dropped after the track that refers to it.
-    unsafe { Self::fns().freeTrack.unwrap()(self.ptr.as_ptr()) }
-  }
-}
-
-impl core::ops::Deref for SequenceTrack {
-  type Target = SequenceTrackRef;
+impl<'a> core::ops::Deref for SequenceTrack<'a> {
+  type Target = SequenceTrackRef<'a>;
 
   fn deref(&self) -> &Self::Target {
     &self.tref
   }
 }
-impl core::ops::DerefMut for SequenceTrack {
+impl<'a> AsRef<SequenceTrackRef<'a>> for SequenceTrack<'a> {
+  fn as_ref(&self) -> &SequenceTrackRef<'a> {
+    self
+  }
+}
+
+/// A mutable unowned `SequenceTrack`.
+pub struct SequenceTrackMut<'a> {
+  tref: SequenceTrackRef<'a>,
+  seq: *mut Sequence,
+}
+impl<'a> SequenceTrackMut<'a> {
+  pub(crate) fn new(ptr: *mut CSequenceTrack, index: u32, seq: &'a mut Sequence) -> Self {
+    let instrument = seq.track_instrument_mut(index) as *mut Instrument;
+    SequenceTrackMut {
+      tref: SequenceTrackRef::new(ptr, index, Some(instrument)),
+      seq,
+    }
+  }
+
+  /// Sets the `Instrument` assigned to the track, taking ownership of the instrument.
+  pub fn set_instrument(&mut self, instrument: Instrument) {
+    unsafe { SequenceTrack::fns().setInstrument.unwrap()(self.cptr(), instrument.cptr()) };
+    unsafe { &mut *self.seq }.set_track_instrument(self.index, instrument);
+    // SAFETY: Reborrow the `Sequence` reference without borrowing from `self`. We construct a
+    // reference to the instrument owned by the `Sequence` which is able to outlive `self` safely.
+    // It just must not outlive the `Sequence` which is represented by the lifetime on the refence
+    // returned from `Sequence::track_instrument_mut()`.
+    let iref = unsafe { &mut *(self.seq as *mut Sequence) }.track_instrument_mut(self.index);
+    self.tref.instrument = Some(iref);
+  }
+}
+
+impl<'a> core::ops::Deref for SequenceTrackMut<'a> {
+  type Target = SequenceTrackRef<'a>;
+
+  fn deref(&self) -> &Self::Target {
+    &self.tref
+  }
+}
+impl core::ops::DerefMut for SequenceTrackMut<'_> {
   fn deref_mut(&mut self) -> &mut Self::Target {
     &mut self.tref
   }
 }
-impl AsRef<SequenceTrackRef> for SequenceTrack {
-  fn as_ref(&self) -> &SequenceTrackRef {
+impl<'a> AsRef<SequenceTrackRef<'a>> for SequenceTrackMut<'a> {
+  fn as_ref(&self) -> &SequenceTrackRef<'a> {
     self
   }
 }
-impl AsMut<SequenceTrackRef> for SequenceTrack {
-  fn as_mut(&mut self) -> &mut SequenceTrackRef {
-    self
-  }
-}
-impl core::borrow::Borrow<SequenceTrackRef> for SequenceTrack {
-  fn borrow(&self) -> &SequenceTrackRef {
-    self
-  }
-}
-impl core::borrow::BorrowMut<SequenceTrackRef> for SequenceTrack {
-  fn borrow_mut(&mut self) -> &mut SequenceTrackRef {
+impl<'a> AsMut<SequenceTrackRef<'a>> for SequenceTrackMut<'a> {
+  fn as_mut(&mut self) -> &mut SequenceTrackRef<'a> {
     self
   }
 }

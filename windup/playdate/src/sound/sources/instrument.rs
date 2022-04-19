@@ -10,17 +10,30 @@ use crate::ctypes::*;
 use crate::error::Error;
 use crate::time::{TimeDelta, TimeTicks};
 
-/// A borrow of an `Instrument`.
-/// 
-/// An `Instrument` collects a number of `Synth` objects together to provide polyphony. It is
-/// usually attached to a `SequenceTrack`. 
+/// `Instrument` collects a number of `Synth` objects together to provide polyphony.
+///
+/// An `Instrument` is a `SoundSource` that can be attached to a `SoundChannel` to play there. It
+/// can also be attached to a `SequenceTrack` in order to play the notes from the track.
 #[derive(Debug)]
-pub struct InstrumentRef {
+pub struct Instrument {
   ptr: NonNull<CSynthInstrument>,
+  source: ManuallyDrop<SoundSource>,
 }
-impl InstrumentRef {
-  fn from_ptr(ptr: NonNull<CSynthInstrument>) -> Self {
-    InstrumentRef { ptr }
+impl<'data> Instrument {
+  pub fn as_source(&self) -> &SoundSource {
+    self.as_ref()
+  }
+  pub fn as_source_mut(&mut self) -> &mut SoundSource {
+    self.as_mut()
+  }
+
+  /// Creates a new Instrument.
+  pub fn new() -> Self {
+    let ptr = unsafe { Self::fns().newInstrument.unwrap()() };
+    Instrument {
+      ptr: NonNull::new(ptr).unwrap(),
+      source: ManuallyDrop::new(SoundSource::from_ptr(ptr as *mut CSoundSource)),
+    }
   }
 
   /// Adds the given `Synth` to the instrument.
@@ -178,45 +191,6 @@ impl InstrumentRef {
   pub(crate) fn cptr(&self) -> *mut CSynthInstrument {
     self.ptr.as_ptr()
   }
-}
-
-/// `Instrument` collects a number of `Synth` objects together to provide polyphony.
-/// 
-/// An `Instrument` is a `SoundSource` that can be attached to a `SoundChannel` to play there. It
-/// can also be attached to a `SequenceTrack` in order to play the notes from the track.
-/// 
-/// TODO: The `Instrument` loses access to being a `SoundSource` once attached to a `SequenceTrack`
-/// due to lifetime constraits. To avoid that we'd need `SequenceTrackRef` to hold an `&Instrument`
-/// but it would also need to hold an `&mut Instrument` sometimes.
-#[derive(Debug)]
-pub struct Instrument {
-  iref: InstrumentRef,
-  source: ManuallyDrop<SoundSource>,
-}
-impl<'data> Instrument {
-  pub fn as_source(&self) -> &SoundSource {
-    self.as_ref()
-  }
-  pub fn as_source_mut(&mut self) -> &mut SoundSource {
-    self.as_mut()
-  }
-
-  /// Creates a new Instrument.
-  pub fn new() -> Self {
-    let ptr = unsafe { Self::fns().newInstrument.unwrap()() };
-    Instrument {
-      iref: InstrumentRef::from_ptr(NonNull::new(ptr).unwrap()),
-      source: ManuallyDrop::new(SoundSource::from_ptr(ptr as *mut CSoundSource)),
-    }
-  }
-
-  // SAFETY: The InstrumentRef must not outlive the instrument. The caller is responsible for
-  // ensuring that the InstrumentRef does not outlive the instrument it refers to. The InstrumentRef
-  // should be returned as a reference, so the borrow used to return the InstrumentRef should keep
-  // the InstrumentOwner alive.
-  pub(crate) unsafe fn make_ref(&self) -> InstrumentRef {
-    InstrumentRef::from_ptr(self.iref.ptr)
-  }
 
   fn fns() -> &'static playdate_sys::playdate_sound_instrument {
     unsafe { &*CApiState::get().csound.instrument }
@@ -224,13 +198,13 @@ impl<'data> Instrument {
 }
 
 impl Drop for Instrument {
-    fn drop(&mut self) {
-      // Ensure the SoundSource has a chance to clean up before it is freed.
-      unsafe { ManuallyDrop::drop(&mut self.source) };
-      unsafe { Instrument::fns().freeInstrument.unwrap()(self.iref.cptr()) }
-    }
+  fn drop(&mut self) {
+    // Ensure the SoundSource has a chance to clean up before it is freed.
+    unsafe { ManuallyDrop::drop(&mut self.source) };
+    unsafe { Instrument::fns().freeInstrument.unwrap()(self.cptr()) }
   }
-  
+}
+
 impl AsRef<SoundSource> for Instrument {
   fn as_ref(&self) -> &SoundSource {
     &self.source
@@ -239,38 +213,5 @@ impl AsRef<SoundSource> for Instrument {
 impl AsMut<SoundSource> for Instrument {
   fn as_mut(&mut self) -> &mut SoundSource {
     &mut self.source
-  }
-}
-
-impl core::ops::Deref for Instrument {
-  type Target = InstrumentRef;
-
-  fn deref(&self) -> &Self::Target {
-    &self.iref
-  }
-}
-impl core::ops::DerefMut for Instrument {
-  fn deref_mut(&mut self) -> &mut Self::Target {
-    &mut self.iref
-  }
-}
-impl AsRef<InstrumentRef> for Instrument {
-  fn as_ref(&self) -> &InstrumentRef {
-    self
-  }
-}
-impl AsMut<InstrumentRef> for Instrument {
-  fn as_mut(&mut self) -> &mut InstrumentRef {
-    self
-  }
-}
-impl core::borrow::Borrow<InstrumentRef> for Instrument {
-  fn borrow(&self) -> &InstrumentRef {
-    self
-  }
-}
-impl core::borrow::BorrowMut<InstrumentRef> for Instrument {
-  fn borrow_mut(&mut self) -> &mut InstrumentRef {
-    self
   }
 }

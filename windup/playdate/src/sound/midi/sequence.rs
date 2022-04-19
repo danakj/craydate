@@ -5,85 +5,30 @@ use core::ptr::NonNull;
 
 use super::super::sources::instrument::Instrument;
 use super::super::SoundCompletionCallback;
-use super::sequence_track::{SequenceTrack, SequenceTrackRef, UnownedSequenceTrack,
-                            UnownedSequenceTrackMut};
+use super::sequence_track::{SequenceTrack, SequenceTrackMut};
 use crate::callbacks::{Constructed, RegisteredCallback};
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::error::Error;
 use crate::null_terminated::ToNullTerminatedString;
 
-// TODO: If we want to be able to add and remove tracks at will, when we probably need two kinds of
-// sequences, where one is user-defined and owned tracks, and one is loaded from a MIDI file and is
-// all unowned tracks. Then we only have to track ownership of the things the user created, and we
-// don't have to worry about unowned tracks being added to a Sequence, which would get weird
-// otherwise.
-
-/// Build a Sequence from a set of SequenceTracks.
-pub struct SequenceBuilder {
-  tracks: Vec<(Option<u32>, SequenceTrack)>,
-}
-impl SequenceBuilder {
-  pub fn new() -> Self {
-    SequenceBuilder { tracks: Vec::new() }
-  }
-
-  /// Add a track at a given index.
-  ///
-  /// If another track was already specified at the same index, it would be replaced.
-  pub fn add_track_at_index(mut self, index: u32, track: SequenceTrack) -> Self {
-    self.tracks.push((Some(index), track));
-    self
-  }
-
-  /// Consume the `SequenceBuilder` and construct the `Sequence`.
-  pub fn build<'a>(self) -> Sequence<'a> {
-    let mut seq = Sequence::new();
-    seq.user_created_tracks.reserve(self.tracks.len());
-    for (index, mut track) in self.tracks {
-      match index {
-        Some(index) => unsafe {
-          Sequence::fns().setTrackAtIndex.unwrap()(seq.cptr(), track.cptr(), index);
-
-          // Steal the instrument.
-          if let Some(instrument) = track.take_instrument() {
-            seq.set_track_instrument(index, instrument);
-          }
-          // And keep ownership of the track to keep it alive.
-          seq.user_created_tracks.push(track);
-        },
-        None => {
-          // TODO: When we have addTrack() available. But it's missing a parameter:
-          // https://devforum.play.date/t/c-api-soundsequence-addtrack-missing-parameter/4509
-          unreachable!()
-        }
-      }
-    }
-    seq.create_instrument_for_each_track();
-    seq
-  }
-}
-
 /// Represents a MIDI music file, as a collection of `SequenceTrack`s that can be played together.
-pub struct Sequence<'tracks> {
-  // TODO: Remove 'tracks param
+pub struct Sequence {
   ptr: NonNull<CSoundSequence>,
   finished_callback: Option<RegisteredCallback>,
-  _marker: PhantomData<&'tracks SequenceTrackRef>,
 
   // Holds ownership of user-created tracks. Loading a MIDI file  generates Playdate-owned tracks
   // which are not represented here.
-  user_created_tracks: Vec<SequenceTrack>,
+  user_created_tracks: Vec<NonNull<CSequenceTrack>>,
   // The set of instruments attached to tracks. Some of the tracks are owned by Playdate, and some
   // are owned by the this Sequence type. But all instruments are owned by this Sequence.
   instruments: BTreeMap<u32, Instrument>,
 }
-impl<'tracks> Sequence<'tracks> {
+impl Sequence {
   fn from_ptr(ptr: *mut CSoundSequence) -> Self {
     Sequence {
       ptr: NonNull::new(ptr).unwrap(),
       finished_callback: None,
-      _marker: PhantomData,
       user_created_tracks: Vec::new(),
       instruments: BTreeMap::new(),
     }
@@ -129,6 +74,9 @@ impl<'tracks> Sequence<'tracks> {
   }
   pub(crate) fn track_instrument(&self, index: u32) -> &Instrument {
     self.instruments.get(&index).unwrap()
+  }
+  pub(crate) fn track_instrument_mut(&mut self, index: u32) -> &mut Instrument {
+    self.instruments.get_mut(&index).unwrap()
   }
 
   /// Starts playing the sequence.
@@ -201,7 +149,7 @@ impl<'tracks> Sequence<'tracks> {
   }
 
   /// Returns an iterator over all the tracks in the `Sequence`.
-  pub fn tracks<'a>(&'a self) -> impl Iterator<Item = UnownedSequenceTrack> + 'a {
+  pub fn tracks<'a>(&'a self) -> impl Iterator<Item = SequenceTrack> + 'a {
     SequenceTrackIter {
       seq: self,
       next: 0,
@@ -209,14 +157,37 @@ impl<'tracks> Sequence<'tracks> {
     }
   }
   /// Returns a mutable iterator over all the tracks in the `Sequence`.
-  pub fn tracks_mut<'a>(
-    &'a mut self,
-  ) -> impl Iterator<Item = UnownedSequenceTrackMut<'a, 'tracks>> + 'a {
+  pub fn tracks_mut<'a>(&'a mut self) -> impl Iterator<Item = SequenceTrackMut<'a>> + 'a {
     SequenceTrackIterMut {
       seq: self,
       next: 0,
       count: self.tracks_count(),
       _marker: PhantomData,
+    }
+  }
+
+  pub fn create_track_at_index(&mut self, index: u32) -> SequenceTrackMut<'_> {
+    let track_ptr = NonNull::new(unsafe { SequenceTrack::fns().newTrack.unwrap()() }).unwrap();
+    unsafe { Sequence::fns().setTrackAtIndex.unwrap()(self.cptr(), track_ptr.as_ptr(), index) };
+    self.instruments.insert(index, Instrument::new());
+    SequenceTrackMut::new(track_ptr.as_ptr(), index, self)
+  }
+  pub fn track_at_index(&self, index: u32) -> Option<SequenceTrack> {
+    if self.instruments.contains_key(&index) {
+      let track_ptr = unsafe { Sequence::fns().getTrackAtIndex.unwrap()(self.cptr(), index) };
+      assert!(!track_ptr.is_null());
+      Some(SequenceTrack::new(track_ptr, index, self))
+    } else {
+      None
+    }
+  }
+  pub fn track_at_index_mut(&mut self, index: u32) -> Option<SequenceTrackMut<'_>> {
+    if self.instruments.contains_key(&index) {
+      let track_ptr = unsafe { Sequence::fns().getTrackAtIndex.unwrap()(self.cptr(), index) };
+      assert!(!track_ptr.is_null());
+      Some(SequenceTrackMut::new(track_ptr, index, self))
+    } else {
+      None
     }
   }
 
@@ -236,22 +207,24 @@ impl<'tracks> Sequence<'tracks> {
   }
 }
 
-impl Drop for Sequence<'_> {
+impl Drop for Sequence {
   fn drop(&mut self) {
     // The instruments will be dropped after the sequence-owned tracks that refer to them.
     unsafe { Self::fns().freeSequence.unwrap()(self.cptr()) }
     // The instruments will be dropped after the sequence-owned tracks that refer to them.
-    drop(core::mem::take(&mut self.user_created_tracks));
+    for ptr in self.user_created_tracks.drain(..) {
+      unsafe { SequenceTrack::fns().freeTrack.unwrap()(ptr.as_ptr()) }
+    }
   }
 }
 
-struct SequenceTrackIter<'a, 'tracks> {
-  seq: &'a Sequence<'tracks>,
+struct SequenceTrackIter<'a> {
+  seq: &'a Sequence,
   next: u32,
   count: u32,
 }
-impl<'a, 'tracks> Iterator for SequenceTrackIter<'a, 'tracks> {
-  type Item = UnownedSequenceTrack<'a>;
+impl<'a> Iterator for SequenceTrackIter<'a> {
+  type Item = SequenceTrack<'a>;
 
   fn next(&mut self) -> Option<Self::Item> {
     if self.count == 0 {
@@ -263,29 +236,21 @@ impl<'a, 'tracks> Iterator for SequenceTrackIter<'a, 'tracks> {
         let track_ptr = unsafe { Sequence::fns().getTrackAtIndex.unwrap()(self.seq.cptr(), index) };
         if !track_ptr.is_null() {
           self.count -= 1;
-          return Some(UnownedSequenceTrack::new(track_ptr, index, self.seq));
+          return Some(SequenceTrack::new(track_ptr, index, self.seq));
         }
       }
     }
   }
 }
 
-struct SequenceTrackIterMut<'a, 'tracks> {
-  seq: *mut Sequence<'tracks>,
+struct SequenceTrackIterMut<'a> {
+  seq: *mut Sequence,
   next: u32,
   count: u32,
-  _marker: PhantomData<&'a Sequence<'tracks>>,
+  _marker: PhantomData<&'a Sequence>,
 }
-impl<'a, 'tracks> SequenceTrackIterMut<'a, 'tracks> {
-  // SAFETY: We know the lifetime of the Sequence, so we can generate a reference with the correct
-  // lifetime here. The pointer is valid when doing so because the lifetime parameters on this
-  // struct ensure the sequence is borrowed and live.
-  fn sequence(seq: *mut Sequence<'tracks>) -> &'a mut Sequence<'tracks> {
-    unsafe { &mut *seq }
-  }
-}
-impl<'a, 'tracks> Iterator for SequenceTrackIterMut<'a, 'tracks> {
-  type Item = UnownedSequenceTrackMut<'a, 'tracks>;
+impl<'a> Iterator for SequenceTrackIterMut<'a> {
+  type Item = SequenceTrackMut<'a>;
 
   fn next(&mut self) -> Option<Self::Item> {
     if self.count == 0 {
@@ -294,11 +259,14 @@ impl<'a, 'tracks> Iterator for SequenceTrackIterMut<'a, 'tracks> {
       loop {
         let index = self.next;
         self.next += 1;
-        let seq = Self::sequence(self.seq);
+        // SAFETY: Reborrow the `Sequence` pointer to construct a reference without a lifetime
+        // bounded by `self`. We only need the reference to `Sequence` to live as long as `'a` which
+        // is represented by the lifetime parameter on the output `Item` type.
+        let seq = unsafe { &mut *(self.seq) };
         let track_ptr = unsafe { Sequence::fns().getTrackAtIndex.unwrap()(seq.cptr(), index) };
         if !track_ptr.is_null() {
           self.count -= 1;
-          return Some(UnownedSequenceTrackMut::new(track_ptr, index, seq));
+          return Some(SequenceTrackMut::new(track_ptr, index, seq));
         }
       }
     }
