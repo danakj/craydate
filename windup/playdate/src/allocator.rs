@@ -147,6 +147,7 @@ impl Allocator {
   }
 }
 
+#[cfg(not(doc))]
 unsafe impl core::alloc::GlobalAlloc for Allocator {
   unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
     let size = calc_alloc_size(layout.size(), layout.align());

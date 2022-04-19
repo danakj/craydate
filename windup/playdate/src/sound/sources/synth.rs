@@ -71,8 +71,8 @@ impl Synth {
   /// Creates a new Synth that plays from a SynthGenerator.
   ///
   /// NOTE: THIS CRASHES!! See
-  /// https://devforum.play.date/t/c-api-playdate-sound-synth-setgenerator-has-incorrect-api/4482 as
-  /// this is believed to be due to some Playdate bug.
+  /// <https://devforum.play.date/t/c-api-playdate-sound-synth-setgenerator-has-incorrect-api/4482>
+  /// as this is due to a Playdate bug.
   ///
   /// The SynthGenerator is a set of functions that are called in order to fill the sample buffers
   /// with data and react to events on the Synth object.

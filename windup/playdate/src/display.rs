@@ -48,8 +48,8 @@ impl Display {
   /// Sets the display scale factor. Valid values for scale are 1, 2, 4, and 8.
   ///
   /// The top-left corner of the frame buffer is scaled up to fill the display;
-  /// e.g. if the scale is set to 4, the pixels in rectangle [0,100] x [0,60] are drawn on the
-  /// screen as 4 x 4 squares.
+  /// e.g. if the scale is set to 4, the pixels in rectangle `[0,100]` x `[0,60]` are drawn on the
+  /// screen as `4` x `4` squares.
   pub fn set_scale(&mut self, scale: u32) {
     assert!(scale == 1 || scale == 2 || scale == 4 || scale == 8);
     unsafe { CApiState::get().cdisplay.setScale.unwrap()(scale) }

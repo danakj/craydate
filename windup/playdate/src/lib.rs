@@ -63,6 +63,7 @@ pub use system_event::*;
 pub use time::{SoundTicks, TimeDelta, TimeTicks};
 pub use video::*;
 
+#[cfg(not(doc))]
 #[global_allocator]
 pub static mut GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();
 
@@ -96,14 +97,16 @@ pub fn panic_handler(panic_info: &core::panic::PanicInfo) -> ! {
   core::intrinsics::abort()
 }
 
+#[cfg(not(doc))]
 #[alloc_error_handler]
-pub fn my_example_handler(layout: core::alloc::Layout) -> ! {
+pub fn playdate_alloc_example_handler(layout: core::alloc::Layout) -> ! {
   panic!(
     "memory allocation of {} bytes at alignment {} failed",
     layout.size(),
     layout.align()
   )
 }
+
 /// A way to store a pointer in a static variable, by telling the compiler it's Sync.
 ///
 /// This is, of course, unsound if the pointer is used across threads and is not

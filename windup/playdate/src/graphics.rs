@@ -437,7 +437,7 @@ impl Graphics {
   }
   /// Fills the polygon with vertices at the given coordinates (an array of points) using the given color and fill, or winding, rule.
   ///
-  /// See https://en.wikipedia.org/wiki/Nonzero-rule for an explanation of the winding rule.
+  /// See <https://en.wikipedia.org/wiki/Nonzero-rule> for an explanation of the winding rule.
   pub fn fill_polygon<'a>(
     &mut self,
     points: &[euclid::default::Point2D<i32>],
