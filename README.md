@@ -7,11 +7,11 @@
 
 # Status
 
-## Verion 1.9.1 Support
+## Verion 1.9.3 Support
 
-[Api](https://sdk.play.date/1.9.1/Inside%20Playdate%20with%20C.html#_api_reference) coverage:
+[Api](https://sdk.play.date/1.9.3/Inside%20Playdate%20with%20C.html#_api_reference) coverage:
 - 6.1 Utility **[ DONE ]**
-- 6.2 Audio
+- 6.2 Audio **[ DONE ]** (bugs filed: some incomplete C APIs and completion callbacks run on the wrong thread and crash)
 - 6.3 Display **[ DONE ]**
 - 6.4 Filesystem **[ DONE ]**
 - 6.5 Graphics **[ DONE ]** (except BitmapTables due to C API being incomplete)
@@ -19,9 +19,9 @@
 - 6.7 Input **[ DONE ]**
 - 6.8 Device Auto Lock **[ DONE ]**
 - 6.9 System Sounds. **[ DONE ]**
-- 6.10 JSON
-- 6.11 Lua
-- 6.12 Sprites
+- 6.10 JSON **[ WONTFIX: Use [postcard](https://docs.rs/postcard/latest/postcard/) instead ]**
+- 6.11 Lua **[ WONTFIX: No current plan to support Rust backend for Lua games ]**
+- 6.12 Sprites  **[ WONTFIX: No current plan to support Sprites ]**
 
 # Adding to OS target
 1. Make a new top-level crate, e.g. simulator-win
