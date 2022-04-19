@@ -218,10 +218,9 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   api.system.log(format!("synth playing: {}", synth.as_source().is_playing()));
   */
 
-  let mut synths = Vec::new();
   let mut sequence = Sequence::from_midi_file("sounds/pirate.mid").unwrap();
   for mut track in sequence.tracks_mut() {
-    let mut instrument = Instrument::new();
+    let mut instrument = track.instrument_mut().unwrap();
     instrument.set_volume(StereoVolume { left: 0.3, right: 0.3 });
     api.sound.default_channel_mut().add_source(&mut instrument).unwrap();
 
@@ -232,13 +231,8 @@ pub async fn _run(mut api: playdate::Api) -> ! {
       synth.set_decay_time(TimeDelta::from_milliseconds(200));
       synth.set_sustain_level(0.3);
       synth.set_release_time(TimeDelta::from_milliseconds(500));
-      instrument.add_voice(&mut synth, MidiNoteRange::All, 0.0).unwrap();
-      // TODO: Instrument must keep the synths alive, so it must own at least a reference onto each
-      // synth.
-      synths.push(synth);
+      instrument.add_voice(synth, MidiNoteRange::All, 0.0).unwrap();
     }
-
-    track.set_instrument(instrument);
   }
   // TODO: Dropping the synths or the instruments does bad things. We need to keep them alive inside
   // the instrument and the track, or clean them up...

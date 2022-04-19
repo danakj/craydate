@@ -7,6 +7,7 @@ use crate::ctypes::*;
 use crate::null_terminated::ToNullTerminatedString;
 use crate::time::TimeTicks;
 
+#[derive(Debug)]
 pub struct AudioSample {
   ptr: *mut CAudioSample,
   data: Vec<u8>,

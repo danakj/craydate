@@ -60,11 +60,20 @@ impl Sequence {
 
   fn create_instrument_for_each_track(&mut self) {
     let mut instruments = BTreeMap::new();
-    for t in self.tracks() {
-      if !self.instruments.contains_key(&t.index()) {
-        assert!(unsafe { SequenceTrack::fns().getInstrument.unwrap()(t.cptr()) }.is_null());
-        instruments.insert(t.index(), Instrument::new());
+    let mut count = self.tracks_count();
+    let mut index = 0;
+    while count > 0 {
+      let track_ptr = unsafe { Sequence::fns().getTrackAtIndex.unwrap()(self.cptr(), index) };
+      if !track_ptr.is_null() {
+        count -= 1;
+        if !self.instruments.contains_key(&index) {
+          assert!(unsafe { SequenceTrack::fns().getInstrument.unwrap()(track_ptr) }.is_null());
+          let instrument = Instrument::new();
+          unsafe { SequenceTrack::fns().setInstrument.unwrap()(track_ptr, instrument.cptr()) };
+          instruments.insert(index, instrument);
+        }
       }
+      index += 1;
     }
     self.instruments = instruments;
   }
@@ -167,10 +176,13 @@ impl Sequence {
   }
 
   pub fn create_track_at_index(&mut self, index: u32) -> SequenceTrackMut<'_> {
-    let track_ptr = NonNull::new(unsafe { SequenceTrack::fns().newTrack.unwrap()() }).unwrap();
-    unsafe { Sequence::fns().setTrackAtIndex.unwrap()(self.cptr(), track_ptr.as_ptr(), index) };
-    self.instruments.insert(index, Instrument::new());
-    SequenceTrackMut::new(track_ptr.as_ptr(), index, self)
+    let track_ptr = unsafe { SequenceTrack::fns().newTrack.unwrap()() };
+    assert!(!track_ptr.is_null());
+    unsafe { Sequence::fns().setTrackAtIndex.unwrap()(self.cptr(), track_ptr, index) };
+    let instrument = Instrument::new();
+    unsafe { SequenceTrack::fns().setInstrument.unwrap()(track_ptr, instrument.cptr()) };
+    self.instruments.insert(index, instrument);
+    SequenceTrackMut::new(track_ptr, index, self)
   }
   pub fn track_at_index(&self, index: u32) -> Option<SequenceTrack> {
     if self.instruments.contains_key(&index) {

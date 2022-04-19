@@ -1,7 +1,6 @@
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use core::ffi::c_void;
-use core::marker::PhantomData;
 use core::mem::ManuallyDrop;
 
 use super::super::audio_sample::AudioSample;
@@ -15,15 +14,15 @@ use crate::error::Error;
 use crate::time::{TimeDelta, TimeTicks};
 
 #[derive(Debug)]
-pub struct Synth<'sample> {
+pub struct Synth {
   source: ManuallyDrop<SoundSource>,
   ptr: *mut CSynth,
   frequency_modulator: Option<SynthSignal>,
   amplitude_modulator: Option<SynthSignal>,
   parameter_modulators: BTreeMap<i32, SynthSignal>,
-  _marker: PhantomData<&'sample AudioSample>,
+  sample: Option<AudioSample>, // Set if constructed from an AudioSample.
 }
-impl<'sample> Synth<'sample> {
+impl Synth {
   /// Creates a new Synth.
   fn new() -> Self {
     let ptr = unsafe { Self::fns().newSynth.unwrap()() };
@@ -33,7 +32,7 @@ impl<'sample> Synth<'sample> {
       frequency_modulator: None,
       amplitude_modulator: None,
       parameter_modulators: BTreeMap::new(),
-      _marker: PhantomData,
+      sample: None,
     }
   }
 
@@ -55,11 +54,8 @@ impl<'sample> Synth<'sample> {
   ///
   /// An optional sustain region defines a loop to play while the note is on. Sample data must be
   /// uncompressed PCM, not ADPCM.
-  pub fn new_with_sample(
-    sample: &'sample AudioSample,
-    sustain_region: Option<SoundRange>,
-  ) -> Synth<'sample> {
-    let synth = Self::new();
+  pub fn new_with_sample(sample: AudioSample, sustain_region: Option<SoundRange>) -> Synth {
+    let mut synth = Self::new();
     unsafe {
       Self::fns().setSample.unwrap()(
         synth.ptr,
@@ -68,6 +64,7 @@ impl<'sample> Synth<'sample> {
         sustain_region.as_ref().map_or(0, |r| r.end.to_sample_frames()),
       )
     };
+    synth.sample = Some(sample);
     synth
   }
 
@@ -249,21 +246,23 @@ impl<'sample> Synth<'sample> {
   }
 }
 
-impl Drop for Synth<'_> {
+impl Drop for Synth {
   fn drop(&mut self) {
     // Ensure the SoundSource has a chance to clean up before it is freed.
     unsafe { ManuallyDrop::drop(&mut self.source) };
     // TODO: Does the generator userdata get dropped via `dealloc`?
+    //
+    // The AudioSample will be freed after the `Synth` which references it.
     unsafe { Self::fns().freeSynth.unwrap()(self.cptr()) };
   }
 }
 
-impl AsRef<SoundSource> for Synth<'_> {
+impl AsRef<SoundSource> for Synth {
   fn as_ref(&self) -> &SoundSource {
     &self.source
   }
 }
-impl AsMut<SoundSource> for Synth<'_> {
+impl AsMut<SoundSource> for Synth {
   fn as_mut(&mut self) -> &mut SoundSource {
     &mut self.source
   }

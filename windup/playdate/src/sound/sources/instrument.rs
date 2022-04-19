@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use core::mem::ManuallyDrop;
 use core::ptr::NonNull;
 
@@ -10,6 +11,8 @@ use crate::ctypes::*;
 use crate::error::Error;
 use crate::time::{TimeDelta, TimeTicks};
 
+pub struct VoiceId(usize);
+
 /// `Instrument` collects a number of `Synth` objects together to provide polyphony.
 ///
 /// An `Instrument` is a `SoundSource` that can be attached to a `SoundChannel` to play there. It
@@ -18,6 +21,7 @@ use crate::time::{TimeDelta, TimeTicks};
 pub struct Instrument {
   ptr: NonNull<CSynthInstrument>,
   source: ManuallyDrop<SoundSource>,
+  synths: Vec<Synth>,
 }
 impl<'data> Instrument {
   pub fn as_source(&self) -> &SoundSource {
@@ -33,6 +37,7 @@ impl<'data> Instrument {
     Instrument {
       ptr: NonNull::new(ptr).unwrap(),
       source: ManuallyDrop::new(SoundSource::from_ptr(ptr as *mut CSoundSource)),
+      synths: Vec::new(),
     }
   }
 
@@ -44,23 +49,36 @@ impl<'data> Instrument {
   /// # Return
   /// On success, returns an id that will be used to refer to the attached Synth. The function
   /// returns `Error::AlreadyAttachedError` if the `Synth` is already attached to another
-  /// `Instrument` or `SoundChannel`.
+  /// `Instrument` or `SoundChannel`, and includes the `Synth` that failed to be added.
   pub fn add_voice(
     &mut self,
-    synth: &mut Synth,
+    mut synth: Synth,
     midi_range: MidiNoteRange,
     transpose: f32,
-  ) -> Result<usize, Error> {
+  ) -> Result<VoiceId, (Error, Synth)> {
     if synth.as_mut().attach_to_instrument() {
       let (start, end) = midi_range.to_start_end();
       let r = unsafe {
         Instrument::fns().addVoice.unwrap()(self.cptr(), synth.cptr(), start, end, transpose)
       };
       assert!(r != 0);
-      Ok(synth as *mut Synth as usize)
+      self.synths.push(synth);
+      Ok(VoiceId(self.synths.len() - 1))
     } else {
-      Err(Error::AlreadyAttachedError)
+      Err((Error::AlreadyAttachedError, synth))
     }
+  }
+  /// Returns a previously added voice `Synth` identified by the value returned from `add_voice()`.
+  ///
+  /// Returns None if the VoiceId is from a different Instrument.
+  pub fn voice(&self, voice: VoiceId) -> Option<&Synth> {
+    self.synths.get(voice.0)
+  }
+  /// Returns a previously added voice `Synth` identified by the value returned from `add_voice()`.
+  ///
+  /// Returns None if the VoiceId is from a different Instrument.
+  pub fn voice_mut(&mut self, voice: VoiceId) -> Option<&mut Synth> {
+    self.synths.get_mut(voice.0)
   }
 
   /// Plays a note on the Instrument, using the `frequency`.

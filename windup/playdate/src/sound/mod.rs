@@ -31,7 +31,7 @@ pub use sound_format::*;
 pub use sound_range::{SignedSoundRange, SoundRange};
 pub use sources::delay_line_tap::DelayLineTap;
 pub use sources::file_player::FilePlayer;
-pub use sources::instrument::Instrument;
+pub use sources::instrument::{Instrument, VoiceId};
 pub use sources::sample_player::SamplePlayer;
 pub use sources::sound_source::SoundSource;
 pub use sources::synth::{Synth, SynthGenerator, SynthGeneratorVTable, SynthRender};
