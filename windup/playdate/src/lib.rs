@@ -35,6 +35,7 @@ mod null_terminated;
 mod sound;
 mod system_event;
 mod time;
+mod video;
 
 #[doc(hidden)]
 pub mod macro_helpers;
@@ -60,6 +61,7 @@ pub use menu::*;
 pub use sound::*;
 pub use system_event::*;
 pub use time::{SoundTicks, TimeDelta, TimeTicks};
+pub use video::*;
 
 #[global_allocator]
 pub static mut GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();
