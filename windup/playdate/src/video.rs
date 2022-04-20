@@ -62,7 +62,7 @@ impl Video {
   pub fn render_frame_to_bitmap(
     &self,
     n: i32,
-    bitmap: &mut super::bitmap::BitmapRef,
+    bitmap: &mut super::graphics::BitmapRef,
   ) -> Result<(), Error> {
     if self.context.get() != Context::Bitmap(unsafe { bitmap.as_bitmap_ptr() }) {
       if unsafe { Self::fns().setContext.unwrap()(self.cptr(), bitmap.as_bitmap_ptr()) } == 0 {
