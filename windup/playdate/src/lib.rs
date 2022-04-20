@@ -63,9 +63,10 @@ pub use system_event::*;
 pub use time::{SoundTicks, TimeDelta, TimeTicks};
 pub use video::*;
 
-#[cfg(not(doc))]
+/// The global allocator, which will defer allocation requests to the playdate system, and deal with
+/// ensuring correct alignment.
 #[global_allocator]
-pub static mut GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();
+static mut GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();
 
 /// A helper implementation of panic_handler for the toplevel crate to forward to.
 ///
@@ -97,9 +98,9 @@ pub fn panic_handler(panic_info: &core::panic::PanicInfo) -> ! {
   core::intrinsics::abort()
 }
 
-#[cfg(not(doc))]
+/// The error handler for when allocations fail. It will simply panic.
 #[alloc_error_handler]
-pub fn playdate_alloc_error_handler(layout: core::alloc::Layout) -> ! {
+fn playdate_alloc_error_handler(layout: core::alloc::Layout) -> ! {
   panic!(
     "memory allocation of {} bytes at alignment {} failed",
     layout.size(),
