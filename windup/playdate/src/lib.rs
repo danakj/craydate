@@ -42,7 +42,7 @@ pub mod macro_helpers;
 
 /// Reexport some of alloc, since things in alloc are not guaranteed to work in `no_std` as it all
 /// depends on our global allocator. This makes it clear they can be used, and avoids the need for
-/// `export mod alloc` elsewhere.
+/// `extern crate alloc` elsewhere.
 pub use alloc::{borrow::ToOwned, format, string::String};
 
 pub use api::*;
