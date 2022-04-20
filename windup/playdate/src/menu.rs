@@ -1,7 +1,7 @@
-use alloc::string::String;
 use alloc::vec::Vec;
 use core::ffi::c_void;
 use core::marker::PhantomData;
+use core::ptr::NonNull;
 
 use crate::callbacks::*;
 use crate::capi_state::CApiState;
@@ -11,7 +11,8 @@ use crate::null_terminated::ToNullTerminatedString;
 pub type MenuCallback<'a, T, F, S> = crate::callbacks::CallbackBuilder<'a, T, F, NoNull, S>;
 
 static mut MENU_KEY: usize = 0;
-fn make_key() -> usize {
+/// Makes a unique id to pass as a "userdata" key to determine which callback is being called.
+fn make_callback_key() -> usize {
   unsafe {
     MENU_KEY += 1;
     MENU_KEY
@@ -25,7 +26,7 @@ pub enum AnyType {}
 
 /// A system menu item. The game can specify up to 3 custom menu items in the system menu.
 pub struct MenuItem<Type = AnyType> {
-  ptr: *mut CMenuItem,
+  ptr: NonNull<CMenuItem>,
   _callback: RegisteredCallback, // Holds ownership of the closure.
   _marker: PhantomData<Type>,
 }
@@ -40,18 +41,18 @@ impl MenuItem {
     title: &str,
     callback: MenuCallback<'a, T, F, Constructed>,
   ) -> MenuItem<Action> {
-    let key = make_key();
+    let key = make_callback_key();
     let (callbacks, cb) = callback.into_inner().unwrap();
     let (func, reg) = callbacks.add_menu_item(key, cb);
     let ptr = unsafe {
-      CApiState::get().csystem.addMenuItem.unwrap()(
+      Self::fns().addMenuItem.unwrap()(
         title.to_null_terminated_utf8().as_ptr(),
         Some(func),
         key as *mut c_void,
       )
     };
     MenuItem {
-      ptr,
+      ptr: NonNull::new(ptr).unwrap(),
       _callback: reg,
       _marker: PhantomData,
     }
@@ -68,11 +69,11 @@ impl MenuItem {
     intially_checked: bool,
     callback: MenuCallback<'a, T, F, Constructed>,
   ) -> MenuItem<Checkmark> {
-    let key = make_key();
+    let key = make_callback_key();
     let (callbacks, cb) = callback.into_inner().unwrap();
     let (func, reg) = callbacks.add_menu_item(key, cb);
     let ptr = unsafe {
-      CApiState::get().csystem.addCheckmarkMenuItem.unwrap()(
+      Self::fns().addCheckmarkMenuItem.unwrap()(
         title.to_null_terminated_utf8().as_ptr(),
         intially_checked as i32,
         Some(func),
@@ -80,7 +81,7 @@ impl MenuItem {
       )
     };
     MenuItem {
-      ptr,
+      ptr: NonNull::new(ptr).unwrap(),
       _callback: reg,
       _marker: PhantomData,
     }
@@ -97,14 +98,14 @@ impl MenuItem {
     options: impl IntoIterator<Item = &'a str>,
     callback: MenuCallback<'a, T, F, Constructed>,
   ) -> MenuItem<Options> {
-    let key = make_key();
+    let key = make_callback_key();
     let (callbacks, cb) = callback.into_inner().unwrap();
     let (func, reg) = callbacks.add_menu_item(key, cb);
     let options_null_terminated: Vec<_> =
       options.into_iter().map(|o| o.to_null_terminated_utf8()).collect();
     let options_pointers: Vec<_> = options_null_terminated.iter().map(|o| o.as_ptr()).collect();
     let ptr = unsafe {
-      CApiState::get().csystem.addOptionsMenuItem.unwrap()(
+      Self::fns().addOptionsMenuItem.unwrap()(
         title.to_null_terminated_utf8().as_ptr(),
         options_pointers.as_ptr() as *mut *const u8,
         options_pointers.len() as i32,
@@ -113,7 +114,7 @@ impl MenuItem {
       )
     };
     MenuItem {
-      ptr,
+      ptr: NonNull::new(ptr).unwrap(),
       _callback: reg,
       _marker: PhantomData,
     }
@@ -123,43 +124,49 @@ impl MenuItem {
 impl<T> MenuItem<T> {
   /// Get the menu item's title.
   pub fn title(&self) -> &str {
-    unsafe {
-      let ptr = CApiState::get().csystem.getMenuItemTitle.unwrap()(self.ptr);
-      crate::null_terminated::parse_null_terminated_utf8(ptr).unwrap()
-    }
+    let ptr = unsafe { Self::fns().getMenuItemTitle.unwrap()(self.cptr()) };
+    // SAFETY: Strings returned from playdate are utf8 and null-terminated.
+    unsafe { crate::null_terminated::parse_null_terminated_utf8(ptr).unwrap() }
   }
   /// Set the menu item's title.
   pub fn set_title(&mut self, title: &str) {
-    let title = String::from(title);
     unsafe {
-      CApiState::get().csystem.setMenuItemTitle.unwrap()(
-        self.ptr,
-        title.to_null_terminated_utf8().as_ptr(),
-      )
+      Self::fns().setMenuItemTitle.unwrap()(self.cptr(), title.to_null_terminated_utf8().as_ptr())
     }
+  }
+
+  pub(crate) fn cptr(&self) -> *mut CMenuItem {
+    self.ptr.as_ptr()
+  }
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_sys {
+    CApiState::get().csystem
   }
 }
 
 impl MenuItem<Checkmark> {
+  /// Returns if the checkmark menu item was checked when the menu was closed.
   pub fn checked(&self) -> bool {
-    unsafe { CApiState::get().csystem.getMenuItemValue.unwrap()(self.ptr) != 0 }
+    unsafe { Self::fns().getMenuItemValue.unwrap()(self.cptr()) != 0 }
   }
+  /// Sets if the checkmark menu item should be checked when the menu is next opened.
   pub fn set_checked(&self, checked: bool) {
-    unsafe { CApiState::get().csystem.setMenuItemValue.unwrap()(self.ptr, checked as i32) }
+    unsafe { Self::fns().setMenuItemValue.unwrap()(self.cptr(), checked as i32) }
   }
 }
 
 impl MenuItem<Options> {
+  /// Returns the index of the option that was selected when the menu was closed.
   pub fn value(&self) -> i32 {
-    unsafe { CApiState::get().csystem.getMenuItemValue.unwrap()(self.ptr) }
+    unsafe { Self::fns().getMenuItemValue.unwrap()(self.cptr()) }
   }
+  /// Sets the index of the option to be selected when the menu is next opened.
   pub fn set_value(&self, value: i32) {
-    unsafe { CApiState::get().csystem.setMenuItemValue.unwrap()(self.ptr, value) }
+    unsafe { Self::fns().setMenuItemValue.unwrap()(self.cptr(), value) }
   }
 }
 
 impl<Type> Drop for MenuItem<Type> {
   fn drop(&mut self) {
-    unsafe { CApiState::get().csystem.removeMenuItem.unwrap()(self.ptr) };
+    unsafe { CApiState::get().csystem.removeMenuItem.unwrap()(self.cptr()) };
   }
 }
