@@ -28,6 +28,10 @@ const fn calc_alloc_size(size: usize, align: usize) -> usize {
   }
 }
 
+/// Calculate how far to shift the return address inside the allocation in order to have the return
+/// address be aligned and leave space in front of it to write the size of the shift. Writing the
+/// size of the shift is needed to undo the shift in order to free the memory later given the
+/// shifted address.
 const fn calc_shift_for_align(addr: u64, align: usize) -> usize {
   let shift_storage_size = core::mem::size_of::<usize>() as u64;
   let align = align as u64;
@@ -52,7 +56,9 @@ const fn calc_shift_for_align(addr: u64, align: usize) -> usize {
   }
 }
 
+/// The global allocator implementation.
 pub struct Allocator {
+  /// Static pointer to the playdate C api where the `realloc()` function pointer lives.
   sys: Option<&'static playdate_sys::playdate_sys>,
 }
 
