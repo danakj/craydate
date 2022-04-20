@@ -22,7 +22,7 @@ impl<T> ExecutorOwnedFuture<T> {
 /// `*mut Executor` to avoid a `&mut self` reference that would be unsound when the Executor interacts with
 /// Wakers or Futures.
 #[non_exhaustive]
-pub struct Executor {
+pub(crate) struct Executor {
   // The main Future is different than other spawned Futures, in that it never completes and thus has
   // an output type of `!`.
   main_future: Option<ExecutorOwnedFuture<!>>,
@@ -166,7 +166,7 @@ mod never_return_waker {
 
   static VTABLE: RawWakerVTable = RawWakerVTable::new(clone_fn, wake_fn, wake_by_ref_fn, drop_fn);
 
-  pub fn make_waker(exec_ptr: *mut Executor) -> Waker {
+  pub(crate) fn make_waker(exec_ptr: *mut Executor) -> Waker {
     let data_ptr = Box::into_raw(Box::new(WakerData { refs: 1, exec_ptr }));
     let raw_waker = RawWaker::new(data_ptr as *const (), &VTABLE);
     unsafe { Waker::from_raw(raw_waker) }
