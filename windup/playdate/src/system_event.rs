@@ -48,10 +48,18 @@ pub enum SystemEvent {
     /// The released keycode.
     keycode: u32,
   },
+  /// A system callback is active, and the game can execute their registered closure for it by
+  /// running their `Callbacks` object(s).
   Callback,
 }
 
+/// An object shared between the global `CApiState` and any `SystemEventWatcher` objects, where new
+/// system events are placed in order for the `Future` returned from a `SystemEventWatcher` to find
+/// them.
 pub(crate) struct SystemEventWatcherState {
+  /// The system event which will be returned from `SystemEventWatcher::next()`. It's normally
+  /// `None` until `next()` is called and yields to the Playdate system which will generate the next
+  /// event.
   pub next_event: Cell<Option<SystemEvent>>,
 }
 impl SystemEventWatcherState {
@@ -62,13 +70,14 @@ impl SystemEventWatcherState {
   }
 }
 
+/// An object used to watch for the next system event. Call `next()` to get the next event when it
+/// is ready.
 pub struct SystemEventWatcher {
   pub(crate) state: Rc<SystemEventWatcherState>,
 }
 impl SystemEventWatcher {
   pub(crate) fn new() -> Self {
-    let capi = CApiState::get();
-    let state = capi.system_event_watcher_state.borrow().clone();
+    let state = CApiState::get().system_event_watcher_state.borrow().clone();
     SystemEventWatcher { state }
   }
 
