@@ -61,13 +61,13 @@ impl Executor {
     exec.system_wakers.push(waker.clone());
   }
 
-  pub fn _spawn(_exec_ptr: *mut Executor, _future: Pin<Box<dyn Future<Output = ()>>>) {
-    // Save it in a Vec<ExecutorOwnedFuture> until the next idle time, which is probably the
-    // update_callback(), since when we return up the stack we have to wait for that. We don't
-    // have an idle callback, or timer callback, from Playdate or anything. At that time, poll()
-    // the future, and then just poll() it again when the waker given to the last poll() is woken.
-    todo!()
-  }
+  //fn spawn(_exec_ptr: *mut Executor, _future: Pin<Box<dyn Future<Output = ()>>>) {
+  //  // Save it in a Vec<ExecutorOwnedFuture> until the next idle time, which is probably the
+  //  // update_callback(), since when we return up the stack we have to wait for that. We don't
+  //  // have an idle callback, or timer callback, from Playdate or anything. At that time, poll()
+  //  // the future, and then just poll() it again when the waker given to the last poll() is woken.
+  //  todo!()
+  //}
 
   pub fn poll_futures(exec_ptr: *mut Executor) {
     let exec = unsafe { Self::as_mut_ref(exec_ptr) };
