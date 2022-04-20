@@ -122,7 +122,7 @@ impl System {
   /// would be visible instead of the left 200 pixels while the menu is open.
   ///
   /// The bitmap will be copied, so the reference is not held.
-  pub fn set_menu_image(&mut self, bitmap: &crate::bitmap::BitmapRef, xoffset: i32) {
+  pub fn set_menu_image(&mut self, bitmap: &crate::graphics::BitmapRef, xoffset: i32) {
     // SAFETY: Playdate makes a copy from the given pointer, so we can pass it in and then drop the
     // reference on `bitmap` when we leave the function.
     unsafe {

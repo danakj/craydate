@@ -1,10 +1,10 @@
 use alloc::format;
 use core::ptr::NonNull;
 
-use crate::bitmap::SharedBitmapRef;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::error::Error;
+use crate::graphics::SharedBitmapRef;
 use crate::null_terminated::ToNullTerminatedString;
 
 /// Font which can be used to draw text when made active with `Graphics::set_font()`.

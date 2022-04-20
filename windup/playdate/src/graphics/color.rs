@@ -1,4 +1,4 @@
-use crate::bitmap::BitmapRef;
+use super::bitmap::BitmapRef;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 

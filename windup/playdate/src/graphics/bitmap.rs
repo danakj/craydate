@@ -1,7 +1,7 @@
 use alloc::format;
 
+use super::color::Color;
 use crate::capi_state::CApiState;
-use crate::color::Color;
 use crate::ctypes::*;
 use crate::null_terminated::ToNullTerminatedString;
 use crate::Error;

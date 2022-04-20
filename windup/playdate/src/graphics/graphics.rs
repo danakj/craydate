@@ -1,20 +1,17 @@
 use core::ffi::c_void;
 
-use crate::bitmap::{Bitmap, BitmapRef, SharedBitmapRef};
+use super::active_font::ActiveFont;
+use super::bitmap::{Bitmap, BitmapRef, SharedBitmapRef};
+use super::bitmap_collider::BitmapCollider;
+use super::color::Color;
+use super::font::Font;
+use super::framebuffer_stencil_bitmap::FramebufferStencilBitmap;
 use crate::capi_state::{CApiState, ContextStackId};
-use crate::color::Color;
 use crate::ctypes::*;
-use crate::font::Font;
 use crate::null_terminated::ToNullTerminatedString;
 
-pub struct BitmapCollider<'a> {
-  pub bitmap: &'a BitmapRef,
-  pub flipped: BitmapFlip,
-  pub x: i32,
-  pub y: i32,
-}
-
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct Graphics;
 impl Graphics {
   pub(crate) fn new() -> Self {
@@ -39,7 +36,7 @@ impl Graphics {
         b.x,
         b.y,
         b.flipped,
-        playdate_rect_from_euclid(in_rect),
+        super::playdate_rect_from_euclid(in_rect),
       ) != 0
     }
   }
@@ -453,53 +450,6 @@ impl Graphics {
         color.to_c_color(),
         fill_rule,
       )
-    }
-  }
-}
-
-fn playdate_rect_from_euclid(e: euclid::default::Rect<i32>) -> CLCDRect {
-  CLCDRect {
-    left: e.origin.x,
-    top: e.origin.y,
-    right: e.origin.x + e.size.width - 1,
-    bottom: e.origin.y + e.size.height - 1,
-  }
-}
-
-/// A sentinel that marks a bitmap acting as the stencil for drawing. Destroying this object will
-/// unset the bitmap as the stencil.
-pub struct FramebufferStencilBitmap<'a> {
-  generation: usize,
-  bitmap: &'a BitmapRef,
-}
-impl<'a> FramebufferStencilBitmap<'a> {
-  pub fn bitmap(&self) -> &'a BitmapRef {
-    self.bitmap
-  }
-}
-impl Drop for FramebufferStencilBitmap<'_> {
-  fn drop(&mut self) {
-    if self.generation == CApiState::get().stencil_generation.get() {
-      unsafe { CApiState::get().cgraphics.setStencil.unwrap()(core::ptr::null_mut()) }
-    }
-  }
-}
-
-/// A sentinel that marks a font as the currently active font. Destroying this object will
-/// unset the font as current.
-pub struct ActiveFont<'a> {
-  generation: usize,
-  font: &'a Font,
-}
-impl<'a> ActiveFont<'a> {
-  pub fn font(&self) -> &'a Font {
-    self.font
-  }
-}
-impl Drop for ActiveFont<'_> {
-  fn drop(&mut self) {
-    if self.generation == CApiState::get().font_generation.get() {
-      unsafe { CApiState::get().cgraphics.setFont.unwrap()(core::ptr::null_mut()) }
     }
   }
 }

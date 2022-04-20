@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 use core::cell::{Cell, RefCell};
 use core::ptr::NonNull;
 
-use crate::bitmap::Bitmap;
+use crate::graphics::Bitmap;
 use crate::ctypes::*;
 use crate::executor::Executor;
 use crate::system_event::{SystemEvent, SystemEventWatcherState};
