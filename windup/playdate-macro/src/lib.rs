@@ -25,9 +25,10 @@ pub fn main(_attr: TokenStream, item: TokenStream) -> TokenStream {
   quote!{
     mod __main {
       use super::*;
+      use ::alloc::boxed::Box;
       use ::core::pin::Pin;
       use ::core::future::Future;
-      use ::playdate::macro_helpers::*;
+      use ::playdate::macro_helpers::__private::*;
 
       #[no_mangle]
       extern "C" fn eventHandler(eh1: EventHandler1, eh2: EventHandler2, eh3: EventHandler3) -> i32 {
