@@ -155,15 +155,8 @@ impl Graphics {
   /// The bitmap will remain the stencil as long as the FramebufferStencilBitmap is not dropped, or another
   /// call to set_stencil() is made.
   pub fn set_stencil<'a>(&mut self, bitmap: &'a BitmapRef) -> FramebufferStencilBitmap<'a> {
-    let gen = CApiState::get().stencil_generation.get() + 1;
-    CApiState::get().stencil_generation.set(gen);
     unsafe { CApiState::get().cgraphics.setStencil.unwrap()(bitmap.as_bitmap_ptr()) }
-    FramebufferStencilBitmap {
-      // Track the generation number so as to only unset the stencil on drop if set_stencil() wasn't
-      // called again since.
-      generation: gen,
-      bitmap,
-    }
+    FramebufferStencilBitmap::new(bitmap)
   }
 
   /// Sets the font used for drawing.
@@ -171,15 +164,8 @@ impl Graphics {
   /// The font will remain active for drawing as long as the ActiveFont is not dropped, or another
   /// call to set_font() is made.
   pub fn set_font<'a>(&mut self, font: &'a Font) -> ActiveFont<'a> {
-    let gen = CApiState::get().font_generation.get() + 1;
-    CApiState::get().font_generation.set(gen);
     unsafe { CApiState::get().cgraphics.setFont.unwrap()(font.as_ptr() as *mut CLCDFont) }
-    ActiveFont {
-      // Track the generation number so as to only unset the font on drop if set_font() wasn't
-      // called again since.
-      generation: gen,
-      font,
-    }
+    ActiveFont::new(font)
   }
 
   /// Sets the current clip rect, using world coordinates—​that is, the given rectangle will be

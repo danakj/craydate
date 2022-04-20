@@ -8,6 +8,14 @@ pub struct FramebufferStencilBitmap<'a> {
   bitmap: &'a BitmapRef,
 }
 impl<'a> FramebufferStencilBitmap<'a> {
+  pub(crate) fn new(bitmap: &'a BitmapRef) -> Self {
+    // Track the generation number so as to only unset the stencil on drop if set_stencil() wasn't
+    // called again since.
+    let generation = CApiState::get().stencil_generation.get() + 1;
+    CApiState::get().stencil_generation.set(generation);
+    FramebufferStencilBitmap { generation, bitmap }
+  }
+
   pub fn bitmap(&self) -> &'a BitmapRef {
     self.bitmap
   }

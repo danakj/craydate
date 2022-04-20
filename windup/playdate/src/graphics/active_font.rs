@@ -8,6 +8,15 @@ pub struct ActiveFont<'a> {
   font: &'a Font,
 }
 impl<'a> ActiveFont<'a> {
+  pub(crate) fn new(font: &'a Font) -> Self {
+    // Track the generation number so as to only unset the font on drop if another font wasn't set
+    // as active since.
+    let generation = CApiState::get().font_generation.get() + 1;
+    CApiState::get().font_generation.set(generation);
+    ActiveFont { generation, font }
+  }
+
+  /// Returns the font that was set active when this object was constructed.
   pub fn font(&self) -> &'a Font {
     self.font
   }
