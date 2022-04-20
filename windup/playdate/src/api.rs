@@ -40,20 +40,10 @@ impl System {
     }
   }
 
-  /// A watcher that lets you `await` for the next frame update from the Playdate device.
+  /// A watcher that lets you `await` for the next `SystemEvent`, such as the next frame with input
+  /// events from the Playdate device.
   pub fn system_event_watcher(&self) -> SystemEventWatcher {
     SystemEventWatcher::new()
-  }
-
-  /// Prints a string to the Playdate console, as well as to stdout.
-  pub fn log<S: alloc::string::ToString>(&self, s: S) {
-    crate::debug::log(&s.to_string())
-  }
-
-  /// Prints an error string in red to the Playdate console, and pauses Playdate. Also prints the
-  /// string to stdout.
-  pub fn error<S: alloc::string::ToString>(&self, s: S) {
-    crate::debug::error(&s.to_string());
   }
 
   /// Returns the current time in milliseconds.

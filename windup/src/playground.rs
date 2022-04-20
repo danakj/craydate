@@ -35,16 +35,16 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   let font = Font::from_file("fonts/Mini Sans 2X/Mini Sans 2X.pft");
   let _active = match &font {
     Ok(font) => {
-      api.system.log(format!("Font height: {}", font.font_height()));
+      log(format!("Font height: {}", font.font_height()));
 
       let page = font.font_page('d');
-      api.system.log("Got page");
+      log("Got page");
       let _bitmap = page.glyph('d').unwrap().bitmap();
 
       Some(graphics.set_font(font))
     }
     Err(e) => {
-      api.system.log(format!("ERROR: loading font {}", e));
+      log(format!("ERROR: loading font {}", e));
       None
     }
   };
@@ -90,7 +90,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
     },
     euclid::rect(0, 0, 100, 100),
   );
-  system.log(format!("collision: {}", c));
+  log(format!("collision: {}", c));
 
   // working image
   let yo_path = "images/yo";
@@ -103,7 +103,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   let broken_path = "images/wat";
   let load = Bitmap::from_file(broken_path);
   if let Err(error) = load {
-    system.log(error);
+    log(error);
   }
 
   let display = &mut api.display;
@@ -113,39 +113,39 @@ pub async fn _run(mut api: playdate::Api) -> ! {
 
   let list_files_in = |path: &str| match api.file.list_files(path) {
     Ok(files) => {
-      api.system.log(format!("{}/ files:", path));
+      log(format!("{}/ files:", path));
       for fname in files {
-        api.system.log(format!("  {:?}", fname))
+        log(format!("  {:?}", fname))
       }
     }
-    Err(e) => api.system.log(format!("ERROR: {}", e)),
+    Err(e) => log(format!("ERROR: {}", e)),
   };
   let make_dir = |path: &str| match api.file.make_folder(path) {
-    Ok(()) => system.log(format!("mkdir {}", path)),
-    Err(e) => system.log(e),
+    Ok(()) => log(format!("mkdir {}", path)),
+    Err(e) => log(e),
   };
   let rename = |from: &str, to: &str| match api.file.rename(from, to) {
     Ok(()) => {
-      system.log(format!("renamed {} to {}", from, to));
+      log(format!("renamed {} to {}", from, to));
       list_files_in("myfolder");
     }
-    Err(e) => system.log(e),
+    Err(e) => log(e),
   };
   let delete_recursive = |path: &str| match api.file.delete_recursive(path) {
-    Ok(()) => system.log(format!("deleted {} recursive", path)),
-    Err(e) => system.log(e),
+    Ok(()) => log(format!("deleted {} recursive", path)),
+    Err(e) => log(e),
   };
   let stat = |path: &str| match api.file.stat(path) {
-    Ok(stats) => system.log(format!("stat {}: {:?}", path, stats)),
-    Err(e) => system.log(e),
+    Ok(stats) => log(format!("stat {}: {:?}", path, stats)),
+    Err(e) => log(e),
   };
   let write_file = |path: &str, stuff: &[u8]| match api.file.write_file(path, stuff) {
-    Ok(()) => system.log(format!("wrote {}", path)),
-    Err(e) => system.log(e),
+    Ok(()) => log(format!("wrote {}", path)),
+    Err(e) => log(e),
   };
   let read_file = |path: &str| match api.file.read_file(path) {
-    Ok(content) => system.log(format!("read {}: {:?}", path, String::from_utf8(content))),
-    Err(e) => system.log(e),
+    Ok(content) => log(format!("read {}: {:?}", path, String::from_utf8(content))),
+    Err(e) => log(e),
   };
 
   list_files_in("images");
@@ -166,19 +166,19 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   delete_recursive("myfolder");
 
   let vol = api.sound.default_channel().volume();
-  api.system.log(format!("Default channel volume (in 0-1): {}", vol));
+  log(format!("Default channel volume (in 0-1): {}", vol));
 
-  let mut i32callbacks = Callbacks::<(i32, &System)>::new();
+  let mut i32callbacks = Callbacks::<i32>::new();
 
   let mut fileplayer = FilePlayer::from_file("sounds/mojojojo.pda");
   api.sound.default_channel_mut().add_source(&mut fileplayer).unwrap();
   fileplayer.as_mut().set_completion_callback(
-    SoundCompletionCallback::with(&mut i32callbacks).call(|(i, system)| {
-      system.log(format!("finished playback of mojojojo {}", i));
+    SoundCompletionCallback::with(&mut i32callbacks).call(|i| {
+      log(format!("finished playback of mojojojo {}", i));
     }),
   );
   fileplayer.play(1).expect("fileplayer play failed?");
-  api.system.log(format!(
+  log(format!(
     "Fileplayer length: {} seconds",
     fileplayer.file_len().to_seconds(),
   ));
@@ -186,11 +186,11 @@ pub async fn _run(mut api: playdate::Api) -> ! {
     StereoVolume::zero(),
     TimeDelta::from_seconds(1),
     /*SoundCompletionCallback::with(&mut i32callbacks).call(|(_i, system)| {
-      system.log("fade done!");
-      system.log(">> getting time");
+      log("fade done!");
+      log(">> getting time");
       let t = system.current_time();
-      system.log("<< getting time");
-      system.log(format!("time {}", t));
+      log("<< getting time");
+      log(format!("time {}", t));
     }),*/
     SoundCompletionCallback::none(),
   );
@@ -215,7 +215,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   /*
   let mut synth = Synth::from_generator(generator);
   synth.play_frequency_note(0.0, 1.0, None, None);
-  api.system.log(format!("synth playing: {}", synth.as_source().is_playing()));
+  log(format!("synth playing: {}", synth.as_source().is_playing()));
   */
 
   let mut sequence = Sequence::from_midi_file("sounds/pirate.mid").unwrap();
@@ -224,7 +224,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
     instrument.set_volume(StereoVolume { left: 0.3, right: 0.3 });
     api.sound.default_channel_mut().add_source(&mut instrument).unwrap();
 
-    api.system.log(format!("polyphony: {}", track.polyphony()));
+    log(format!("polyphony: {}", track.polyphony()));
     for _ in 0..track.polyphony() {
       let mut synth = Synth::new_with_waveform(SoundWaveform::kWaveformSquare);
       synth.set_attack_time(TimeDelta::from_milliseconds(0));
@@ -240,29 +240,29 @@ pub async fn _run(mut api: playdate::Api) -> ! {
 
   let action_item = MenuItem::new_action(
     "hello world",
-    MenuCallback::with(&mut i32callbacks).call(|(i, system)| {
-      system.log(format!("menu action {}", i));
+    MenuCallback::with(&mut i32callbacks).call(|i| {
+      log(format!("menu action {}", i));
     }),
   );
   action_item.title();
   let check_item = MenuItem::new_checkmark(
     "dank",
     false,
-    MenuCallback::with(&mut i32callbacks).call(|(i, system)| {
-      system.log(format!("dankness adjusted {}", i));
+    MenuCallback::with(&mut i32callbacks).call(|i| {
+      log(format!("dankness adjusted {}", i));
     }),
   );
   check_item.set_checked(true);
   let options_item = MenuItem::new_options(
     "temp",
     ["too hot", "too cold", "just right"],
-    MenuCallback::with(&mut i32callbacks).call(|(i, system)| {
-      system.log(format!("temperature adjusted {}", i));
+    MenuCallback::with(&mut i32callbacks).call(|i| {
+      log(format!("temperature adjusted {}", i));
     }),
   );
   options_item.set_value(2);
 
-  system.log(format!(
+  log(format!(
     "Entering main loop at time {}",
     api.system.current_time()
   ));
@@ -274,15 +274,15 @@ pub async fn _run(mut api: playdate::Api) -> ! {
         frame_number,
       } => (inputs, frame_number),
       SystemEvent::WillLock => {
-        api.system.log("locked");
+        log("locked");
         continue;
       }
       SystemEvent::DidUnlock => {
-        api.system.log("unlocked");
+        log("unlocked");
         continue;
       }
       SystemEvent::Callback => {
-        i32callbacks.run((1, &api.system));
+        i32callbacks.run(1);
         continue;
       }
       _ => continue,
@@ -290,10 +290,10 @@ pub async fn _run(mut api: playdate::Api) -> ! {
     for (button, event) in inputs.buttons().all_events() {
       match event {
         playdate::ButtonEvent::Push => {
-          api.system.log(format!("{:?} pushed on frame {}", button, frame_number));
+          log(format!("{:?} pushed on frame {}", button, frame_number));
         }
         playdate::ButtonEvent::Release => {
-          api.system.log(format!("{:?} released on frame {}", button, frame_number));
+          log(format!("{:?} released on frame {}", button, frame_number));
         }
       }
     }
