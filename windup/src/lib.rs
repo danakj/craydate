@@ -10,7 +10,7 @@ mod playground;
 #[playdate::main]
 async fn main(api: playdate::Api) -> ! {
   // TODO: could we use a different build target for this??
-  playground::_run(api).await;
+  // playground::_run(api).await;
 
   gameloop::run(api).await
 }
