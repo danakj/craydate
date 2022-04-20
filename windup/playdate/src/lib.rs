@@ -99,7 +99,7 @@ pub fn panic_handler(panic_info: &core::panic::PanicInfo) -> ! {
 
 #[cfg(not(doc))]
 #[alloc_error_handler]
-pub fn playdate_alloc_example_handler(layout: core::alloc::Layout) -> ! {
+pub fn playdate_alloc_error_handler(layout: core::alloc::Layout) -> ! {
   panic!(
     "memory allocation of {} bytes at alignment {} failed",
     layout.size(),
