@@ -15,6 +15,7 @@ use crate::*;
 pub mod __private {
   use super::*;
 
+  /// The configuration given from the `#[main]` attribute macro to the event handler.
   pub struct GameConfig {
     pub main_fn: fn(api::Api) -> Pin<Box<dyn Future<Output = !>>>,
   }
@@ -38,25 +39,27 @@ pub mod __private {
     eh3: EventHandler3,
     config: GameConfig,
   ) {
-    let api_ptr = eh1.0;
-    let event = eh2.0;
-    let arg = eh3.0;
-
     // SAFETY: We have made a shared reference to the `CPlaydateApi`. Only refer to the object through
     // the reference hereafter. We can ensure that by never passing a pointer to the `CPlaydateApi`
     // or any pointer or reference to `CSystemApi` elsewhere.
-    let api: &CPlaydateApi = unsafe { &(*api_ptr) };
-    let system: &CSystemApi = unsafe { &(*api.system) };
+    let api: &CPlaydateApi = unsafe { &(*eh1.0) };
+    let event = eh2.0;
+    let arg = eh3.0;
 
     match event {
       CSystemEvent::kEventInit => {
-        // SAFETY: Do not allocate before the GLOBAL_ALLOCATOR is set up here, or we will crash
-        // in the allocator.
-        unsafe { GLOBAL_ALLOCATOR.set_system_ptr(system) };
-        crate::debug::initialize(system);
+        let capi_state = CApiState::new(api);
+
+        // SAFETY: Do not allocate before the GLOBAL_ALLOCATOR is set up here, or we will crash in
+        // the allocator.
+        //
+        // SAFETY: Use the reference to the playdate system from the CapiState as that is the one
+        // true reference and we don't want to use the pointer which could invalidate the reference.
+        unsafe { GLOBAL_ALLOCATOR.set_system_ptr(capi_state.csystem) };
+        crate::debug::initialize(capi_state.csystem);
 
         // We leak this pointer so it has 'static lifetime.
-        let capi_state = Box::into_raw(Box::new(CApiState::new(api)));
+        let capi_state = Box::into_raw(Box::new(capi_state));
         // The CApiState is always accessed through a shared pointer. And the CApiState is constructed
         // in initialize() and then never destroyed, so references can be 'static lifetime.
         let capi_state: &'static CApiState = unsafe { &*capi_state };
@@ -71,7 +74,12 @@ pub mod __private {
           (config.main_fn)(api::Api::new()),
         );
 
-        unsafe { system.setUpdateCallback.unwrap()(Some(update_callback), core::ptr::null_mut()) };
+        unsafe {
+          capi_state.csystem.setUpdateCallback.unwrap()(
+            Some(update_callback),
+            core::ptr::null_mut(),
+          )
+        };
       }
       CSystemEvent::kEventInitLua => (),
       CSystemEvent::kEventKeyPressed => {
@@ -128,7 +136,6 @@ pub mod __private {
 
     // Capture input state which will be returned from any futures waiting for the update_callback().
     // So this must happen before we wake those futures.
-
     let buttons_set = unsafe {
       let mut set = PDButtonsSet {
         current: CButtons(0),
