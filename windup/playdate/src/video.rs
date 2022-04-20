@@ -34,13 +34,18 @@ impl Video {
     }
   }
 
+  /// Returns an error with human-readable text describing the most recent Video error.
   fn get_render_error(&self, fn_name: &str) -> Error {
     let msg = unsafe {
       crate::null_terminated::parse_null_terminated_utf8(Self::fns().getError.unwrap()(self.cptr()))
     };
     match msg {
       Ok(err) => format!("{}: {}", fn_name, err).into(),
-      Err(err) => format!("{}: unknown error ({})", fn_name, err).into(),
+      Err(err) => format!(
+        "{}: unable to parse UTF-8 error string from Playdate. {}",
+        fn_name, err
+      )
+      .into(),
     }
   }
 

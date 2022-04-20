@@ -2,7 +2,7 @@ use core::cell::Cell;
 
 use crate::capi_state::CApiState;
 use crate::display::Display;
-use crate::file::File;
+use crate::files::File;
 use crate::graphics::Graphics;
 use crate::sound::Sound;
 use crate::time::{HighResolutionTimer, TimeTicks, WallClockTime};
