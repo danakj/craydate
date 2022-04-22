@@ -8,13 +8,15 @@ pub enum LoopTimeSpan {
   Unbounded(LoopTimeSpanStart),
 }
 impl LoopTimeSpan {
-  pub(crate) fn start(&self) -> TimeTicks {
+  /// Returns the start time of the looping time span.
+  pub fn start(&self) -> TimeTicks {
     match self {
       Self::Bounded(r) => r.start,
       Self::Unbounded(r) => r.start,
     }
   }
-  pub(crate) fn end(&self) -> Option<TimeTicks> {
+  /// Returns the end time of the looping time span, if there is one.
+  pub fn end(&self) -> Option<TimeTicks> {
     match self {
       Self::Bounded(r) => Some(r.end),
       Self::Unbounded(_) => None,
