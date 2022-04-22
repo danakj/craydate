@@ -59,17 +59,23 @@ impl Sound {
     }
   }
 
+  /// The default `SoundChannel`. Attaching a `SoundSource` to it will play from the device.
   pub fn default_channel(&self) -> &SoundChannelRef {
     &self.default_channel
   }
+  /// The default `SoundChannel`. Attaching a `SoundSource` to it will play from the device.
   pub fn default_channel_mut(&mut self) -> &mut SoundChannelRef {
     &mut self.default_channel
   }
 
+  /// Add a user-created `SoundChannel` to have it play from the device.
   pub fn add_channel(&mut self, channel: &mut SoundChannel) {
     channel.set_added(true);
     unsafe { Self::fns().addChannel.unwrap()(channel.cptr()) };
   }
+  /// Remove a user-created `SoundChannel` to no longer have it play from the device.
+  /// 
+  /// Does nothing if the `SoundChannel` was not already added with `add_channel()`.
   pub fn remove_channel(&mut self, channel: &mut SoundChannel) {
     channel.set_added(false);
     unsafe { Self::fns().removeChannel.unwrap()(channel.cptr()) }
