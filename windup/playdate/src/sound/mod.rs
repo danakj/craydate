@@ -56,7 +56,7 @@ impl Sound {
   pub(crate) fn new() -> Self {
     Sound {
       default_channel: SoundChannelRef::from_ptr(unsafe {
-        CApiState::get().csound.getDefaultChannel.unwrap()()
+        Self::fns().getDefaultChannel.unwrap()()
       }),
     }
   }
@@ -70,11 +70,11 @@ impl Sound {
 
   pub fn add_channel(&mut self, channel: &mut SoundChannel) {
     channel.set_added(true);
-    unsafe { CApiState::get().csound.addChannel.unwrap()(channel.cptr()) };
+    unsafe { Self::fns().addChannel.unwrap()(channel.cptr()) };
   }
   pub fn remove_channel(&mut self, channel: &mut SoundChannel) {
     channel.set_added(false);
-    unsafe { CApiState::get().csound.removeChannel.unwrap()(channel.cptr()) }
+    unsafe { Self::fns().removeChannel.unwrap()(channel.cptr()) }
   }
 
   /// Returns the sound engine’s current time value.
@@ -85,11 +85,15 @@ impl Sound {
 
   /// Returns the sound engine’s current time value, in units of sample frames, 44,100 per second.
   pub fn current_sound_time_frames(&self) -> SampleFrames {
-    SampleFrames(unsafe { CApiState::get().csound.getCurrentTime.unwrap()() })
+    SampleFrames(unsafe { Self::fns().getCurrentTime.unwrap()() })
   }
 
   /// Force audio output to the given outputs, regardless of headphone status.
   pub fn set_active_outputs(&self, headphone: bool, speaker: bool) {
-    unsafe { CApiState::get().csound.setOutputsActive.unwrap()(headphone as i32, speaker as i32) };
+    unsafe { Self::fns().setOutputsActive.unwrap()(headphone as i32, speaker as i32) };
+  }
+
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_sound {
+    CApiState::get().csound
   }
 }
