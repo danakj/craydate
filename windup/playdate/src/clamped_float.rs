@@ -91,3 +91,9 @@ impl<const LOW: i32, const HIGH: i32> core::ops::Div<f32> for ClampedFloatInclus
     Self::new(self.0.div(rhs))
   }
 }
+
+impl<const LOW: i32, const HIGH: i32> core::fmt::Display for ClampedFloatInclusive<LOW, HIGH> {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    self.0.fmt(f)
+  }
+}
