@@ -8,6 +8,7 @@ use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::null_terminated::ToNullTerminatedString;
 
+/// A callback builder for a closure to be called on menu events.
 pub type MenuCallback<'a, T, F, S> = crate::callbacks::CallbackBuilder<'a, T, F, NoNull, S>;
 
 static mut MENU_KEY: usize = 0;

@@ -205,6 +205,8 @@ pub enum Unconstructed {}
 pub enum WithCallacks {}
 pub enum Constructed {}
 
+/// A builder pattern to construct a callback that will later be called when `SystemEvent::Callback`
+/// fires. Connects a closure to a `Callbacks` object which can later run the closure.
 pub struct CallbackBuilder<
   'a,
   T = (),
@@ -217,6 +219,7 @@ pub struct CallbackBuilder<
   _marker: core::marker::PhantomData<(&'a u8, T, F, Rule, State)>,
 }
 impl<'a> CallbackBuilder<'a, (), fn(()), AllowNull, Unconstructed> {
+  /// A null callback, which is used to specify a callback should not be set, or should be removed.
   pub fn none() -> CallbackBuilder<'a, (), fn(()), AllowNull, Constructed> {
     CallbackBuilder {
       callbacks: None,
@@ -226,6 +229,7 @@ impl<'a> CallbackBuilder<'a, (), fn(()), AllowNull, Unconstructed> {
   }
 }
 impl<'a, T, F: Fn(T) + 'static, Rule> CallbackBuilder<'a, T, F, Rule, Unconstructed> {
+  /// Attach a `Callbacks` object to this builder, that will hold the closure.
   pub fn with(callbacks: &'a mut Callbacks<T>) -> CallbackBuilder<'a, T, F, Rule, WithCallacks> {
     CallbackBuilder {
       callbacks: Some(callbacks),
@@ -235,6 +239,8 @@ impl<'a, T, F: Fn(T) + 'static, Rule> CallbackBuilder<'a, T, F, Rule, Unconstruc
   }
 }
 impl<'a, T, F: Fn(T) + 'static, Rule> CallbackBuilder<'a, T, F, Rule, WithCallacks> {
+  /// Attach a closure to this builder, which will be held in the `Callbacks` object and called via
+  /// that same `Callbacks` object.
   pub fn call(self, cb: F) -> CallbackBuilder<'a, T, F, Rule, Constructed> {
     CallbackBuilder {
       callbacks: self.callbacks,

@@ -43,6 +43,7 @@ use crate::time::TimeTicks;
 
 pub(crate) const SAMPLE_FRAMES_PER_SEC: i32 = 44_100;
 
+/// A callback builder for a closure to be called on sound completion events.
 pub type SoundCompletionCallback<'a, T, F, S> =
   crate::callbacks::CallbackBuilder<'a, T, F, AllowNull, S>;
 
