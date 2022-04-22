@@ -1,13 +1,15 @@
 [package]
+description = "A safe Rust API for the Playdate game system."
 edition = "2021"
+license = "MIT or Apache-2.0"
 name = "playdate"
 version = "0.1.0"
 
 [dependencies]
+playdate-macro = {path = "../playdate-macro"}
 playdate-sys = {path = "../playdate-sys"}
 static_assertions = "1"
-playdate-macro = {path = "../playdate-macro"}
 
 [dependencies.euclid]
-version = "0.22"
 default-features = false
+version = "0.22"

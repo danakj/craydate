@@ -1,6 +1,5 @@
 [package]
+description = "Tools for building a pdx from the compiled game library."
+license = "MIT or Apache-2.0"
 name = "playdate-build"
 version = "0.1.0"
-description = "Tools for building a pdx from the compiled game library."
-
-[dependencies]

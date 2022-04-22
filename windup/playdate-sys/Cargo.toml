@@ -1,9 +1,9 @@
 [package]
+description = "Bindings around the Playdate C API, generated with bindgen."
 edition = "2021"
+license = "MIT or Apache-2.0"
 name = "playdate-sys"
 version = "0.1.0"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 dynpath = {path = "../dynpath"}
