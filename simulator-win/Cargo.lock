@@ -550,9 +550,6 @@ dependencies = [
 [[package]]
 name = "playdate-build"
 version = "0.1.0"
-dependencies = [
- "anyhow",
-]
 
 [[package]]
 name = "playdate-macro"
