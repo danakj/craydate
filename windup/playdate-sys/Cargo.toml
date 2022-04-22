@@ -9,4 +9,4 @@ version = "0.1.0"
 dynpath = {path = "../dynpath"}
 
 [build-dependencies]
-bindgen = "*"
+bindgen = "0.59"
