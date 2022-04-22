@@ -188,22 +188,15 @@ impl<'data> Instrument {
 
   /// Gets the playback volume (0.0 - 1.0) for left and right channels of the source.
   pub fn volume(&self) -> StereoVolume {
-    let mut v = StereoVolume {
-      left: 0.0,
-      right: 0.0,
+    let mut v = StereoVolume::zero();
+    unsafe {
+      Instrument::fns().getVolume.unwrap()(self.cptr(), v.left.as_mut_ptr(), v.right.as_mut_ptr())
     };
-    unsafe { Instrument::fns().getVolume.unwrap()(self.cptr(), &mut v.left, &mut v.right) };
     v
   }
   /// Sets the playback volume (0.0 - 1.0) for left and right channels of the source.
   pub fn set_volume(&mut self, v: StereoVolume) {
-    unsafe {
-      Instrument::fns().setVolume.unwrap()(
-        self.cptr(),
-        v.left.clamp(0f32, 1f32),
-        v.right.clamp(0f32, 1f32),
-      )
-    }
+    unsafe { Instrument::fns().setVolume.unwrap()(self.cptr(), v.left.into(), v.right.into()) }
   }
 
   pub(crate) fn cptr(&self) -> *mut CSynthInstrument {

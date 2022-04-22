@@ -171,8 +171,8 @@ impl FilePlayer {
     unsafe {
       (*CApiState::get().csound.fileplayer).fadeVolume.unwrap()(
         self.as_mut_ptr(),
-        volume.left.clamp(0f32, 1f32),
-        volume.right.clamp(0f32, 1f32),
+        volume.left.into(),
+        volume.right.into(),
         duration.to_sample_frames(),
         func,
       )

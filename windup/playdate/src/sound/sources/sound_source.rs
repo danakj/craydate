@@ -1,6 +1,5 @@
-use core::ptr::NonNull;
-
 use alloc::rc::{Rc, Weak};
+use core::ptr::NonNull;
 
 use super::super::{SoundCompletionCallback, StereoVolume};
 use crate::callbacks::{Constructed, RegisteredCallback};
@@ -60,8 +59,9 @@ impl SoundSource {
         // The SoundSource holds a Weak pointer to the SoundChannel so it knows whether to remove
         // itself in drop().
         self.attachment = Attachment::Channel(Rc::downgrade(channel));
-        let r =
-          unsafe { (*CApiState::get().csound.channel).addSource.unwrap()(channel.as_ptr(), self.cptr()) };
+        let r = unsafe {
+          (*CApiState::get().csound.channel).addSource.unwrap()(channel.as_ptr(), self.cptr())
+        };
         assert!(r != 0);
         Ok(())
       }
@@ -103,23 +103,20 @@ impl SoundSource {
 
   /// Gets the playback volume (0.0 - 1.0) for left and right channels of the source.
   pub fn volume(&self) -> StereoVolume {
-    let mut v = StereoVolume {
-      left: 0.0,
-      right: 0.0,
-    };
+    let mut v = StereoVolume::zero();
     unsafe {
-      (*CApiState::get().csound.source).getVolume.unwrap()(self.ptr, &mut v.left, &mut v.right)
+      (*CApiState::get().csound.source).getVolume.unwrap()(
+        self.ptr,
+        v.left.as_mut_ptr(),
+        v.right.as_mut_ptr(),
+      )
     };
     v
   }
   /// Sets the playback volume (0.0 - 1.0) for left and right channels of the source.
   pub fn set_volume(&mut self, v: StereoVolume) {
     unsafe {
-      (*CApiState::get().csound.source).setVolume.unwrap()(
-        self.ptr,
-        v.left.clamp(0f32, 1f32),
-        v.right.clamp(0f32, 1f32),
-      )
+      (*CApiState::get().csound.source).setVolume.unwrap()(self.ptr, v.left.into(), v.right.into())
     }
   }
   /// Returns whether the source is currently playing.
