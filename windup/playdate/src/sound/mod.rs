@@ -2,7 +2,6 @@ pub(crate) mod audio_sample;
 pub(crate) mod effects;
 pub(crate) mod loop_sound_span;
 pub(crate) mod midi;
-pub(crate) mod sample_frames;
 pub(crate) mod signals;
 pub(crate) mod sound_channel;
 pub(crate) mod sound_format;
@@ -22,7 +21,6 @@ pub use midi::midi_note_range::MidiNoteRange;
 pub use midi::sequence::Sequence;
 pub use midi::sequence_track::SequenceTrack;
 pub use midi::track_note::TrackNote;
-pub use sample_frames::SampleFrames;
 pub use signals::control::Control;
 pub use signals::envelope::Envelope;
 pub use signals::lfo::Lfo;
@@ -79,13 +77,7 @@ impl Sound {
 
   /// Returns the sound engine’s current time value.
   pub fn current_sound_time(&self) -> TimeTicks {
-    let frames = self.current_sound_time_frames();
-    TimeTicks::from_sample_frames(frames.0)
-  }
-
-  /// Returns the sound engine’s current time value, in units of sample frames, 44,100 per second.
-  pub fn current_sound_time_frames(&self) -> SampleFrames {
-    SampleFrames(unsafe { Self::fns().getCurrentTime.unwrap()() })
+    TimeTicks::from_sample_frames(unsafe { Self::fns().getCurrentTime.unwrap()() })
   }
 
   /// Force audio output to the given outputs, regardless of headphone status.
