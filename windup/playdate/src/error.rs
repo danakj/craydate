@@ -1,22 +1,15 @@
 use alloc::string::String;
 
+/// The Error type for all errors in the playdate crate.
 pub enum Error {
-  BorrowError(core::cell::BorrowError),
-  BorrowMutError(core::cell::BorrowMutError),
-  NotFoundError,
-  LoadMidiFileError,
-  AlreadyAttachedError,
+  /// A general error which is described by the contained string.
   String(String),
-}
-impl From<core::cell::BorrowError> for Error {
-  fn from(e: core::cell::BorrowError) -> Self {
-    Error::BorrowError(e)
-  }
-}
-impl From<core::cell::BorrowMutError> for Error {
-  fn from(e: core::cell::BorrowMutError) -> Self {
-    Error::BorrowMutError(e)
-  }
+  /// Indicates a file or resource was not found.
+  NotFoundError,
+  /// Attempting to load a MIDI file was unsuccessful.
+  LoadMidiFileError,
+  /// A SoundChannel or SoundSource was already attached and can not be attached again.
+  AlreadyAttachedError,
 }
 impl From<String> for Error {
   fn from(s: String) -> Self {
@@ -37,8 +30,6 @@ impl From<&mut str> for Error {
 impl core::fmt::Debug for Error {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     match self {
-      Error::BorrowError(e) => write!(f, "Error(BorrowError({:?}))", e),
-      Error::BorrowMutError(e) => write!(f, "Error(BorrowMutError({:?}))", e),
       Error::NotFoundError => write!(f, "Error(NotFoundError)"),
       Error::AlreadyAttachedError => write!(f, "Error(AlreadyAttachedError)"),
       Error::LoadMidiFileError => write!(f, "Error(LoadMidiFileError"),
@@ -49,8 +40,6 @@ impl core::fmt::Debug for Error {
 impl core::fmt::Display for Error {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     match self {
-      Error::BorrowError(e) => write!(f, "{}", e),
-      Error::BorrowMutError(e) => write!(f, "{}", e),
       Error::NotFoundError => write!(f, "not found"),
       Error::AlreadyAttachedError => write!(f, "already attached"),
       Error::LoadMidiFileError => write!(f, "MIDI file failed to load"),
