@@ -94,7 +94,7 @@ impl OpenFile {
 impl Drop for OpenFile {
   fn drop(&mut self) {
     if !self.closed {
-      crate::debug::log("ERROR: OpenFile dropped without calling close()");
+      crate::log::log("ERROR: OpenFile dropped without calling close()");
       assert!(self.closed);
     }
   }

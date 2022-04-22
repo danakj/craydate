@@ -19,7 +19,6 @@ mod callbacks;
 mod capi_state;
 mod ctypes;
 mod ctypes_enums;
-mod debug;
 mod display;
 mod error;
 mod executor;
@@ -52,7 +51,7 @@ pub use files::*;
 pub use geometry::*;
 pub use graphics::*;
 pub use inputs::*;
-pub use log::*;
+pub use log::{log, log_error};
 pub use menu::*;
 pub use sound::*;
 pub use system_event::*;
@@ -69,24 +68,24 @@ static mut GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();
 /// Since the top-level crate has to implement the `#[panic_handler]` we make it
 /// easy by letting them simply forward over to this function.
 pub fn panic_handler(panic_info: &core::panic::PanicInfo) -> ! {
-  crate::debug::log_to_stdout("panic!");
+  crate::log::log_to_stdout("panic!");
   if let Some(loc) = panic_info.location() {
-    crate::debug::log_to_stdout(" at ");
-    crate::debug::log_to_stdout(loc.file());
-    crate::debug::log_to_stdout(":");
-    crate::debug::log_usize_to_stdout(loc.line() as usize);
-    crate::debug::log_to_stdout(":");
-    crate::debug::log_usize_to_stdout(loc.column() as usize);
+    crate::log::log_to_stdout(" at ");
+    crate::log::log_to_stdout(loc.file());
+    crate::log::log_to_stdout(":");
+    crate::log::log_usize_to_stdout(loc.line() as usize);
+    crate::log::log_to_stdout(":");
+    crate::log::log_usize_to_stdout(loc.column() as usize);
 
     // TODO: caller()s.
 
-    crate::debug::log_to_stdout_with_newline("");
+    crate::log::log_to_stdout_with_newline("");
   }
 
   if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
-    crate::debug::log_to_stdout("payload: ");
-    crate::debug::log_to_stdout(s);
-    crate::debug::log_to_stdout("\n");
+    crate::log::log_to_stdout("payload: ");
+    crate::log::log_to_stdout(s);
+    crate::log::log_to_stdout("\n");
   } else {
     //crate::debug::log_bytes_to_stdout(b"panic has unknown payload");
   }

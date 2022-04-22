@@ -52,9 +52,13 @@ impl CApiState {
   }
   pub fn set_instance(capi: &'static CApiState) {
     unsafe { GLOBAL_CAPI_STATE = Some(capi) };
+    crate::log::log("debug::log initialized.");
   }
   pub fn get() -> &'static CApiState {
     unsafe { GLOBAL_CAPI_STATE.unwrap() }
+  }
+  pub fn try_get() -> Option<&'static CApiState> {
+    unsafe { GLOBAL_CAPI_STATE }
   }
 
   /// Stores the current frame's button states, and moves the previous frames' states into the next

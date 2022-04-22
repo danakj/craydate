@@ -53,10 +53,9 @@ pub mod __private {
         // SAFETY: Do not allocate before the GLOBAL_ALLOCATOR is set up here, or we will crash in
         // the allocator.
         //
-        // SAFETY: Use the reference to the playdate system from the CapiState as that is the one
+        // SAFETY: Use the reference to the playdate system from the CApiState as that is the one
         // true reference and we don't want to use the pointer which could invalidate the reference.
         unsafe { GLOBAL_ALLOCATOR.set_system_ptr(capi_state.csystem) };
-        crate::debug::initialize(capi_state.csystem);
 
         // We leak this pointer so it has 'static lifetime.
         let capi_state = Box::into_raw(Box::new(capi_state));
