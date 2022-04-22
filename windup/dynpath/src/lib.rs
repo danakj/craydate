@@ -1,3 +1,16 @@
+//! This crate provides a `#[dynpath()]` macro that can be placed a `mod` statement and which points
+//! the module to a dynamic path.
+//!
+//! The macro takes a single parameter which is the name of an environment variable to read the path
+//! from, and it appends the module name and `.rs` extension onto the contents of the variable.
+//!
+//! # Example
+//! ```
+//! // Turns into `#[path = "whatever/is/in/OUT_DIR/bindings.rs"]`.
+//! #[dynpath("OUT_DIR")]
+//! mod bindings;
+//! ```
+
 #![deny(clippy::all)]
 
 extern crate proc_macro;
@@ -15,6 +28,7 @@ macro_rules! tokens {
     }
 }
 
+/// See the crate documentation for how to use the `#[dynpath()]` macro.
 #[proc_macro_attribute]
 pub fn dynpath(attr: TokenStream, item: TokenStream) -> TokenStream {
   let attr = parse_macro_input!(attr as syn::AttributeArgs);
@@ -26,20 +40,17 @@ pub fn dynpath(attr: TokenStream, item: TokenStream) -> TokenStream {
   }
 
   let option = match &attr[0] {
-    syn::NestedMeta::Lit(syn::Lit::Str(lit)) if lit.value() == "OUT_DIR" => lit.value(),
+    syn::NestedMeta::Lit(syn::Lit::Str(lit)) => lit.value(),
     _ => {
       return quote! {
-          compile_error!("Argument should be \"OUT_DIR\"")
+          compile_error!("Argument should be the name of an environment variable, e.g. `\"OUT_DIR\"`")
       }
       .into();
     }
   };
 
-  let dir = if option == "OUT_DIR" {
-    std::env::var("OUT_DIR").unwrap()
-  } else {
-    panic!()
-  };
+  let dir = std::env::var(&option)
+    .unwrap_or_else(|_| panic!("The \"{}\" environment variable is not set", option));
 
   let item = parse_macro_input!(item as syn::ItemMod);
   let modname = item.ident.to_string();
