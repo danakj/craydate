@@ -8,7 +8,11 @@ use crate::sound::Sound;
 use crate::time::{HighResolutionTimer, TimeTicks, WallClockTime};
 use crate::{ctypes::*, SystemEventWatcher};
 
+/// The global state of the Playdate system. Used to access the device's display, sound, files, etc.
+/// 
+/// This type is passed as a parameter to the `#[main]` function of the game.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct Api {
   pub system: System,
   pub display: Display,
