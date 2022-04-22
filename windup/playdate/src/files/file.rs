@@ -24,6 +24,7 @@ pub(super) fn last_err() -> String {
   }
 }
 
+/// Access to the file system of the Playdate device.
 #[derive(Debug)]
 pub struct File;
 impl File {

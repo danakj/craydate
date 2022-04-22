@@ -1,5 +1,6 @@
 use crate::capi_state::CApiState;
 
+/// Access to the details and configuration of the Playdate device display screen.
 #[derive(Debug)]
 pub struct Display;
 impl Display {

@@ -10,6 +10,7 @@ use crate::capi_state::{CApiState, ContextStackId};
 use crate::ctypes::*;
 use crate::null_terminated::ToNullTerminatedString;
 
+/// Access to drawing functions to draw to the Playdate device's screen.
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct Graphics;
@@ -60,8 +61,8 @@ impl Graphics {
   }
 
   /// Manually flushes the current frame buffer out to the display. This function is automatically
-  /// called after each pass through the run loop, so there shouldn’t be any need to call it
-  /// yourself.
+  /// called at the end of each frame, after yielding back to the Playdate system through the
+  /// `SystemEventWatcher`, so there shouldn’t be any need to call it yourself.
   pub fn display(&mut self) {
     unsafe {
       CApiState::get().cgraphics.display.unwrap()();

@@ -47,6 +47,7 @@ pub(crate) const SAMPLE_FRAMES_PER_SEC: i32 = 44_100;
 pub type SoundCompletionCallback<'a, T, F, S> =
   crate::callbacks::CallbackBuilder<'a, T, F, AllowNull, S>;
 
+/// Access to the speaker and headphone outputs of the Playdate device, along with the audio clock.
 #[derive(Debug)]
 pub struct Sound {
   default_channel: SoundChannelRef,
