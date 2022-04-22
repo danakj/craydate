@@ -270,3 +270,17 @@ impl core::ops::Sub<WallClockTime> for WallClockTime {
     }
   }
 }
+
+/// A span of time with an absolute (unsigned) start and end.
+#[derive(Debug)]
+pub struct TimeSpan {
+  pub start: TimeTicks,
+  pub end: TimeTicks,
+}
+
+/// A span of time with a relative (signed) start and end.
+#[derive(Debug)]
+pub struct RelativeTimeSpan {
+  pub start: TimeDelta,
+  pub end: TimeDelta,
+}

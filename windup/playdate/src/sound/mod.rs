@@ -1,11 +1,11 @@
 pub(crate) mod audio_sample;
 pub(crate) mod effects;
+pub(crate) mod loop_sound_span;
 pub(crate) mod midi;
 pub(crate) mod sample_frames;
 pub(crate) mod signals;
 pub(crate) mod sound_channel;
 pub(crate) mod sound_format;
-pub(crate) mod sound_range;
 pub(crate) mod sources;
 pub(crate) mod stereo_volume;
 
@@ -17,6 +17,7 @@ pub use effects::overdrive::Overdrive;
 pub use effects::ring_modulator::RingModulator;
 pub use effects::sound_effect::SoundEffect;
 pub use effects::two_pole_filter::TwoPoleFilter;
+pub use loop_sound_span::LoopTimeSpan;
 pub use midi::midi_note_range::MidiNoteRange;
 pub use midi::sequence::Sequence;
 pub use midi::sequence_track::SequenceTrack;
@@ -28,7 +29,6 @@ pub use signals::lfo::Lfo;
 pub use signals::synth_signal::SynthSignal;
 pub use sound_channel::{SoundChannel, SoundChannelRef};
 pub use sound_format::*;
-pub use sound_range::{SignedSoundRange, SoundRange};
 pub use sources::delay_line_tap::DelayLineTap;
 pub use sources::file_player::FilePlayer;
 pub use sources::instrument::{Instrument, VoiceId};

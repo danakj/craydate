@@ -2,13 +2,12 @@ use core::marker::PhantomData;
 use core::mem::ManuallyDrop;
 
 use super::super::audio_sample::AudioSample;
-use super::super::sound_range::SignedSoundRange;
 use super::super::SoundCompletionCallback;
 use super::sound_source::SoundSource;
 use crate::callbacks::{Constructed, RegisteredCallback};
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
-use crate::time::TimeDelta;
+use crate::time::{RelativeTimeSpan, TimeDelta};
 
 #[derive(Debug)]
 pub struct SamplePlayer<'sample> {
@@ -79,7 +78,7 @@ impl SamplePlayer<'_> {
   }
 
   /// Sets the ping-pong range when `play()` is called with `repeat` of `-1`.
-  pub fn set_play_range(&mut self, play_range: SignedSoundRange) {
+  pub fn set_play_range(&mut self, play_range: RelativeTimeSpan) {
     unsafe {
       Self::fns().setPlayRange.unwrap()(
         self.ptr,

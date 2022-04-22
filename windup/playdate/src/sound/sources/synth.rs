@@ -5,13 +5,12 @@ use core::mem::ManuallyDrop;
 
 use super::super::audio_sample::AudioSample;
 use super::super::signals::synth_signal::SynthSignal;
-use super::super::sound_range::SoundRange;
 use super::sound_source::SoundSource;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::ctypes_enums::SoundWaveform;
 use crate::error::Error;
-use crate::time::{TimeDelta, TimeTicks};
+use crate::time::{TimeDelta, TimeTicks, TimeSpan};
 
 #[derive(Debug)]
 pub struct Synth {
@@ -54,7 +53,7 @@ impl Synth {
   ///
   /// An optional sustain region defines a loop to play while the note is on. Sample data must be
   /// uncompressed PCM, not ADPCM.
-  pub fn new_with_sample(sample: AudioSample, sustain_region: Option<SoundRange>) -> Synth {
+  pub fn new_with_sample(sample: AudioSample, sustain_region: Option<TimeSpan>) -> Synth {
     let mut synth = Self::new();
     unsafe {
       Self::fns().setSample.unwrap()(

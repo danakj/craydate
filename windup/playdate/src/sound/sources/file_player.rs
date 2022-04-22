@@ -1,6 +1,6 @@
 use core::mem::ManuallyDrop;
 
-use super::super::sound_range::LoopSoundRange;
+use super::super::loop_sound_span::LoopTimeSpan;
 use super::super::{SoundCompletionCallback, StereoVolume};
 use super::sound_source::SoundSource;
 use crate::callbacks::{Constructed, RegisteredCallback};
@@ -108,7 +108,7 @@ impl FilePlayer {
   /// Sets the start and end of the loop region for playback.
   ///
   /// If `end` is `None`, the end of the player's buffer is used.
-  pub fn set_loop_range(&mut self, loop_range: LoopSoundRange) {
+  pub fn set_loop_range(&mut self, loop_range: LoopTimeSpan) {
     unsafe {
       (*CApiState::get().csound.fileplayer).setLoopRange.unwrap()(
         self.as_mut_ptr(),
