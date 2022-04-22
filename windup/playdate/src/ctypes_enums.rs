@@ -1,4 +1,5 @@
-//! This module re-exports playdate_sys enums that are passed through directly.
+//! This module re-exports playdate_sys enums that are passed through directly. The content of
+//! module is exposed publicly to the game.
 
 pub use playdate_sys::LCDBitmapDrawMode as BitmapDrawMode;
 pub use playdate_sys::LCDBitmapFlip as BitmapFlip;

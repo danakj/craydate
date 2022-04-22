@@ -1,4 +1,5 @@
 //! This module re-exports playdate_sys types with more consistent names.
+
 pub use playdate_sys::playdate_display as CDisplayApi;
 pub use playdate_sys::playdate_file as CFileApi;
 pub use playdate_sys::playdate_graphics as CGraphicsApi;
@@ -38,6 +39,7 @@ pub use playdate_sys::LCDFontPage as CLCDFontPage;
 pub use playdate_sys::LCDPattern as CLCDPattern;
 pub use playdate_sys::LCDRect as CLCDRect;
 pub use playdate_sys::LCDVideoPlayer as CVideoPlayer;
+pub use playdate_sys::LFOType as CSynthLfoType;
 pub use playdate_sys::OnePoleFilter as COnePoleFilter;
 pub use playdate_sys::Overdrive as COverdrive;
 pub use playdate_sys::PDButtons as CButtons;
@@ -60,7 +62,6 @@ pub use playdate_sys::SoundSequence as CSoundSequence;
 pub use playdate_sys::SoundSource as CSoundSource;
 pub use playdate_sys::SoundWaveform as CSoundWaveform;
 pub use playdate_sys::TwoPoleFilter as CTwoPoleFilter;
-pub use playdate_sys::LFOType as CSynthLfoType;
 
 pub use crate::ctypes_enums::*;
 
