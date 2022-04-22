@@ -48,15 +48,11 @@ pub mod __private {
 
     match event {
       CSystemEvent::kEventInit => {
-        let capi_state = CApiState::new(api);
-
         // SAFETY: Do not allocate before the GLOBAL_ALLOCATOR is set up here, or we will crash in
         // the allocator.
-        //
-        // SAFETY: Use the reference to the playdate system from the CApiState as that is the one
-        // true reference and we don't want to use the pointer which could invalidate the reference.
-        unsafe { GLOBAL_ALLOCATOR.set_system_ptr(capi_state.csystem) };
+        unsafe { GLOBAL_ALLOCATOR.set_system_ptr(&*api.system) };
 
+        let capi_state = CApiState::new(api);
         // We leak this pointer so it has 'static lifetime.
         let capi_state = Box::into_raw(Box::new(capi_state));
         // The CApiState is always accessed through a shared pointer. And the CApiState is constructed

@@ -52,7 +52,6 @@ impl CApiState {
   }
   pub fn set_instance(capi: &'static CApiState) {
     unsafe { GLOBAL_CAPI_STATE = Some(capi) };
-    crate::log::log("debug::log initialized.");
   }
   pub fn get() -> &'static CApiState {
     unsafe { GLOBAL_CAPI_STATE.unwrap() }
