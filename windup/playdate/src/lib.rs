@@ -1,3 +1,5 @@
+//! [Playdate](https://play.date/)
+
 #![no_std]
 #![deny(clippy::all)]
 #![feature(core_intrinsics)]
