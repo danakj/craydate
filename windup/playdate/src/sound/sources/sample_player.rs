@@ -1,18 +1,24 @@
 use core::marker::PhantomData;
 use core::mem::ManuallyDrop;
+use core::ptr::NonNull;
 
 use super::super::audio_sample::AudioSample;
 use super::super::SoundCompletionCallback;
-use super::sound_source::{SoundSource, AsSoundSource};
+use super::sound_source::{AsSoundSource, SoundSource};
 use crate::callbacks::{Constructed, RegisteredCallback};
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::time::{RelativeTimeSpan, TimeDelta};
 
+/// A `SamplePlayer` will play an `AudioSample`.
+///
+/// The `SamplePlayer` acts as a `SoundSource` so it can be connected to a `SoundChannel` to play
+/// the sample to the device's audio output. The `SamplePlayer` holds a borrow on the `AudioSample`
+/// rather than taking ownership.
 #[derive(Debug)]
 pub struct SamplePlayer<'sample> {
   source: ManuallyDrop<SoundSource>,
-  ptr: *mut CSamplePlayer,
+  ptr: NonNull<CSamplePlayer>,
   loop_callback: Option<RegisteredCallback>,
   _marker: PhantomData<&'sample AudioSample>,
 }
@@ -23,7 +29,7 @@ impl SamplePlayer<'_> {
     unsafe { Self::fns().setSample.unwrap()(ptr, sample.cptr()) }
     SamplePlayer {
       source: ManuallyDrop::new(SoundSource::from_ptr(ptr as *mut CSoundSource)),
-      ptr,
+      ptr: NonNull::new(ptr).unwrap(),
       loop_callback: None,
       _marker: PhantomData,
     }
@@ -31,7 +37,7 @@ impl SamplePlayer<'_> {
 
   /// Returns the length of AudioSample assigned to the player.
   pub fn len(&self) -> TimeDelta {
-    TimeDelta::from_seconds_lossy(unsafe { Self::fns().getLength.unwrap()(self.ptr) })
+    TimeDelta::from_seconds_lossy(unsafe { Self::fns().getLength.unwrap()(self.cptr()) })
   }
 
   /// Starts playing the sample attached to the player.
@@ -43,38 +49,38 @@ impl SamplePlayer<'_> {
   /// an octave, etc.
   pub fn play(&mut self, repeat: i32, rate: f32) {
     // TODO: What does the return value of play() mean here?
-    unsafe { Self::fns().play.unwrap()(self.ptr, repeat, rate) };
+    unsafe { Self::fns().play.unwrap()(self.cptr(), repeat, rate) };
   }
   pub fn stop(&mut self) {
-    unsafe { Self::fns().stop.unwrap()(self.ptr) };
+    unsafe { Self::fns().stop.unwrap()(self.cptr()) };
   }
   /// Pauses playback of the SamplePlayer.
   pub fn pause(&mut self) {
-    unsafe { Self::fns().setPaused.unwrap()(self.ptr, 1) }
+    unsafe { Self::fns().setPaused.unwrap()(self.cptr(), 1) }
   }
   /// Resumes playback of the SamplePlayer.
   pub fn unpause(&mut self) {
-    unsafe { Self::fns().setPaused.unwrap()(self.ptr, 1) }
+    unsafe { Self::fns().setPaused.unwrap()(self.cptr(), 1) }
   }
   /// Returns if the player is playing a sample.
   pub fn is_playing(&self) -> bool {
-    unsafe { Self::fns().isPlaying.unwrap()(self.ptr) != 0 }
+    unsafe { Self::fns().isPlaying.unwrap()(self.cptr()) != 0 }
   }
 
   /// Sets the current offset of the SamplePlayer.
   pub fn set_offset(&mut self, offset: TimeDelta) {
-    unsafe { Self::fns().setOffset.unwrap()(self.ptr, offset.to_seconds()) };
+    unsafe { Self::fns().setOffset.unwrap()(self.cptr(), offset.to_seconds()) };
   }
   /// Gets the current offset of the SamplePlayer.
   pub fn offset(&mut self) -> TimeDelta {
-    TimeDelta::from_seconds_lossy(unsafe { Self::fns().getOffset.unwrap()(self.ptr) })
+    TimeDelta::from_seconds_lossy(unsafe { Self::fns().getOffset.unwrap()(self.cptr()) })
   }
 
   /// Sets the ping-pong range when `play()` is called with `repeat` of `-1`.
   pub fn set_play_range(&mut self, play_range: RelativeTimeSpan) {
     unsafe {
       Self::fns().setPlayRange.unwrap()(
-        self.ptr,
+        self.cptr(),
         play_range.start.to_sample_frames(),
         play_range.end.to_sample_frames(),
       )
@@ -85,20 +91,20 @@ impl SamplePlayer<'_> {
   ///
   /// 1.0 is normal speed, 0.5 is down an octave, 2.0 is up an octave, etc.
   pub fn set_rate(&mut self, rate: f32) {
-    unsafe { Self::fns().setRate.unwrap()(self.ptr, rate) }
+    unsafe { Self::fns().setRate.unwrap()(self.cptr(), rate) }
   }
   /// Gets the playback rate for the SamplePlayer.
   pub fn rate(&self) -> f32 {
-    unsafe { Self::fns().getRate.unwrap()(self.ptr) }
+    unsafe { Self::fns().getRate.unwrap()(self.cptr()) }
   }
 
   /// Sets a function to be called every time the sample loops.
-  /// 
+  ///
   /// The callback will be registered as a system event, and the application will be notified to run
   /// the callback via a `SystemEvent::Callback` event. When that occurs, the application's
   /// `Callbacks` object which was used to construct the `completion_callback` can be `run()` to
   /// execute the closure bound in the `completion_callback`.
-  /// 
+  ///
   /// # Example
   /// ```
   /// let callbacks: Callbacks<i32> = Callbacks::new();
@@ -124,21 +130,26 @@ impl SamplePlayer<'_> {
       self.loop_callback = Some(reg);
       Some(func)
     });
-    unsafe { Self::fns().setLoopCallback.unwrap()(self.ptr, func) }
+    unsafe { Self::fns().setLoopCallback.unwrap()(self.cptr(), func) }
   }
 
-  fn fns() -> &'static playdate_sys::playdate_sound_sampleplayer {
+  pub(crate) fn cptr(&self) -> *mut CSamplePlayer {
+    self.ptr.as_ptr()
+  }
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_sampleplayer {
     unsafe { &*CApiState::get().csound.sampleplayer }
   }
 }
+
 impl Drop for SamplePlayer<'_> {
   fn drop(&mut self) {
     self.set_loop_callback(SoundCompletionCallback::none());
     // Ensure the SoundSource has a chance to clean up before it is freed.
     unsafe { ManuallyDrop::drop(&mut self.source) };
-    unsafe { Self::fns().freePlayer.unwrap()(self.ptr) }
+    unsafe { Self::fns().freePlayer.unwrap()(self.cptr()) }
   }
 }
+
 impl AsRef<SoundSource> for SamplePlayer<'_> {
   fn as_ref(&self) -> &SoundSource {
     &self.source
