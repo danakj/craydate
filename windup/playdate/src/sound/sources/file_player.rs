@@ -1,8 +1,9 @@
 use core::mem::ManuallyDrop;
+use core::ptr::NonNull;
 
 use super::super::loop_sound_span::LoopTimeSpan;
 use super::super::{SoundCompletionCallback, StereoVolume};
-use super::sound_source::{SoundSource, AsSoundSource};
+use super::sound_source::{AsSoundSource, SoundSource};
 use crate::callbacks::{Constructed, RegisteredCallback};
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
@@ -26,15 +27,15 @@ use crate::time::{TimeDelta, TimeTicks};
 /// * type `ffmpeg -i input.mp3 -acodec adpcm_ima_wav output.wav` at the command line.
 pub struct FilePlayer {
   source: ManuallyDrop<SoundSource>,
-  ptr: *mut CFilePlayer,
+  ptr: NonNull<CFilePlayer>,
   fade_callback: Option<RegisteredCallback>,
 }
 impl FilePlayer {
   /// Prepares the player to steam the file at `path`.
   pub fn from_file(path: &str) -> Self {
-    let ptr = unsafe { (*CApiState::get().csound.fileplayer).newPlayer.unwrap()() };
+    let ptr = unsafe { Self::fns().newPlayer.unwrap()() };
     unsafe {
-      (*CApiState::get().csound.fileplayer).loadIntoPlayer.unwrap()(
+      Self::fns().loadIntoPlayer.unwrap()(
         ptr,
         path.to_null_terminated_utf8().as_ptr(),
       )
@@ -44,30 +45,22 @@ impl FilePlayer {
     // somehow.
     FilePlayer {
       source: ManuallyDrop::new(SoundSource::from_ptr(ptr as *mut CSoundSource)),
-      ptr,
+      ptr: NonNull::new(ptr).unwrap(),
       fade_callback: None,
     }
-  }
-  fn as_ptr(&self) -> *const CFilePlayer {
-    self.source.cptr() as *const CFilePlayer
-  }
-  fn as_mut_ptr(&mut self) -> *mut CFilePlayer {
-    self.source.cptr() as *mut CFilePlayer
   }
 
   /// Returns the length, in seconds, of the file loaded into player.
   pub fn file_len(&self) -> TimeTicks {
-    let f = unsafe {
-      (*CApiState::get().csound.fileplayer).getLength.unwrap()(self.as_ptr() as *mut CFilePlayer)
-    };
+    let f = unsafe { Self::fns().getLength.unwrap()(self.cptr()) };
     TimeTicks::from_seconds_lossy(f)
   }
 
   /// Sets the length of the buffer which will be filled from the file.
   pub fn set_buffer_len(&mut self, length: TimeTicks) {
     unsafe {
-      (*CApiState::get().csound.fileplayer).setBufferLength.unwrap()(
-        self.as_mut_ptr(),
+      Self::fns().setBufferLength.unwrap()(
+        self.cptr(),
         length.to_seconds(),
       )
     };
@@ -75,7 +68,7 @@ impl FilePlayer {
 
   /// Pauses the file player.
   pub fn pause(&mut self) {
-    unsafe { (*CApiState::get().csound.fileplayer).pause.unwrap()(self.as_mut_ptr()) }
+    unsafe { Self::fns().pause.unwrap()(self.cptr()) }
   }
   /// Starts playing the file player.
   ///
@@ -83,29 +76,26 @@ impl FilePlayer {
   /// endlessly until it is stopped with `stop()`.
   pub fn play(&mut self, times: i32) -> Result<(), Error> {
     // TODO: Return play()'s int output value? What is it?
-    match unsafe { (*CApiState::get().csound.fileplayer).play.unwrap()(self.as_mut_ptr(), times) } {
+    match unsafe { Self::fns().play.unwrap()(self.cptr(), times) } {
       0 => Err("FilePlayer error on play".into()),
       _ => Ok(()),
     }
   }
   /// Stops playing the file.
   pub fn stop(&mut self) {
-    unsafe { (*CApiState::get().csound.fileplayer).stop.unwrap()(self.as_mut_ptr()) }
+    unsafe { Self::fns().stop.unwrap()(self.cptr()) }
   }
   /// Returns whether the player has underrun.
   pub fn did_underrun(&self) -> bool {
-    unsafe {
-      (*CApiState::get().csound.fileplayer).didUnderrun.unwrap()(self.as_ptr() as *mut CFilePlayer)
-        != 0
-    }
+    unsafe { Self::fns().didUnderrun.unwrap()(self.cptr()) != 0 }
   }
   /// Sets the start and end of the loop region for playback.
   ///
   /// If `end` is `None`, the end of the player's buffer is used.
   pub fn set_loop_range(&mut self, loop_range: LoopTimeSpan) {
     unsafe {
-      (*CApiState::get().csound.fileplayer).setLoopRange.unwrap()(
-        self.as_mut_ptr(),
+      Self::fns().setLoopRange.unwrap()(
+        self.cptr(),
         loop_range.start().to_seconds(),
         loop_range.end().map_or(0f32, TimeTicks::to_seconds),
       )
@@ -114,16 +104,13 @@ impl FilePlayer {
   /// Sets the current offset for the player.
   pub fn set_offset(&mut self, offset: TimeTicks) {
     unsafe {
-      (*CApiState::get().csound.fileplayer).setOffset.unwrap()(
-        self.as_mut_ptr(),
-        offset.to_seconds(),
-      )
+      Self::fns().setOffset.unwrap()(self.cptr(), offset.to_seconds())
     }
   }
   /// Gets the current offset for the player.
   pub fn offset(&self) -> TimeTicks {
     TimeTicks::from_seconds_lossy(unsafe {
-      (*CApiState::get().csound.fileplayer).getOffset.unwrap()(self.as_ptr() as *mut CFilePlayer)
+      Self::fns().getOffset.unwrap()(self.cptr())
     })
   }
   /// Sets the playback rate for the player.
@@ -131,32 +118,27 @@ impl FilePlayer {
   /// 1.0 is normal speed, 0.5 is down an octave, 2.0 is up an octave, etc. Unlike sampleplayers,
   /// fileplayers can’t play in reverse (i.e., rate < 0).
   pub fn set_playback_rate(&mut self, rate: f32) {
-    unsafe { (*CApiState::get().csound.fileplayer).setRate.unwrap()(self.as_mut_ptr(), rate) }
+    unsafe { Self::fns().setRate.unwrap()(self.cptr(), rate) }
   }
   /// Gets the playback rate for the player.
   pub fn playback_rate(&self) -> f32 {
-    unsafe {
-      (*CApiState::get().csound.fileplayer).getRate.unwrap()(self.as_ptr() as *mut CFilePlayer)
-    }
+    unsafe { Self::fns().getRate.unwrap()(self.cptr()) }
   }
   /// If flag evaluates to true, the player will restart playback (after an audible stutter) as soon
   /// as data is available.
   pub fn set_stop_on_underrun(&mut self, stop: bool) {
     unsafe {
-      (*CApiState::get().csound.fileplayer).setStopOnUnderrun.unwrap()(
-        self.as_mut_ptr(),
-        stop as i32,
-      )
+      Self::fns().setStopOnUnderrun.unwrap()(self.cptr(), stop as i32)
     }
   }
   /// Changes the volume of the fileplayer to `volume` over a length of `duration`.
-  /// 
+  ///
   /// The callback, if not `SoundCompletionCallback::none()`, will be registered as a system event,
   /// and the application will be notified to run the callback via a `SystemEvent::Callback` event.
   /// When that occurs, the application's `Callbacks` object which was used to construct the
   /// `completion_callback` can be `run()` to execute the closure bound in the
   /// `completion_callback`.
-  /// 
+  ///
   /// # Example
   /// ```
   /// let callbacks: Callbacks<i32> = Callbacks::new();
@@ -188,8 +170,8 @@ impl FilePlayer {
       Some(func)
     });
     unsafe {
-      (*CApiState::get().csound.fileplayer).fadeVolume.unwrap()(
-        self.as_mut_ptr(),
+      Self::fns().fadeVolume.unwrap()(
+        self.cptr(),
         volume.left.into(),
         volume.right.into(),
         duration.to_sample_frames(),
@@ -197,12 +179,19 @@ impl FilePlayer {
       )
     }
   }
+
+  pub(crate) fn cptr(&self) -> *mut CFilePlayer {
+    self.ptr.as_ptr()
+  }
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_fileplayer {
+    unsafe { &*CApiState::get().csound.fileplayer }
+  }
 }
 impl Drop for FilePlayer {
   fn drop(&mut self) {
     // Ensure the SoundSource has a chance to clean up before it is freed.
     unsafe { ManuallyDrop::drop(&mut self.source) };
-    unsafe { (*CApiState::get().csound.fileplayer).freePlayer.unwrap()(self.ptr) };
+    unsafe { Self::fns().freePlayer.unwrap()(self.cptr()) };
   }
 }
 
