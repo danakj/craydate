@@ -24,13 +24,6 @@ pub struct Instrument {
   synths: Vec<Synth>,
 }
 impl<'data> Instrument {
-  pub fn as_source(&self) -> &SoundSource {
-    self.as_ref()
-  }
-  pub fn as_source_mut(&mut self) -> &mut SoundSource {
-    self.as_mut()
-  }
-
   /// Creates a new Instrument.
   pub fn new() -> Self {
     let ptr = unsafe { Self::fns().newInstrument.unwrap()() };

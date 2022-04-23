@@ -42,13 +42,6 @@ impl Synth {
     }
   }
 
-  pub fn as_source(&self) -> &SoundSource {
-    self.as_ref()
-  }
-  pub fn as_source_mut(&mut self) -> &mut SoundSource {
-    self.as_mut()
-  }
-
   /// Creates a new Synth that plays a waveform.
   pub fn new_with_waveform(waveform: SoundWaveform) -> Self {
     let synth = Self::new();

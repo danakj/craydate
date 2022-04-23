@@ -26,6 +26,13 @@ impl Attachment {
   }
 }
 
+/// A `SoundSource` produces sound that can be played into a `SoundChannel`, thus playing to the
+/// device's sound outputs.
+///
+/// There are many types which act as a `SoundSource`. Any such type would implement
+/// `AsRef<SoundSource>` and `AsMut<SoundSource>`. They also have `as_source()` and
+/// `as_source_mut()` methods, through the `AsSoundSource` trait, to access the `SoundSource`
+/// methods more easily.
 #[derive(Debug)]
 pub struct SoundSource {
   ptr: *mut CSoundSource,
@@ -161,3 +168,14 @@ impl Drop for SoundSource {
     }
   }
 }
+
+/// Provides explicit access to a type's `SoundSource` methods when it can act as a `SoundSource`.
+pub trait AsSoundSource: AsRef<SoundSource> + AsMut<SoundSource> {
+  fn as_source(&self) -> &SoundSource {
+    self.as_ref()
+  }
+  fn as_source_mut(&mut self) -> &mut SoundSource {
+    self.as_mut()
+  }
+}
+impl<T> AsSoundSource for T where T: AsRef<SoundSource> + AsMut<SoundSource> {}

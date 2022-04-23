@@ -31,12 +31,6 @@ impl DelayLineTap {
       })
     }
   }
-  pub fn as_source(&self) -> &SoundSource {
-    self.as_ref()
-  }
-  pub fn as_source_mut(&mut self) -> &mut SoundSource {
-    self.as_mut()
-  }
 
   /// Sets the position of the tap on the `DelayLine`, up to the `DelayLine`’s length.
   pub fn set_delay(&mut self, delay: TimeDelta) {

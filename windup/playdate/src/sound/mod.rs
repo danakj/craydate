@@ -31,7 +31,7 @@ pub use sources::delay_line_tap::DelayLineTap;
 pub use sources::file_player::FilePlayer;
 pub use sources::instrument::{Instrument, VoiceId};
 pub use sources::sample_player::SamplePlayer;
-pub use sources::sound_source::SoundSource;
+pub use sources::sound_source::{SoundSource, AsSoundSource};
 pub use sources::synth::{Synth, SynthGenerator, SynthGeneratorVTable, SynthRender};
 pub use stereo_volume::StereoVolume;
 

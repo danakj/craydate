@@ -3,7 +3,7 @@ use core::mem::ManuallyDrop;
 
 use super::super::audio_sample::AudioSample;
 use super::super::SoundCompletionCallback;
-use super::sound_source::SoundSource;
+use super::sound_source::{SoundSource, AsSoundSource};
 use crate::callbacks::{Constructed, RegisteredCallback};
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
@@ -17,13 +17,6 @@ pub struct SamplePlayer<'sample> {
   _marker: PhantomData<&'sample AudioSample>,
 }
 impl SamplePlayer<'_> {
-  pub fn as_source(&self) -> &SoundSource {
-    self.as_ref()
-  }
-  pub fn as_source_mut(&mut self) -> &mut SoundSource {
-    self.as_mut()
-  }
-
   /// Creates a new SamplePlayer.
   pub fn new(sample: &AudioSample) -> Self {
     let ptr = unsafe { Self::fns().newPlayer.unwrap()() };

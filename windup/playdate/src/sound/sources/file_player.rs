@@ -2,7 +2,7 @@ use core::mem::ManuallyDrop;
 
 use super::super::loop_sound_span::LoopTimeSpan;
 use super::super::{SoundCompletionCallback, StereoVolume};
-use super::sound_source::SoundSource;
+use super::sound_source::{SoundSource, AsSoundSource};
 use crate::callbacks::{Constructed, RegisteredCallback};
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
@@ -53,12 +53,6 @@ impl FilePlayer {
   }
   fn as_mut_ptr(&mut self) -> *mut CFilePlayer {
     self.source.cptr() as *mut CFilePlayer
-  }
-  pub fn as_source(&self) -> &SoundSource {
-    self.as_ref()
-  }
-  pub fn as_source_mut(&mut self) -> &mut SoundSource {
-    self.as_mut()
   }
 
   /// Returns the length, in seconds, of the file loaded into player.
