@@ -62,17 +62,11 @@ impl Control {
     unsafe { Self::fns().getMIDIControllerNumber.unwrap()(self.cptr()) }
   }
 
-  pub fn as_signal(&self) -> &SynthSignal {
-    self.as_ref()
-  }
-  pub fn as_signal_mut(&mut self) -> &mut SynthSignal {
-    self.as_mut()
-  }
 
-  fn cptr(&self) -> *mut CControlSignal {
+  pub(crate) fn cptr(&self) -> *mut CControlSignal {
     self.subclass.ptr.as_ptr() as *mut CControlSignal
   }
-  fn fns() -> &'static playdate_sys::playdate_control_signal {
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_control_signal {
     unsafe { &*CApiState::get().csound.controlsignal }
   }
 }

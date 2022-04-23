@@ -24,7 +24,7 @@ pub use midi::track_note::TrackNote;
 pub use signals::control::Control;
 pub use signals::envelope::Envelope;
 pub use signals::lfo::Lfo;
-pub use signals::synth_signal::SynthSignal;
+pub use signals::synth_signal::{SynthSignal, AsSynthSignal};
 pub use sound_channel::{SoundChannel, SoundChannelRef};
 pub use sound_format::*;
 pub use sources::delay_line_tap::DelayLineTap;

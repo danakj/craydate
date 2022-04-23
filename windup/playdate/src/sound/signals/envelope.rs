@@ -78,17 +78,10 @@ impl Envelope {
       unsafe { Self::fns().getValue.unwrap()(self.cptr()) }
   }
 
-  pub fn as_signal(&self) -> &SynthSignal {
-    self.as_ref()
-  }
-  pub fn as_signal_mut(&mut self) -> &mut SynthSignal {
-    self.as_mut()
-  }
-
-  fn cptr(&self) -> *mut CSynthEnvelope {
+  pub(crate) fn cptr(&self) -> *mut CSynthEnvelope {
     self.subclass.ptr.as_ptr() as *mut CSynthEnvelope
   }
-  fn fns() -> &'static playdate_sys::playdate_sound_envelope {
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_envelope {
     unsafe { &*CApiState::get().csound.envelope }
   }
 }

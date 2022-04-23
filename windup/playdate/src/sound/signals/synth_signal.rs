@@ -4,6 +4,11 @@ use core::ptr::NonNull;
 use crate::ctypes::*;
 
 /// A `SynthSignal` represents a signal that can be used as a modulator for a `Synth`.
+///
+/// There are other types that act as a `SynthSignal`. Any such type would implement
+/// `AsRef<SynthSignal>` and `AsMut<SynthSignal>`. They also have `as_signal()` and
+/// `as_signal_mut()` methods, through the `AsSynthSignal` trait, to access the `SynthSignal`
+/// methods more easily.
 /// 
 /// Cloning a `SynthSignal` makes a shallow copy, where operations on the original or on the clone
 /// both act on the same underlying signal.
@@ -18,7 +23,10 @@ pub struct SynthSignal {
 }
 impl SynthSignal {
   pub(crate) fn new(ptr: *mut CSynthSignalValue, subclass: Rc<dyn SynthSignalSubclass>) -> Self {
-    SynthSignal { ptr: NonNull::new(ptr).unwrap(), _subclass: subclass }
+    SynthSignal {
+      ptr: NonNull::new(ptr).unwrap(),
+      _subclass: subclass,
+    }
   }
 
   pub(crate) fn cptr(&self) -> *mut CSynthSignalValue {
@@ -33,3 +41,14 @@ impl core::fmt::Debug for SynthSignal {
 }
 
 pub(crate) trait SynthSignalSubclass {}
+
+/// Provides explicit access to a type's `SynthSignal` methods when it can act as a `SynthSignal`.
+pub trait AsSynthSignal: AsRef<SynthSignal> + AsMut<SynthSignal> {
+  fn as_signal(&self) -> &SynthSignal {
+    self.as_ref()
+  }
+  fn as_signal_mut(&mut self) -> &mut SynthSignal {
+    self.as_mut()
+  }
+}
+impl<T> AsSynthSignal for T where T: AsRef<SynthSignal> + AsMut<SynthSignal> {}

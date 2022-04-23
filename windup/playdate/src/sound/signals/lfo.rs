@@ -157,17 +157,10 @@ impl Lfo {
     unsafe { Self::fns().getValue.unwrap()(self.cptr()) }
   }
 
-  pub fn as_signal(&self) -> &SynthSignal {
-    self.as_ref()
-  }
-  pub fn as_signal_mut(&mut self) -> &mut SynthSignal {
-    self.as_mut()
-  }
-
-  fn cptr(&self) -> *mut CSynthLfo {
+  pub(crate) fn cptr(&self) -> *mut CSynthLfo {
     self.subclass.ptr.as_ptr() as *mut CSynthLfo
   }
-  fn fns() -> &'static playdate_sys::playdate_sound_lfo {
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_lfo {
     unsafe { &*CApiState::get().csound.lfo }
   }
 }
