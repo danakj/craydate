@@ -195,8 +195,7 @@ impl<'data> Instrument {
   pub(crate) fn cptr(&self) -> *mut CSynthInstrument {
     self.ptr.as_ptr()
   }
-
-  fn fns() -> &'static playdate_sys::playdate_sound_instrument {
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_instrument {
     unsafe { &*CApiState::get().csound.instrument }
   }
 }
