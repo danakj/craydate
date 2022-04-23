@@ -7,11 +7,13 @@ use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::error::Error;
 
+#[derive(Debug)]
 enum Attachment {
   None,
   Channel(Weak<NonNull<CSoundChannel>>),
 }
 
+#[derive(Debug)]
 pub struct SoundEffect {
   ptr: NonNull<CSoundEffect>,
   attachment: Attachment,

@@ -13,6 +13,7 @@ use crate::time::TimeDelta;
 /// Note that `DelayLineTap` is a `SoundSource` that can be connected to a `SoundChannel` to play to
 /// the device's audio output. A `DelayLineTap` can be added to any channel, not only the channel
 /// its associated `DelayLine` is on.
+#[derive(Debug)]
 pub struct DelayLineTap {
   source: ManuallyDrop<SoundSource>,
   ptr: NonNull<CDelayLineTap>,
@@ -24,7 +25,7 @@ impl DelayLineTap {
   /// `delay` must be less than or equal to the length of the `DelayLine`.
   /// 
   /// TODO: What happens if the DelayLine is destroyed before the DelayLineTap?
-  pub fn new(delay_line: &mut DelayLine, delay: TimeDelta) -> Option<Self> {
+  pub(crate) fn new(delay_line: &mut DelayLine, delay: TimeDelta) -> Option<Self> {
     let ptr = unsafe { Self::fns().addTap.unwrap()(delay_line.cptr(), delay.to_sample_frames()) };
     if ptr.is_null() {
       None
