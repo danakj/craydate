@@ -8,8 +8,11 @@ use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::time::TimeDelta;
 
-/// Note that `DelayLineTap` is a `SoundSource`, not a `SoundEffect`. A delay line tap can be added to any
-/// channel, not only the channel the delay line is on.
+/// A `DelayLineTap` provides signals that modulate a `DelayLine` at a position.
+/// 
+/// Note that `DelayLineTap` is a `SoundSource` that can be connected to a `SoundChannel` to play to
+/// the device's audio output. A `DelayLineTap` can be added to any channel, not only the channel
+/// its associated `DelayLine` is on.
 pub struct DelayLineTap {
   source: ManuallyDrop<SoundSource>,
   ptr: NonNull<CDelayLineTap>,
@@ -19,6 +22,8 @@ impl DelayLineTap {
   /// Returns a new tap on the DelayLine, at the given position.
   ///
   /// `delay` must be less than or equal to the length of the `DelayLine`.
+  /// 
+  /// TODO: What happens if the DelayLine is destroyed before the DelayLineTap?
   pub fn new(delay_line: &mut DelayLine, delay: TimeDelta) -> Option<Self> {
     let ptr = unsafe { Self::fns().addTap.unwrap()(delay_line.cptr(), delay.to_sample_frames()) };
     if ptr.is_null() {
