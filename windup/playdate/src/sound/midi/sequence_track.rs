@@ -12,7 +12,7 @@ pub struct SequenceTrackRef<'a> {
   ptr: NonNull<CSequenceTrack>,
   index: u32,
   instrument: Option<*mut Instrument>,
-  _marker: PhantomData<&'a Instrument>,
+  _marker: PhantomData<&'a Sequence>,
 }
 impl<'a> SequenceTrackRef<'a> {
   pub fn new(ptr: *mut CSequenceTrack, index: u32, instrument: Option<*mut Instrument>) -> Self {
@@ -202,23 +202,29 @@ pub struct SequenceTrackMut<'a> {
   seq: *mut Sequence,
 }
 impl<'a> SequenceTrackMut<'a> {
-  pub(crate) fn new(ptr: *mut CSequenceTrack, index: u32, seq: &'a mut Sequence) -> Self {
-    let instrument = seq.track_instrument_mut(index) as *mut Instrument;
+  pub(crate) fn new(ptr: *mut CSequenceTrack, index: u32, seq: *mut Sequence) -> Self {
+    let instrument = unsafe { (*seq).track_instrument_mut(index) as *mut Instrument };
     SequenceTrackMut {
       tref: SequenceTrackRef::new(ptr, index, Some(instrument)),
       seq,
     }
   }
 
+  unsafe fn sequence(&self) -> &'a mut Sequence {
+    // SAFETY: Constructs a reference `&'a mut Sequence` that will not outlive the `Sequence` from
+    // which this object was constructed, as we hold a borrow on it with lifetime `&mut 'a`.
+    &mut *self.seq
+  }
+
   /// Sets the `Instrument` assigned to the track, taking ownership of the instrument.
   pub fn set_instrument(&mut self, instrument: Instrument) {
     unsafe { SequenceTrack::fns().setInstrument.unwrap()(self.cptr(), instrument.cptr()) };
-    unsafe { &mut *self.seq }.set_track_instrument(self.index, instrument);
-    // SAFETY: Reborrow the `Sequence` reference without borrowing from `self`. We construct a
-    // reference to the instrument owned by the `Sequence` which is able to outlive `self` safely.
-    // It just must not outlive the `Sequence` which is represented by the lifetime on the refence
-    // returned from `Sequence::track_instrument_mut()`.
-    let iref = unsafe { &mut *(self.seq as *mut Sequence) }.track_instrument_mut(self.index);
+    // SAFETY: The `Sequence` reference has a lifetime `&'a mut`, so it will outlive `self` and the
+    // `Sequence` borrowed by `self` as `&'a mut`. The `&mut Instrument` does not hold a reference
+    // that would alias with the `&mut Sequence` (as seen by its lack of lifetime parameter).
+    let seq = unsafe { self.sequence() };
+    seq.set_track_instrument(self.index, instrument);
+    let iref: &mut Instrument = seq.track_instrument_mut(self.index);
     self.tref.instrument = Some(iref);
   }
 }

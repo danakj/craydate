@@ -168,7 +168,8 @@ impl Sequence {
   /// Returns a mutable iterator over all the tracks in the `Sequence`.
   pub fn tracks_mut<'a>(&'a mut self) -> impl Iterator<Item = SequenceTrackMut<'a>> + 'a {
     SequenceTrackIterMut {
-      seq: self,
+      sequence: self,
+      sequence_cptr: self.cptr(),
       next: 0,
       count: self.tracks_count(),
       _marker: PhantomData,
@@ -256,7 +257,8 @@ impl<'a> Iterator for SequenceTrackIter<'a> {
 }
 
 struct SequenceTrackIterMut<'a> {
-  seq: *mut Sequence,
+  sequence: *mut Sequence,
+  sequence_cptr: *mut CSoundSequence,
   next: u32,
   count: u32,
   _marker: PhantomData<&'a Sequence>,
@@ -271,14 +273,11 @@ impl<'a> Iterator for SequenceTrackIterMut<'a> {
       loop {
         let index = self.next;
         self.next += 1;
-        // SAFETY: Reborrow the `Sequence` pointer to construct a reference without a lifetime
-        // bounded by `self`. We only need the reference to `Sequence` to live as long as `'a` which
-        // is represented by the lifetime parameter on the output `Item` type.
-        let seq = unsafe { &mut *(self.seq) };
-        let track_ptr = unsafe { Sequence::fns().getTrackAtIndex.unwrap()(seq.cptr(), index) };
+        let track_ptr =
+          unsafe { Sequence::fns().getTrackAtIndex.unwrap()(self.sequence_cptr, index) };
         if !track_ptr.is_null() {
           self.count -= 1;
-          return Some(SequenceTrackMut::new(track_ptr, index, seq));
+          return Some(SequenceTrackMut::new(track_ptr, index, self.sequence));
         }
       }
     }

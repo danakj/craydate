@@ -1,6 +1,5 @@
-use core::mem::MaybeUninit;
-
 use alloc::vec::Vec;
+use core::mem::MaybeUninit;
 
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
@@ -9,18 +8,18 @@ use crate::time::TimeTicks;
 
 #[derive(Debug)]
 pub struct AudioSample {
-  ptr: *mut CAudioSample,
+  ptr: *mut CAudioSample, // TODO: NonNull
   data: Vec<u8>,
 }
 impl AudioSample {
-    pub(crate) fn from_ptr(ptr: *mut CAudioSample) -> AudioSample {
+  pub(crate) fn from_ptr(ptr: *mut CAudioSample) -> AudioSample {
     AudioSample {
       ptr,
       data: Vec::new(),
     }
   }
   pub(crate) fn cptr(&self) -> *mut CAudioSample {
-      self.ptr
+    self.ptr
   }
 
   /// Creates a new AudioSample with a buffer large enough to load a file of length
