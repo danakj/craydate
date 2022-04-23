@@ -2,6 +2,7 @@ use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use core::ffi::c_void;
 use core::mem::ManuallyDrop;
+use core::ptr::NonNull;
 
 use super::super::audio_sample::AudioSample;
 use super::super::signals::synth_signal::SynthSignal;
@@ -10,12 +11,18 @@ use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::ctypes_enums::SoundWaveform;
 use crate::error::Error;
-use crate::time::{TimeDelta, TimeTicks, TimeSpan};
+use crate::time::{TimeDelta, TimeSpan, TimeTicks};
 
+/// A collection of `Synth` objects make up an `Instrument` used to play a MIDI `Sequence`.
+///
+/// A `Synth` is also a `SoundSource` and thus can be played to a `SoundChannel` directly.
+///
+/// A `Synth` can generate sound from a fixed function, which is a `SoundWaveform`. Or it can play
+/// sound from an `AudioSample`, or the user can provide their own function as a `SynthGenerator`.
 #[derive(Debug)]
 pub struct Synth {
   source: ManuallyDrop<SoundSource>,
-  ptr: *mut CSynth,
+  ptr: NonNull<CSynth>,
   frequency_modulator: Option<SynthSignal>,
   amplitude_modulator: Option<SynthSignal>,
   parameter_modulators: BTreeMap<i32, SynthSignal>,
@@ -27,7 +34,7 @@ impl Synth {
     let ptr = unsafe { Self::fns().newSynth.unwrap()() };
     Synth {
       source: ManuallyDrop::new(SoundSource::from_ptr(ptr as *mut CSoundSource)),
-      ptr,
+      ptr: NonNull::new(ptr).unwrap(),
       frequency_modulator: None,
       amplitude_modulator: None,
       parameter_modulators: BTreeMap::new(),
@@ -45,7 +52,7 @@ impl Synth {
   /// Creates a new Synth that plays a waveform.
   pub fn new_with_waveform(waveform: SoundWaveform) -> Self {
     let synth = Self::new();
-    unsafe { Self::fns().setWaveform.unwrap()(synth.ptr, waveform) };
+    unsafe { Self::fns().setWaveform.unwrap()(synth.cptr(), waveform) };
     synth
   }
 
@@ -57,7 +64,7 @@ impl Synth {
     let mut synth = Self::new();
     unsafe {
       Self::fns().setSample.unwrap()(
-        synth.ptr,
+        synth.cptr(),
         sample.cptr(),
         sustain_region.as_ref().map_or(0, |r| r.start.to_sample_frames()),
         sustain_region.as_ref().map_or(0, |r| r.end.to_sample_frames()),
@@ -67,19 +74,19 @@ impl Synth {
     synth
   }
 
-  /// Creates a new Synth that plays from a SynthGenerator.
+  /// Creates a new Synth that plays from a `SynthGenerator`.
   ///
   /// NOTE: THIS CRASHES!! See
   /// <https://devforum.play.date/t/c-api-playdate-sound-synth-setgenerator-has-incorrect-api/4482>
   /// as this is due to a Playdate bug.
   ///
-  /// The SynthGenerator is a set of functions that are called in order to fill the sample buffers
+  /// The `SynthGenerator` is a set of functions that are called in order to fill the sample buffers
   /// with data and react to events on the Synth object.
   pub fn new_with_generator(generator: SynthGenerator) -> Self {
     let synth = Self::new();
     unsafe {
       Self::fns().setGenerator.unwrap()(
-        synth.ptr,
+        synth.cptr(),
         // The Playdate API has incorrect types so we need to do some wild casting here:
         // https://devforum.play.date/t/c-api-playdate-sound-synth-setgenerator-has-incorrect-api/4482
         // But also we crash no matter what we pass here, including
@@ -238,7 +245,7 @@ impl Synth {
   }
 
   pub(crate) fn cptr(&self) -> *mut CSynth {
-    self.ptr
+    self.ptr.as_ptr()
   }
   fn fns() -> &'static playdate_sys::playdate_sound_synth {
     unsafe { &*CApiState::get().csound.synth }
