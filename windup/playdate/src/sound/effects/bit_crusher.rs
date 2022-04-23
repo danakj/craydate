@@ -67,7 +67,7 @@ impl BitCrusher {
   pub(crate) fn cptr(&self) -> *mut CBitCrusher {
     self.ptr.as_ptr()
   }
-  fn fns() -> &'static playdate_sys::playdate_sound_effect_bitcrusher {
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_effect_bitcrusher {
     unsafe { &*(*CApiState::get().csound.effect).bitcrusher }
   }
 }
