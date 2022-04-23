@@ -1,40 +1,38 @@
 use alloc::vec::Vec;
 use core::mem::MaybeUninit;
+use core::ptr::NonNull;
 
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::null_terminated::ToNullTerminatedString;
 use crate::time::TimeTicks;
 
+/// A buffer of audio data which can be played with a `SamplePlayer` or as part of a MIDI
+/// `Instrument` in a `Synth`.
 #[derive(Debug)]
 pub struct AudioSample {
-  ptr: *mut CAudioSample, // TODO: NonNull
+  ptr: NonNull<CAudioSample>,
   data: Vec<u8>,
 }
 impl AudioSample {
   pub(crate) fn from_ptr(ptr: *mut CAudioSample) -> AudioSample {
     AudioSample {
-      ptr,
+      ptr: NonNull::new(ptr).unwrap(),
       data: Vec::new(),
     }
-  }
-  pub(crate) fn cptr(&self) -> *mut CAudioSample {
-    self.ptr
   }
 
   /// Creates a new AudioSample with a buffer large enough to load a file of length
   /// `bytes`.
   pub fn with_bytes(bytes: usize) -> Self {
-    let ptr = unsafe { (*CApiState::get().csound.sample).newSampleBuffer.unwrap()(bytes as i32) };
+    let ptr = unsafe { Self::fns().newSampleBuffer.unwrap()(bytes as i32) };
     Self::from_ptr(ptr)
   }
 
   /// Creates a new AudioSample, with the sound data loaded in memory. If there is no file at path,
   /// the function returns None.
   pub fn from_file(path: &str) -> Option<AudioSample> {
-    let ptr = unsafe {
-      (*CApiState::get().csound.sample).load.unwrap()(path.to_null_terminated_utf8().as_ptr())
-    };
+    let ptr = unsafe { Self::fns().load.unwrap()(path.to_null_terminated_utf8().as_ptr()) };
     if ptr.is_null() {
       None
     } else {
@@ -55,7 +53,7 @@ impl AudioSample {
         || format == SoundFormat::kSound16bitStereo
     );
     let ptr = unsafe {
-      (*CApiState::get().csound.sample).newSampleFromData.unwrap()(
+      Self::fns().newSampleFromData.unwrap()(
         data.as_ptr() as *mut u8, // the CAudioSample holds a reference to the `data`.
         format,
         sample_rate,
@@ -80,7 +78,7 @@ impl AudioSample {
         || format == SoundFormat::kSound16bitStereo
     );
     let ptr = unsafe {
-      (*CApiState::get().csound.sample).newSampleFromData.unwrap()(
+      Self::fns().newSampleFromData.unwrap()(
         data.as_ptr() as *mut u8, // the CAudioSample holds a reference to the `data`.
         format,
         sample_rate,
@@ -95,18 +93,13 @@ impl AudioSample {
   /// Loads the sound data from the file at `path` into the existing AudioSample.
   pub fn load_file(&mut self, path: &str) {
     unsafe {
-      (*CApiState::get().csound.sample).loadIntoSample.unwrap()(
-        self.ptr,
-        path.to_null_terminated_utf8().as_ptr(),
-      )
+      Self::fns().loadIntoSample.unwrap()(self.cptr(), path.to_null_terminated_utf8().as_ptr())
     };
   }
 
   /// Returns the length of the AudioSample.
   pub fn len(&self) -> TimeTicks {
-    TimeTicks::from_seconds_lossy(unsafe {
-      (*CApiState::get().csound.sample).getLength.unwrap()(self.ptr)
-    })
+    TimeTicks::from_seconds_lossy(unsafe { Self::fns().getLength.unwrap()(self.cptr()) })
   }
 
   fn all_data(&self) -> (*mut u8, SoundFormat, u32, u32) {
@@ -115,8 +108,8 @@ impl AudioSample {
     let mut sample_rate = MaybeUninit::uninit();
     let mut bytes = MaybeUninit::uninit();
     unsafe {
-      (*CApiState::get().csound.sample).getData.unwrap()(
-        self.ptr,
+      Self::fns().getData.unwrap()(
+        self.cptr(),
         ptr.as_mut_ptr(),
         format.as_mut_ptr(),
         sample_rate.as_mut_ptr(),
@@ -151,10 +144,18 @@ impl AudioSample {
     let (_, _, sample_rate, _) = self.all_data();
     sample_rate
   }
+
+  pub(crate) fn cptr(&self) -> *mut CAudioSample {
+    self.ptr.as_ptr()
+  }
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_sample {
+    unsafe { &*CApiState::get().csound.sample }
+  }
 }
+
 impl Drop for AudioSample {
   fn drop(&mut self) {
     // Note: The sample is destroyed before the data we own that it refers to.
-    unsafe { (*CApiState::get().csound.sample).freeSample.unwrap()(self.ptr) }
+    unsafe { Self::fns().freeSample.unwrap()(self.cptr()) }
   }
 }
