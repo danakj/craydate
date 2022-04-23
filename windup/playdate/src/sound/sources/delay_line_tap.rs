@@ -59,7 +59,7 @@ impl DelayLineTap {
   pub(crate) fn cptr(&self) -> *mut CDelayLineTap {
     self.ptr.as_ptr()
   }
-  fn fns() -> &'static playdate_sys::playdate_sound_effect_delayline {
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_effect_delayline {
     unsafe { &*(*CApiState::get().csound.effect).delayline }
   }
 }
