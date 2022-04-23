@@ -91,7 +91,26 @@ impl Sequence {
   /// Starts playing the sequence.
   ///
   /// The `finished_callback` is an optional closure to be called when the sequence finishes playing
-  /// or is stopped.
+  /// or is stopped. It not `SoundCompletionCallback::none()`, the callback will be registered as a
+  /// system event, and the application will be notified to run the callback via a
+  /// `SystemEvent::Callback` event. When that occurs, the application's `Callbacks` object which
+  /// was used to construct the `completion_callback` can be `run()` to execute the closure bound in
+  /// the `completion_callback`.
+  /// 
+  /// # Example
+  /// ```
+  /// let callbacks: Callbacks<i32> = Callbacks::new();
+  /// // Register a closure as a callback.
+  /// sequence.play(SoundCompletionCallback::with(&mut callbacks).call(|i: i32| {
+  ///   println("playing done");
+  /// }));
+  /// match system_event_watcher.next() {
+  ///   SystemEvent::Callback => {
+  ///     // Run the closure registered above.
+  ///     callbacks.runs();
+  ///   }
+  /// }
+  /// ```
   pub fn play<'a, T, F: Fn(T) + 'static>(
     &mut self,
     finished_callback: SoundCompletionCallback<'a, T, F, Constructed>,

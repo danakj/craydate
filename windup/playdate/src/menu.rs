@@ -36,8 +36,26 @@ impl MenuItem {
   /// Construct a new action menu item and add it to the system menu as long as the MenuItem stays
   /// alive.
   ///
-  /// If the action menu item is chosen, the menu will be closed and the given `callback` will be
-  /// available to run. A `SystemEvent::Callback` event will fire to indicate this.
+  /// The callback will be registered as a system event. If the action menu item is chosen, the menu
+  /// will be closed and the the application will be notified to run the callback via a
+  /// `SystemEvent::Callback` event. When that occurs, the application's `Callbacks` object which
+  /// was used to construct the `completion_callback` can be `run()` to execute the closure bound in
+  /// the `completion_callback`.
+  ///
+  /// # Example
+  /// ```
+  /// let callbacks: Callbacks<i32> = Callbacks::new();
+  /// // Register a closure as a callback.
+  /// menu.new_action("action", MenuCallback::with(&mut callbacks).call(|i: i32| {
+  ///   println("action happened");
+  /// }));
+  /// match system_event_watcher.next() {
+  ///   SystemEvent::Callback => {
+  ///     // Run the closure registered above.
+  ///     callbacks.runs();
+  ///   }
+  /// }
+  /// ```
   pub fn new_action<'a, T, F: Fn(T) + 'static>(
     title: &str,
     callback: MenuCallback<'a, T, F, Constructed>,
@@ -62,9 +80,28 @@ impl MenuItem {
   /// Construct a new checkmark menu item and add it to the system menu as long as the MenuItem
   /// stays alive.
   ///
+  /// The callback will be registered as a system event.
+  ///
   /// If the action menu item is chosen, the value will be changed, and when menu is later closed
-  /// the given callback `cb` will be available to run. A `SystemEvent::Callback` event will fire to
-  /// indicate this.
+  /// the application will be notified to run the callback via a `SystemEvent::Callback` event. When
+  /// that occurs, the application's `Callbacks` object which was used to construct the
+  /// `completion_callback` can be `run()` to execute the closure bound in the
+  /// `completion_callback`.
+  ///
+  /// # Example
+  /// ```
+  /// let callbacks: Callbacks<i32> = Callbacks::new();
+  /// // Register a closure as a callback.
+  /// menu.new_checkmark("check", true, MenuCallback::with(&mut callbacks).call(|i: i32| {
+  ///   println("checkmark changed");
+  /// }));
+  /// match system_event_watcher.next() {
+  ///   SystemEvent::Callback => {
+  ///     // Run the closure registered above.
+  ///     callbacks.runs();
+  ///   }
+  /// }
+  /// ```
   pub fn new_checkmark<'a, T, F: Fn(T) + 'static>(
     title: &str,
     intially_checked: bool,
@@ -91,9 +128,28 @@ impl MenuItem {
   /// Construct a new options menu item and add it to the system menu as long as the MenuItem stays
   /// alive.
   ///
+  /// The callback will be registered as a system event.
+  ///
   /// If the action menu item is chosen, the value will be changed, and when menu is later closed
-  /// the given callback `cb` will be available to run. A `SystemEvent::Callback` event will fire to
-  /// indicate this.
+  /// the application will be notified to run the callback via a `SystemEvent::Callback` event. When
+  /// that occurs, the application's `Callbacks` object which was used to construct the
+  /// `completion_callback` can be `run()` to execute the closure bound in the
+  /// `completion_callback`.
+  ///
+  /// # Example
+  /// ```
+  /// let callbacks: Callbacks<i32> = Callbacks::new();
+  /// // Register a closure as a callback.
+  /// menu.new_options("values", options, MenuCallback::with(&mut callbacks).call(|i: i32| {
+  ///   println("value changed");
+  /// }));
+  /// match system_event_watcher.next() {
+  ///   SystemEvent::Callback => {
+  ///     // Run the closure registered above.
+  ///     callbacks.runs();
+  ///   }
+  /// }
+  /// ```
   pub fn new_options<'a, T, F: Fn(T) + 'static>(
     title: &str,
     options: impl IntoIterator<Item = &'a str>,

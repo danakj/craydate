@@ -150,6 +150,31 @@ impl FilePlayer {
     }
   }
   /// Changes the volume of the fileplayer to `volume` over a length of `duration`.
+  /// 
+  /// The callback, if not `SoundCompletionCallback::none()`, will be registered as a system event,
+  /// and the application will be notified to run the callback via a `SystemEvent::Callback` event.
+  /// When that occurs, the application's `Callbacks` object which was used to construct the
+  /// `completion_callback` can be `run()` to execute the closure bound in the
+  /// `completion_callback`.
+  /// 
+  /// # Example
+  /// ```
+  /// let callbacks: Callbacks<i32> = Callbacks::new();
+  /// // Register a closure as a callback.
+  /// player.fade_volume(
+  ///   vol,
+  ///   TimeDelta::from_seconds(2),
+  ///   SoundCompletionCallback::with(&mut callbacks).call(|i: i32| {
+  ///     println("fade done");
+  ///   })
+  /// );
+  /// match system_event_watcher.next() {
+  ///   SystemEvent::Callback => {
+  ///     // Run the closure registered above.
+  ///     callbacks.runs();
+  ///   }
+  /// }
+  /// ```
   pub fn fade_volume<'a, T, F: Fn(T) + 'static>(
     &mut self,
     volume: StereoVolume,

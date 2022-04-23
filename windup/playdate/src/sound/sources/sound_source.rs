@@ -131,6 +131,27 @@ impl SoundSource {
     unsafe { (*CApiState::get().csound.source).isPlaying.unwrap()(self.ptr) != 0 }
   }
 
+  /// Sets a callback to be called when the `SoundSource` finishes playing.
+  /// 
+  /// The callback will be registered as a system event, and the application will be notified to run
+  /// the callback via a `SystemEvent::Callback` event. When that occurs, the application's
+  /// `Callbacks` object which was used to construct the `completion_callback` can be `run()` to
+  /// execute the closure bound in the `completion_callback`.
+  /// 
+  /// # Example
+  /// ```
+  /// let callbacks: Callbacks<i32> = Callbacks::new();
+  /// // Register a closure as a callback.
+  /// source.set_completion_callback(SoundCompletionCallback::with(&mut callbacks).call(|i: i32| {
+  ///   println("finished");
+  /// }));
+  /// match system_event_watcher.next() {
+  ///   SystemEvent::Callback => {
+  ///     // Run the closure registered above.
+  ///     callbacks.runs();
+  ///   }
+  /// }
+  /// ```
   pub fn set_completion_callback<'a, T, F: Fn(T) + 'static>(
     &mut self,
     completion_callback: SoundCompletionCallback<'a, T, F, Constructed>,
