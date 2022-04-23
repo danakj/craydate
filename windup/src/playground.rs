@@ -216,9 +216,11 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   //synth.play_frequency_note(0.0, 1.0, None, None);
   //log(format!("synth playing: {}", synth.as_source().is_playing()));
 
-  let mut dline = DelayLine::new(TimeDelta::from_seconds(3), false);
-  let tap = dline.add_tap(TimeDelta::from_seconds(0)).unwrap();
+  let mut dline = DelayLine::new(TimeDelta::from_seconds(8), false);
+  let tap = dline.add_tap(TimeDelta::from_seconds(6)).unwrap();
   api.sound.default_channel_mut().add_source(tap).unwrap();
+  dline.set_len(TimeDelta::from_seconds(3));
+  log(format!("dline length {}", dline.len()));
 
   let mut sequence = Sequence::from_midi_file("sounds/pirate.mid").unwrap();
   for mut track in sequence.tracks_mut() {

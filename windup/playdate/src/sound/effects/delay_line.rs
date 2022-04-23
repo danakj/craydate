@@ -13,6 +13,8 @@ pub struct DelayLine {
   effect: ManuallyDrop<SoundEffect>,
   ptr: NonNull<CDelayLine>,
   taps: Vec<DelayLineTap>,
+  length_in_frames: i32,
+  max_tap_position_in_frames: i32,
 }
 impl DelayLine {
   /// Creates a new DelayLine, which acts as a SoundEffect.
@@ -23,6 +25,8 @@ impl DelayLine {
       effect: ManuallyDrop::new(SoundEffect::from_ptr(ptr as *mut CSoundEffect)),
       ptr: NonNull::new(ptr).unwrap(),
       taps: Vec::new(),
+      length_in_frames: length.to_sample_frames(),
+      max_tap_position_in_frames: 0,
     }
   }
   // TODO: Make this an AsSoundEffect trait like for SoundChannel.
@@ -38,26 +42,41 @@ impl DelayLine {
   /// `delay` must be less than or equal to the length of the `DelayLine`.
   ///
   /// # Return
-  /// If successful, returns a borrow on the new `DelayLineTap`. If the tap was not able to be added,
-  /// then `None` is returned.
+  /// If the `delay` is larger than the length of the `DelayLine`, it will not be added and the
+  /// function will return `None`. Otherwise, it returns a borrow on the new `DelayLineTap`.
   pub fn add_tap(&mut self, delay: TimeDelta) -> Option<&mut DelayLineTap> {
-    let tap = DelayLineTap::new(self, delay)?;
-    self.taps.push(tap);
-    Some(unsafe { self.taps.last_mut().unwrap_unchecked() })
+    let max_frames = self.max_tap_position_in_frames.max(delay.to_sample_frames());
+    if max_frames <= self.length_in_frames {
+      let tap = DelayLineTap::new(self, delay);
+      self.taps.push(tap);
+      self.max_tap_position_in_frames = max_frames;
+      Some(unsafe { self.taps.last_mut().unwrap_unchecked() })
+    } else {
+      None
+    }
   }
   /// Gets access to the taps, which are in the same order that they were added.
   pub fn taps(&self) -> &[DelayLineTap] {
     &self.taps
   }
   /// Gets mutable access to the taps, which are in the same order that they were added.
-  pub fn taps_mut(&mut self) -> &mut[DelayLineTap] {
+  pub fn taps_mut(&mut self) -> &mut [DelayLineTap] {
     &mut self.taps
   }
 
   /// Changes the length of the delay line, clearing its contents.
-  pub fn set_length(&mut self, length: TimeDelta) {
-    unsafe { Self::fns().setLength.unwrap()(self.cptr(), length.to_sample_frames()) }
+  ///
+  /// The `DelayLine` can not be shortened less than the position of any `DelayLineTap` that was
+  /// added to it, and the specified length will be grown to be valid.
+  pub fn set_len(&mut self, length: TimeDelta) {
+    let length_in_frames = length.to_sample_frames().max(self.max_tap_position_in_frames);
+    unsafe { Self::fns().setLength.unwrap()(self.cptr(), length_in_frames) }
   }
+  /// Returns the length of the delay line.
+  pub fn len(&self) -> TimeDelta {
+    TimeDelta::from_sample_frames(self.length_in_frames)
+  }
+
   /// Sets the feedback level of the delay line.
   pub fn set_feedback(&mut self, feedback: f32) {
     unsafe { Self::fns().setFeedback.unwrap()(self.cptr(), feedback) }
