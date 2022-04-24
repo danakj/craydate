@@ -150,7 +150,7 @@ impl<'a> SequenceTrack<'a> {
 /// data.
 pub struct SequenceTrackMut<'a> {
   track: SequenceTrack<'a>,
-  sequence_ptr: *mut Sequence,
+  sequence_ptr: NonNull<Sequence>,
 }
 impl<'a> SequenceTrackMut<'a> {
   pub(crate) fn new(
@@ -161,15 +161,15 @@ impl<'a> SequenceTrackMut<'a> {
   ) -> Self {
     SequenceTrackMut {
       track: SequenceTrack::new(ptr, index, instrument as *const _),
-      sequence_ptr,
+      sequence_ptr: NonNull::new(sequence_ptr).unwrap(),
     }
   }
 
-  unsafe fn sequence(&self) -> &'a mut Sequence {
+  unsafe fn sequence(&mut self) -> &'a mut Sequence {
     // SAFETY: Constructs a reference `&'a mut Sequence` that will not outlive the `Sequence` from
     // which this object was constructed, as we hold a borrow on it with lifetime `&mut 'a`. The
     // reference should not be held more than a single function or it may alias with another call.
-    &mut *self.sequence_ptr
+    self.sequence_ptr.as_mut()
   }
 
   /// Gets the `Instrument` assigned to the track.

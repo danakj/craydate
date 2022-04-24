@@ -195,7 +195,7 @@ impl Sequence {
   /// Returns a mutable iterator over all the tracks in the `Sequence`.
   pub fn tracks_mut<'a>(&'a mut self) -> impl Iterator<Item = SequenceTrackMut<'a>> + 'a {
     SequenceTrackIterMut {
-      sequence: self,
+      sequence: NonNull::new(self).unwrap(),
       next: 0,
       count: self.tracks_count(),
       _marker: PhantomData,
@@ -301,7 +301,7 @@ impl<'a> Iterator for SequenceTrackIter<'a> {
 }
 
 struct SequenceTrackIterMut<'a> {
-  sequence: *mut Sequence,
+  sequence: NonNull<Sequence>,
   next: u32,
   count: u32,
   _marker: PhantomData<&'a Sequence>,
@@ -317,14 +317,14 @@ impl<'a> Iterator for SequenceTrackIterMut<'a> {
         let index = self.next;
         self.next += 1;
         let track_ptr =
-          unsafe { Sequence::fns().getTrackAtIndex.unwrap()((*self.sequence).cptr(), index) };
+          unsafe { Sequence::fns().getTrackAtIndex.unwrap()(self.sequence.as_mut().cptr(), index) };
         if !track_ptr.is_null() {
           self.count -= 1;
           return Some(SequenceTrackMut::new(
             track_ptr,
             index,
-            self.sequence,
-            unsafe { (*self.sequence).track_instrument_mut(index) },
+            self.sequence.as_ptr(),
+            unsafe { self.sequence.as_mut().track_instrument_mut(index) },
           ));
         }
       }

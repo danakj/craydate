@@ -35,7 +35,7 @@ impl Attachment {
 /// methods more easily.
 #[derive(Debug)]
 pub struct SoundSource {
-  ptr: *mut CSoundSource,
+  ptr: NonNull<CSoundSource>,
   // The `channel` is set when the SoundSource has been added to the SoundChannel.
   attachment: Attachment,
   // When the RegisteredCallback is destroyed, the user-given closure will be destroyed as well.
@@ -44,13 +44,13 @@ pub struct SoundSource {
 impl SoundSource {
   pub(crate) fn from_ptr(ptr: *mut CSoundSource) -> Self {
     SoundSource {
-      ptr,
+      ptr: NonNull::new(ptr).unwrap(),
       attachment: Attachment::None,
       completion_callback: None,
     }
   }
   pub(crate) fn cptr(&self) -> *mut CSoundSource {
-    self.ptr
+    self.ptr.as_ptr()
   }
 
   /// Attach the SoundSource to the `channel` if it is not already attached to a `SoundChannel` or
@@ -113,7 +113,7 @@ impl SoundSource {
     let mut v = StereoVolume::zero();
     unsafe {
       (*CApiState::get().csound.source).getVolume.unwrap()(
-        self.ptr,
+        self.cptr(),
         v.left.as_mut_ptr(),
         v.right.as_mut_ptr(),
       )
@@ -123,21 +123,25 @@ impl SoundSource {
   /// Sets the playback volume (0.0 - 1.0) for left and right channels of the source.
   pub fn set_volume(&mut self, v: StereoVolume) {
     unsafe {
-      (*CApiState::get().csound.source).setVolume.unwrap()(self.ptr, v.left.into(), v.right.into())
+      (*CApiState::get().csound.source).setVolume.unwrap()(
+        self.cptr(),
+        v.left.into(),
+        v.right.into(),
+      )
     }
   }
   /// Returns whether the source is currently playing.
   pub fn is_playing(&self) -> bool {
-    unsafe { (*CApiState::get().csound.source).isPlaying.unwrap()(self.ptr) != 0 }
+    unsafe { (*CApiState::get().csound.source).isPlaying.unwrap()(self.cptr()) != 0 }
   }
 
   /// Sets a callback to be called when the `SoundSource` finishes playing.
-  /// 
+  ///
   /// The callback will be registered as a system event, and the application will be notified to run
   /// the callback via a `SystemEvent::Callback` event. When that occurs, the application's
   /// `Callbacks` object which was used to construct the `completion_callback` can be `run()` to
   /// execute the closure bound in the `completion_callback`.
-  /// 
+  ///
   /// # Example
   /// ```
   /// let callbacks: Callbacks<i32> = Callbacks::new();
@@ -157,12 +161,12 @@ impl SoundSource {
     completion_callback: SoundCompletionCallback<'a, T, F, Constructed>,
   ) {
     let func = completion_callback.into_inner().and_then(|(callbacks, cb)| {
-      let key = self.ptr as usize;
+      let key = self.cptr() as usize;
       let (func, reg) = callbacks.add_sound_source_completion(key, cb);
       self.completion_callback = Some(reg);
       Some(func)
     });
-    unsafe { (*CApiState::get().csound.source).setFinishCallback.unwrap()(self.ptr, func) }
+    unsafe { (*CApiState::get().csound.source).setFinishCallback.unwrap()(self.cptr(), func) }
   }
 }
 
