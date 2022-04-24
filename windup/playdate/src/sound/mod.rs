@@ -91,6 +91,14 @@ impl Sound {
     unsafe { Self::fns().setOutputsActive.unwrap()(headphone as i32, speaker as i32) };
   }
 
+  // TODO: setMicCallback - consider recordToSample() instead like for LUA:
+  // https://sdk.play.date/1.10.0/Inside%20Playdate.html#f-sound.micinput.recordToSample
+  
+  // TODO: getHeadphoneState
+
+  // TODO: Microphone monitoring functions are missing:
+  // https://devforum.play.date/t/c-api-missing-microphone-monitoring-functions/4926
+
   pub(crate) fn fns() -> &'static playdate_sys::playdate_sound {
     CApiState::get().csound
   }
