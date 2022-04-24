@@ -52,7 +52,13 @@ impl<'data> Instrument {
     if synth.as_mut().attach_to_instrument() {
       let (start, end) = midi_range.to_start_end();
       let r = unsafe {
-        Instrument::fns().addVoice.unwrap()(self.cptr(), synth.cptr(), start, end, transpose)
+        Instrument::fns().addVoice.unwrap()(
+          self.cptr(),
+          synth.cptr(),
+          start as f32,
+          end as f32,
+          transpose,
+        )
       };
       assert!(r != 0);
       self.synths.push(synth);
