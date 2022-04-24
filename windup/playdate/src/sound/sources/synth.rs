@@ -69,7 +69,7 @@ impl Synth {
 
   /// Creates a new Synth that plays from a `SynthGenerator`.
   ///
-  /// NOTE: THIS CRASHES!! See
+  /// NOTE: THIS DOES NOT WORK!! See
   /// <https://devforum.play.date/t/c-api-playdate-sound-synth-setgenerator-has-incorrect-api/4482>
   /// as this is due to a Playdate bug.
   ///
@@ -82,8 +82,6 @@ impl Synth {
         synth.cptr(),
         // The Playdate API has incorrect types so we need to do some wild casting here:
         // https://devforum.play.date/t/c-api-playdate-sound-synth-setgenerator-has-incorrect-api/4482
-        // But also we crash no matter what we pass here, including
-        // `Box::into_raw(Box::new(Some(c_render_func)))`.
         c_render_func as *mut Option<CRenderFunc>,
         c_note_on_func as *mut Option<CNoteOnFunc>,
         c_release_func as *mut Option<CReleaseFunc>,

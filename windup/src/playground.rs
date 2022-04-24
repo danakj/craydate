@@ -211,10 +211,9 @@ pub async fn _run(mut api: playdate::Api) -> ! {
     dealloc_func: |data| unsafe { drop(Box::from_raw(data as *mut GeneratorData)) },
   };
   let generator = unsafe { SynthGenerator::new(Box::into_raw(data) as *const (), &VTABLE) };
-  drop(generator);
-  //let mut synth = Synth::new_with_generator(generator);
-  //synth.play_frequency_note(0.0, 1.0, None, None);
-  //log(format!("synth playing: {}", synth.as_source().is_playing()));
+  let mut synth = Synth::new_with_generator(generator);
+  synth.play_frequency_note(0.0, 1.0, None, None);
+  log(format!("synth playing: {}", synth.as_source().is_playing()));
 
   let mut dline = DelayLine::new(TimeDelta::from_seconds(8), false);
   let tap = dline.add_tap(TimeDelta::from_seconds(6)).unwrap();
