@@ -39,7 +39,10 @@ impl Video {
   /// Returns an error with human-readable text describing the most recent Video error.
   fn get_render_error(&self, fn_name: &str) -> Error {
     let msg = unsafe {
-      crate::null_terminated::parse_null_terminated_utf8(Self::fns().getError.unwrap()(self.cptr()))
+      // getError() takes a mutable pointer but does not write to the video object.
+      crate::null_terminated::parse_null_terminated_utf8(Self::fns().getError.unwrap()(
+        self.cptr() as *mut _
+      ))
     };
     match msg {
       Ok(err) => format!("{}: {}", fn_name, err).into(),
@@ -54,11 +57,15 @@ impl Video {
   /// Renders frame number `n` into the screen.
   pub fn render_frame_to_screen(&self, n: i32) -> Result<(), Error> {
     if self.context.get() != Context::Screen {
-      unsafe { Self::fns().useScreenContext.unwrap()(self.cptr()) }
+      // useScreenContext() writes to the video object, to change its context, but we don't expose
+      // that change in the API, since we don't call getContext(). So we can treat this as interior
+      // mutability.
+      unsafe { Self::fns().useScreenContext.unwrap()(self.cptr() as *mut _) }
       self.context.set(Context::Screen);
     }
 
-    if unsafe { Self::fns().renderFrame.unwrap()(self.cptr(), n) } == 0 {
+    // renderFrame() reads from the video but takes a mutable pointer.
+    if unsafe { Self::fns().renderFrame.unwrap()(self.cptr() as *mut _, n) } == 0 {
       return Err(self.get_render_error("render_frame_to_screen"));
     }
 
@@ -68,12 +75,16 @@ impl Video {
   /// Renders frame number `n` into the `bitmap`.
   pub fn render_frame_to_bitmap(&self, n: i32, bitmap: &mut BitmapRef) -> Result<(), Error> {
     if self.context.get() != Context::Bitmap(NonNull::new(bitmap.cptr_mut()).unwrap()) {
-      if unsafe { Self::fns().setContext.unwrap()(self.cptr(), bitmap.cptr_mut()) } == 0 {
+      // setContext() writes to the video object, to change its context, but we don't expose that
+      // change in the API, since we don't call getContext(). So we can treat this as interior
+      // mutability.
+      if unsafe { Self::fns().setContext.unwrap()(self.cptr() as *mut _, bitmap.cptr_mut()) } == 0 {
         return Err(self.get_render_error("render_frame_to_bitmap"));
       }
     }
 
-    if unsafe { Self::fns().renderFrame.unwrap()(self.cptr(), n) } == 0 {
+    // renderFrame() reads from the video but takes a mutable pointer.
+    if unsafe { Self::fns().renderFrame.unwrap()(self.cptr() as *mut _, n) } == 0 {
       return Err(self.get_render_error("render_frame_to_bitmap"));
     }
 
@@ -87,8 +98,9 @@ impl Video {
     let mut frame_count = 0;
     let mut current_frame = 0;
     unsafe {
+      // getInfo() reads from the video but takes a mutable pointer.
       Self::fns().getInfo.unwrap()(
-        self.cptr(),
+        self.cptr() as *mut _,
         &mut width,
         &mut height,
         &mut frame_rate,
@@ -125,7 +137,10 @@ impl Video {
     current_frame
   }
 
-  pub(crate) fn cptr(&self) -> *mut CVideoPlayer {
+  pub(crate) fn cptr(&self) -> *const CVideoPlayer {
+    self.ptr.as_ptr()
+  }
+  pub(crate) fn cptr_mut(&mut self) -> *mut CVideoPlayer {
     self.ptr.as_ptr()
   }
   pub(crate) fn fns() -> &'static playdate_sys::playdate_video {
@@ -135,6 +150,6 @@ impl Video {
 
 impl Drop for Video {
   fn drop(&mut self) {
-    unsafe { Self::fns().freePlayer.unwrap()(self.cptr()) }
+    unsafe { Self::fns().freePlayer.unwrap()(self.cptr_mut()) }
   }
 }
