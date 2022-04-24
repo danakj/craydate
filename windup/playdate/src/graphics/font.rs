@@ -10,10 +10,10 @@ use crate::null_terminated::ToNullTerminatedString;
 /// Font which can be used to draw text when made active with `Graphics::set_font()`.
 #[derive(Debug)]
 pub struct Font {
-  font_ptr: NonNull<CLCDFont>,
+  font_ptr: NonNull<CFont>,
 }
 impl Font {
-  pub(crate) fn from_ptr(font_ptr: *mut CLCDFont) -> Self {
+  pub(crate) fn from_ptr(font_ptr: *mut CFont) -> Self {
     Font {
       font_ptr: unsafe { NonNull::new_unchecked(font_ptr) },
     }
@@ -28,10 +28,7 @@ impl Font {
     // (likely because the pointer wasn't alloc'd by us). This probably (hopefully??) means that we
     // don't need to free it.
     let font_ptr = unsafe {
-      CApiState::get().cgraphics.loadFont.unwrap()(
-        path.to_null_terminated_utf8().as_ptr(),
-        &mut out_err,
-      )
+      Self::fns().loadFont.unwrap()(path.to_null_terminated_utf8().as_ptr(), &mut out_err)
     };
 
     if !out_err.is_null() {
@@ -55,8 +52,8 @@ impl Font {
   pub fn measure_text_width(&self, text: &str, tracking: i32) -> i32 {
     let utf = text.to_null_terminated_utf8();
     unsafe {
-      CApiState::get().cgraphics.getTextWidth.unwrap()(
-        self.font_ptr.as_ptr(),
+      Self::fns().getTextWidth.unwrap()(
+        self.cptr(),
         utf.as_ptr() as *const core::ffi::c_void,
         utf.len() as u64 - 1, // Don't count the null.
         CStringEncoding::kUTF8Encoding,
@@ -67,7 +64,7 @@ impl Font {
 
   /// The height of the font.
   pub fn font_height(&self) -> u8 {
-    unsafe { CApiState::get().cgraphics.getFontHeight.unwrap()(self.font_ptr.as_ptr()) }
+    unsafe { Self::fns().getFontHeight.unwrap()(self.cptr()) }
   }
 
   /// Returns the FontPage for the character `c`.
@@ -76,16 +73,18 @@ impl Font {
   /// share a page; specifically, if `(c1 & ~0xff) == (c2 & ~0xff)`, then c1 and c2 belong to the
   /// same page. The FontPage can be used to query information about all characters in the page.
   pub fn font_page(&self, c: char) -> FontPage {
-    let page_ptr =
-      unsafe { CApiState::get().cgraphics.getFontPage.unwrap()(self.font_ptr.as_ptr(), c as u32) };
+    let page_ptr = unsafe { Self::fns().getFontPage.unwrap()(self.cptr(), c as u32) };
     FontPage {
       page_ptr: unsafe { NonNull::new_unchecked(page_ptr) },
       page_test: c as u32 & 0xffffff00,
     }
   }
 
-  pub(crate) fn as_ptr(&self) -> *const CLCDFont {
+  pub(crate) fn cptr(&self) -> *mut CFont {
     self.font_ptr.as_ptr()
+  }
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_graphics {
+    CApiState::get().cgraphics
   }
 }
 
@@ -95,7 +94,7 @@ impl Font {
 /// ~0xff)`, then c1 and c2 belong to the same page. The FontPage can be used to query information
 /// about all characters in the page.
 pub struct FontPage {
-  page_ptr: NonNull<CLCDFontPage>,
+  page_ptr: NonNull<CFontPage>,
   /// If a characters high 24 bits match this, then it's part of the page.
   page_test: u32,
 }
@@ -123,8 +122,8 @@ impl FontPage {
       let mut bitmap_ptr: *mut CBitmap = core::ptr::null_mut();
       let mut advance = 0;
       let glyph_ptr = unsafe {
-        CApiState::get().cgraphics.getPageGlyph.unwrap()(
-          self.page_ptr.as_ptr(),
+        Self::fns().getPageGlyph.unwrap()(
+          self.cptr(),
           c as u32,
           &mut bitmap_ptr,
           &mut advance,
@@ -138,11 +137,18 @@ impl FontPage {
       })
     }
   }
+
+  pub(crate) fn cptr(&self) -> *mut CFontPage {
+    self.page_ptr.as_ptr()
+  }
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_graphics {
+    CApiState::get().cgraphics
+  }
 }
 
 /// Information about a specific character's font glyph.
 pub struct FontGlyph {
-  glyph_ptr: NonNull<CLCDFontGlyph>,
+  glyph_ptr: NonNull<CFontGlyph>,
   advance: i32,
   glyph_char: char,
   // Fonts can not be unloaded/destroyed, so the bitmap has a static lifetime.
@@ -160,8 +166,8 @@ impl FontGlyph {
   /// The adjustment would be applied to the `advance()`.
   pub fn kerning(&self, next_char: char) -> i32 {
     unsafe {
-      CApiState::get().cgraphics.getGlyphKerning.unwrap()(
-        self.glyph_ptr.as_ptr(),
+      Self::fns().getGlyphKerning.unwrap()(
+        self.cptr(),
         self.glyph_char as u32,
         next_char as u32,
       )
@@ -171,5 +177,12 @@ impl FontGlyph {
   /// The bitmap representation of the font glyph.
   pub fn bitmap(&self) -> UnownedBitmapRef<'static> {
     self.bitmap.clone()
+  }
+
+  pub(crate) fn cptr(&self) -> *mut CFontGlyph {
+    self.glyph_ptr.as_ptr()
+  }
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_graphics {
+    CApiState::get().cgraphics
   }
 }

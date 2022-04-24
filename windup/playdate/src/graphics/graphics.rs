@@ -11,6 +11,7 @@ use super::unowned_bitmap::UnownedBitmapMut;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::null_terminated::ToNullTerminatedString;
+use crate::system::System;
 
 /// Access to drawing functions to draw to the Playdate device's screen.
 #[derive(Debug)]
@@ -34,7 +35,7 @@ impl Graphics {
     unsafe {
       // checkMaskCollision expects `*mut CLCDBitmap` but it only reads from the bitmaps to check
       // for collision, so we can act on `&self`.
-      CApiState::get().cgraphics.checkMaskCollision.unwrap()(
+      Self::fns().checkMaskCollision.unwrap()(
         a.bitmap.cptr(),
         a.x,
         a.y,
@@ -51,7 +52,7 @@ impl Graphics {
   /// Clears the entire display, filling it with `color`.
   pub fn clear<'a, C: Into<Color<'a>>>(&mut self, color: C) {
     unsafe {
-      CApiState::get().cgraphics.clear.unwrap()(color.into().to_c_color());
+      Self::fns().clear.unwrap()(color.into().to_c_color());
     }
   }
 
@@ -59,7 +60,7 @@ impl Graphics {
   /// in the sprite system.
   pub fn set_background_color(&mut self, color: SolidColor) {
     unsafe {
-      CApiState::get().cgraphics.setBackgroundColor.unwrap()(color);
+      Self::fns().setBackgroundColor.unwrap()(color);
     }
   }
 
@@ -68,7 +69,7 @@ impl Graphics {
   /// `SystemEventWatcher`, so there shouldn’t be any need to call it yourself.
   pub fn display(&mut self) {
     unsafe {
-      CApiState::get().cgraphics.display.unwrap()();
+      Self::fns().display.unwrap()();
     }
   }
 
@@ -77,7 +78,7 @@ impl Graphics {
   /// Only valid in the simulator, so not present in for-device builds.
   #[cfg(not(all(target_arch = "arm", target_os = "none")))]
   pub fn debug_frame_bitmap(&self) -> UnownedBitmapMut<'static> {
-    let bitmap_ptr = unsafe { CApiState::get().cgraphics.getDebugBitmap.unwrap()() };
+    let bitmap_ptr = unsafe { Self::fns().getDebugBitmap.unwrap()() };
     assert!(!bitmap_ptr.is_null());
     UnownedBitmapMut::from_ptr(bitmap_ptr)
   }
@@ -86,7 +87,7 @@ impl Graphics {
   ///
   /// The Playdate device is double-buffered, and this returns the currently displayed frame.
   pub fn display_frame_bitmap(&self) -> Bitmap {
-    let bitmap_ptr = unsafe { CApiState::get().cgraphics.getDisplayBufferBitmap.unwrap()() };
+    let bitmap_ptr = unsafe { Self::fns().getDisplayBufferBitmap.unwrap()() };
     use alloc::borrow::ToOwned;
     BitmapRef::from_ptr(bitmap_ptr).to_owned()
   }
@@ -96,7 +97,7 @@ impl Graphics {
   /// The Playdate device is double-buffered, and this returns the buffer that will be displayed
   /// next frame.
   pub fn working_frame_bitmap(&self) -> Bitmap {
-    let bitmap_ptr = unsafe { CApiState::get().cgraphics.copyFrameBufferBitmap.unwrap()() };
+    let bitmap_ptr = unsafe { Self::fns().copyFrameBufferBitmap.unwrap()() };
     Bitmap::from_owned_ptr(bitmap_ptr)
   }
 
@@ -105,12 +106,12 @@ impl Graphics {
   /// (e.g., `mark_updated_rows(0, LCD_ROWS - 1)` tells the system to update the entire display).
   /// Both "start" and "end" are included in the range.
   pub fn mark_updated_rows(&mut self, start: i32, end: i32) {
-    unsafe { CApiState::get().cgraphics.markUpdatedRows.unwrap()(start, end) }
+    unsafe { Self::fns().markUpdatedRows.unwrap()(start, end) }
   }
 
   /// Offsets the origin point for all drawing calls to x, y (can be negative).
   pub fn set_draw_offset(&mut self, dx: i32, dy: i32) {
-    unsafe { CApiState::get().cgraphics.setDrawOffset.unwrap()(dx, dy) }
+    unsafe { Self::fns().setDrawOffset.unwrap()(dx, dy) }
   }
 
   /// Push a new drawing context that targets the display framebuffer.
@@ -159,7 +160,7 @@ impl Graphics {
   /// The bitmap will remain the stencil as long as the FramebufferStencilBitmap is not dropped, or another
   /// call to set_stencil() is made.
   pub fn set_stencil<'a>(&mut self, bitmap: &'a BitmapRef) -> FramebufferStencilBitmap<'a> {
-    unsafe { CApiState::get().cgraphics.setStencil.unwrap()(bitmap.cptr()) }
+    unsafe { Self::fns().setStencil.unwrap()(bitmap.cptr()) }
     FramebufferStencilBitmap::new(bitmap)
   }
 
@@ -168,7 +169,7 @@ impl Graphics {
   /// The font will remain active for drawing as long as the ActiveFont is not dropped, or another
   /// call to set_font() is made.
   pub fn set_font<'a>(&mut self, font: &'a Font) -> ActiveFont<'a> {
-    unsafe { CApiState::get().cgraphics.setFont.unwrap()(font.as_ptr() as *mut CLCDFont) }
+    unsafe { Self::fns().setFont.unwrap()(font.cptr()) }
     ActiveFont::new(font)
   }
 
@@ -178,7 +179,7 @@ impl Graphics {
   /// The clip rect is cleared at the beginning of each frame.
   pub fn set_clip_rect(&mut self, rect: euclid::default::Rect<i32>) {
     unsafe {
-      CApiState::get().cgraphics.setClipRect.unwrap()(
+      Self::fns().setClipRect.unwrap()(
         rect.origin.x,
         rect.origin.y,
         rect.size.width,
@@ -191,7 +192,7 @@ impl Graphics {
   /// The clip rect is cleared at the beginning of each frame.
   pub fn set_screen_clip_rect(&mut self, rect: euclid::default::Rect<i32>) {
     unsafe {
-      CApiState::get().cgraphics.setScreenClipRect.unwrap()(
+      Self::fns().setScreenClipRect.unwrap()(
         rect.origin.x,
         rect.origin.y,
         rect.size.width,
@@ -203,7 +204,7 @@ impl Graphics {
   /// Sets the mode used for drawing bitmaps. Note that text drawing uses bitmaps, so this
   /// affects how fonts are displayed as well.
   pub fn set_draw_mode(&mut self, mode: BitmapDrawMode) {
-    unsafe { CApiState::get().cgraphics.setDrawMode.unwrap()(mode) }
+    unsafe { Self::fns().setDrawMode.unwrap()(mode) }
   }
 
   /// Draws the bitmap to the screen.
@@ -211,7 +212,7 @@ impl Graphics {
   /// The bitmap's upper-left corner is positioned at location (`x`, `y`), and the contents have
   /// the `flip` orientation applied.
   pub fn draw_bitmap(&mut self, bitmap: &BitmapRef, x: i32, y: i32, flip: BitmapFlip) {
-    unsafe { CApiState::get().cgraphics.drawBitmap.unwrap()(bitmap.cptr(), x, y, flip) }
+    unsafe { Self::fns().drawBitmap.unwrap()(bitmap.cptr(), x, y, flip) }
   }
 
   /// Draws the bitmap to the screen, scaled by `xscale` and `yscale`.
@@ -226,9 +227,7 @@ impl Graphics {
     xscale: f32,
     yscale: f32,
   ) {
-    unsafe {
-      CApiState::get().cgraphics.drawScaledBitmap.unwrap()(bitmap.cptr(), x, y, xscale, yscale)
-    }
+    unsafe { Self::fns().drawScaledBitmap.unwrap()(bitmap.cptr(), x, y, xscale, yscale) }
   }
 
   /// Draws the bitmap to the screen, scaled by `xscale` and `yscale` then rotated by `degrees` with
@@ -248,7 +247,7 @@ impl Graphics {
     yscale: f32,
   ) {
     unsafe {
-      CApiState::get().cgraphics.drawRotatedBitmap.unwrap()(
+      Self::fns().drawRotatedBitmap.unwrap()(
         bitmap.cptr(),
         x,
         y,
@@ -272,9 +271,7 @@ impl Graphics {
     height: i32,
     flip: BitmapFlip,
   ) {
-    unsafe {
-      CApiState::get().cgraphics.tileBitmap.unwrap()(bitmap.cptr(), x, y, width, height, flip)
-    }
+    unsafe { Self::fns().tileBitmap.unwrap()(bitmap.cptr(), x, y, width, height, flip) }
   }
 
   // TODO: Bitmap tables are incomplete in the C Api so we've omitted them. The C Api functions that
@@ -289,16 +286,14 @@ impl Graphics {
     let null_term = text.to_null_terminated_utf8();
     let ptr = null_term.as_ptr() as *const c_void;
     let len = null_term.len() as u64;
-    unsafe {
-      CApiState::get().cgraphics.drawText.unwrap()(ptr, len, CStringEncoding::kUTF8Encoding, x, y)
-    }; // TODO: Return the int from Playdate?
+    unsafe { Self::fns().drawText.unwrap()(ptr, len, CStringEncoding::kUTF8Encoding, x, y) }; // TODO: Return the int from Playdate?
   }
 
   /// Draws the current FPS on the screen at the given (`x`, `y`) coordinates.
   pub fn draw_fps(&mut self, x: i32, y: i32) {
     // This function is part of Playdate CSystemApi, not CGraphicsApi, but it's a function that draws
     // something to the screen, so its behaviour is more clear when part of the Graphics type.
-    unsafe { CApiState::get().csystem.drawFPS.unwrap()(x, y) }
+    unsafe { System::fns().drawFPS.unwrap()(x, y) }
   }
 
   /// Draws an ellipse inside the rectangle of width `line_width` (inset from the rectangle bounds).
@@ -314,7 +309,7 @@ impl Graphics {
     color: Color<'a>,
   ) {
     unsafe {
-      CApiState::get().cgraphics.drawEllipse.unwrap()(
+      Self::fns().drawEllipse.unwrap()(
         rect.origin.x,
         rect.origin.y,
         rect.size.width,
@@ -338,7 +333,7 @@ impl Graphics {
     color: Color<'a>,
   ) {
     unsafe {
-      CApiState::get().cgraphics.fillEllipse.unwrap()(
+      Self::fns().fillEllipse.unwrap()(
         rect.origin.x,
         rect.origin.y,
         rect.size.width,
@@ -357,21 +352,12 @@ impl Graphics {
     line_width: i32,
     color: Color<'a>,
   ) {
-    unsafe {
-      CApiState::get().cgraphics.drawLine.unwrap()(
-        p1.x,
-        p1.y,
-        p2.x,
-        p2.y,
-        line_width,
-        color.to_c_color(),
-      )
-    }
+    unsafe { Self::fns().drawLine.unwrap()(p1.x, p1.y, p2.x, p2.y, line_width, color.to_c_color()) }
   }
   /// Draws a `rect`.
   pub fn draw_rect<'a>(&mut self, r: euclid::default::Rect<i32>, color: Color<'a>) {
     unsafe {
-      CApiState::get().cgraphics.drawRect.unwrap()(
+      Self::fns().drawRect.unwrap()(
         r.origin.x,
         r.origin.y,
         r.size.width,
@@ -383,7 +369,7 @@ impl Graphics {
   /// Draws a filled `rect`.
   pub fn fill_rect<'a>(&mut self, r: euclid::default::Rect<i32>, color: Color<'a>) {
     unsafe {
-      CApiState::get().cgraphics.fillRect.unwrap()(
+      Self::fns().fillRect.unwrap()(
         r.origin.x,
         r.origin.y,
         r.size.width,
@@ -401,15 +387,7 @@ impl Graphics {
     color: Color<'a>,
   ) {
     unsafe {
-      CApiState::get().cgraphics.fillTriangle.unwrap()(
-        p1.x,
-        p1.y,
-        p2.x,
-        p2.y,
-        p3.x,
-        p3.y,
-        color.to_c_color(),
-      )
+      Self::fns().fillTriangle.unwrap()(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, color.to_c_color())
     }
   }
   /// Fills the polygon with vertices at the given coordinates (an array of points) using the given
@@ -425,12 +403,16 @@ impl Graphics {
     // Point2D is a #[repr(C)] struct of x, y. It's alignment will be the same as i32, so an
     // array of Point2D can be treated as an array of i32 with x and y alternating.
     unsafe {
-      CApiState::get().cgraphics.fillPolygon.unwrap()(
+      Self::fns().fillPolygon.unwrap()(
         points.len() as i32,
         points.as_ptr() as *mut i32,
         color.to_c_color(),
         fill_rule,
       )
     }
+  }
+
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_graphics {
+    CApiState::get().cgraphics
   }
 }

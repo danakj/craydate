@@ -7,11 +7,11 @@ use core::ptr::NonNull;
 
 use super::super::sound_channel::SoundChannel;
 use super::sound_source::SoundSource;
-use crate::capi_state::CApiState;
 use crate::ctypes::*;
+use crate::system::System;
 
 /// A `SoundSource` that is a user-defined function that writes to the audio buffer directly.
-/// 
+///
 /// Destroying the `CallbackSource` will remove it from the channel if it's attached.
 pub struct CallbackSource {
   source: ManuallyDrop<SoundSource>,
@@ -22,9 +22,9 @@ pub struct CallbackSource {
 impl CallbackSource {
   /// Constructs a new stereo `CallbackSource` that runs `callback` each sound frame to fill the
   /// stereo sound buffers.
-  /// 
+  ///
   /// The `CallbackSource` starts out being attached to the `channel`.
-  /// 
+  ///
   /// The `callback` closure should fill the passed-in left and right slices with samples and return
   /// true, or return false if the source is silent through the cycle.
   pub fn new_stereo_for_channel<F>(channel: &mut SoundChannel, callback: F) -> Self
@@ -58,9 +58,9 @@ impl CallbackSource {
 
   /// Constructs a new mono `CallbackSource` that runs `callback` each sound frame to fill the mono
   /// sound buffer.
-  /// 
+  ///
   /// The `CallbackSource` starts out being attached to the `channel`.
-  /// 
+  ///
   /// The `callback` closure should fill the passed-in slice with samples and return true, or return
   /// false if the source is silent through the cycle.
   pub fn new_mono_for_channel<F>(channel: &mut SoundChannel, callback: F) -> Self
@@ -101,7 +101,7 @@ impl Drop for CallbackSource {
   fn drop(&mut self) {
     // Ensure the SoundSource has a chance to clean up before it is freed.
     unsafe { ManuallyDrop::drop(&mut self.source) };
-    unsafe { CApiState::get().csystem.realloc.unwrap()(self.cptr() as *mut c_void, 0) };
+    unsafe { System::fns().realloc.unwrap()(self.cptr() as *mut c_void, 0) };
   }
 }
 

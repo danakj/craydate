@@ -45,9 +45,7 @@ impl System {
 
   /// Returns the current time in milliseconds.
   pub fn current_time(&self) -> TimeTicks {
-    TimeTicks::from_milliseconds(unsafe {
-      CApiState::get().csystem.getCurrentTimeMilliseconds.unwrap()()
-    })
+    TimeTicks::from_milliseconds(unsafe { Self::fns().getCurrentTimeMilliseconds.unwrap()() })
   }
 
   /// Returns the current wall-clock time.
@@ -57,7 +55,7 @@ impl System {
   /// logic and for tracking elapsed time.
   pub fn wall_clock_time(&self) -> WallClockTime {
     let mut time = 0;
-    unsafe { CApiState::get().csystem.getSecondsSinceEpoch.unwrap()(&mut time) };
+    unsafe { Self::fns().getSecondsSinceEpoch.unwrap()(&mut time) };
     WallClockTime(time)
   }
 
@@ -73,28 +71,28 @@ impl System {
       panic!("HighResolutionTimer is already active.")
     }
     let timer = HighResolutionTimer::new(CApiState::get().csystem, &self.timer_active);
-    unsafe { CApiState::get().csystem.resetElapsedTime.unwrap()() };
+    unsafe { Self::fns().resetElapsedTime.unwrap()() };
     timer
   }
 
   /// Returns whether the global "flipped" system setting is set.
   pub fn is_flipped_enabled(&self) -> bool {
-    unsafe { CApiState::get().csystem.getFlipped.unwrap()() != 0 }
+    unsafe { Self::fns().getFlipped.unwrap()() != 0 }
   }
 
   /// Returns whether the global "reduce flashing" system setting is set.
   pub fn is_reduce_flashing_enabled(&self) -> bool {
-    unsafe { CApiState::get().csystem.getReduceFlashing.unwrap()() != 0 }
+    unsafe { Self::fns().getReduceFlashing.unwrap()() != 0 }
   }
 
   /// Returns the battery percentage, which is a value between 0 and 1.
   pub fn battery_percentage(&self) -> f32 {
-    unsafe { CApiState::get().csystem.getBatteryPercentage.unwrap()() / 100f32 }
+    unsafe { Self::fns().getBatteryPercentage.unwrap()() / 100f32 }
   }
 
   /// Returns the battery voltage.
   pub fn battery_voltage(&self) -> f32 {
-    unsafe { CApiState::get().csystem.getBatteryVoltage.unwrap()() }
+    unsafe { Self::fns().getBatteryVoltage.unwrap()() }
   }
 
   /// Sets the bitmap to be displayed beside (and behind) the system menu.
@@ -112,15 +110,13 @@ impl System {
   pub fn set_menu_image(&mut self, bitmap: &crate::graphics::BitmapRef, xoffset: i32) {
     // SAFETY: Playdate makes a copy from the given pointer, so we can pass it in and then drop the
     // reference on `bitmap` when we leave the function.
-    unsafe {
-      CApiState::get().csystem.setMenuImage.unwrap()(bitmap.cptr(), xoffset.clamp(0, 200))
-    }
+    unsafe { Self::fns().setMenuImage.unwrap()(bitmap.cptr(), xoffset.clamp(0, 200)) }
   }
 
   /// Removes the user-specified bitmap from beside the system menu. The default image is displayed
   /// instead.
   pub fn clear_menu_image(&mut self) {
-    unsafe { CApiState::get().csystem.setMenuImage.unwrap()(core::ptr::null_mut(), 0) }
+    unsafe { Self::fns().setMenuImage.unwrap()(core::ptr::null_mut(), 0) }
   }
 
   /// To use a peripheral, it must first be enabled via this function.
@@ -130,12 +126,12 @@ impl System {
   /// output of `FrameWatcher::next()`.
   pub fn enable_peripherals(&mut self, which: Peripherals) {
     CApiState::get().peripherals_enabled.set(which);
-    unsafe { CApiState::get().csystem.setPeripheralsEnabled.unwrap()(which) }
+    unsafe { Self::fns().setPeripheralsEnabled.unwrap()(which) }
   }
 
   /// Returns the current language of the system.
   pub fn get_language(&self) -> Language {
-    unsafe { CApiState::get().csystem.getLanguage.unwrap()() }
+    unsafe { Self::fns().getLanguage.unwrap()() }
   }
 
   /// Disables or enables the 60 second auto-lock feature. When enabled, the timer is reset to 60
@@ -151,7 +147,7 @@ impl System {
       AutoLock::Disabled => 1,
       AutoLock::Enabled => 0,
     };
-    unsafe { CApiState::get().csystem.setAutoLockDisabled.unwrap()(disabled) }
+    unsafe { Self::fns().setAutoLockDisabled.unwrap()(disabled) }
   }
 
   /// Disables or enables sound effects when the crank is docked or undocked.
@@ -169,10 +165,14 @@ impl System {
       CrankSounds::Silent => 1,
       CrankSounds::DockingSounds => 0,
     };
-    let previous = unsafe { CApiState::get().csystem.setCrankSoundsDisabled.unwrap()(disabled) };
+    let previous = unsafe { Self::fns().setCrankSoundsDisabled.unwrap()(disabled) };
     match previous {
       0 => CrankSounds::DockingSounds,
       _ => CrankSounds::Silent,
     }
+  }
+
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_sys {
+    CApiState::get().csystem
   }
 }

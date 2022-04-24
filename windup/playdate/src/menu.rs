@@ -224,6 +224,6 @@ impl MenuItem<Options> {
 
 impl<Type> Drop for MenuItem<Type> {
   fn drop(&mut self) {
-    unsafe { CApiState::get().csystem.removeMenuItem.unwrap()(self.cptr()) };
+    unsafe { Self::fns().removeMenuItem.unwrap()(self.cptr()) };
   }
 }

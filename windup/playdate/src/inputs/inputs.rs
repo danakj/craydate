@@ -3,6 +3,7 @@ use super::crank::Crank;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::geometry::Vector3;
+use crate::system::System;
 
 /// The set of all input state and/or changes since the last frame.
 #[derive(Debug)]
@@ -43,7 +44,7 @@ impl Inputs {
   pub fn accelerometer(&self) -> Option<Vector3<f32>> {
     if self.peripherals_enabled & Peripherals::kAccelerometer == Peripherals::kAccelerometer {
       let mut v = Vector3::default();
-      unsafe { CApiState::get().csystem.getAccelerometer.unwrap()(&mut v.x, &mut v.y, &mut v.z) }
+      unsafe { System::fns().getAccelerometer.unwrap()(&mut v.x, &mut v.y, &mut v.z) }
       Some(v)
     } else {
       None
