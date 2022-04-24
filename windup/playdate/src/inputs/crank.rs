@@ -3,6 +3,8 @@
 pub enum Crank {
   /// When docked, the crank can not be used and as no position.
   Docked,
+  /// When undocked, the crank can spin around in a circle, and this state contains information
+  /// about its position.
   Undocked {
     /// The position of the crank in degrees. The angle increases when moved clockwise.
     angle: f32,
