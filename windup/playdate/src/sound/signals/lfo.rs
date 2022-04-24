@@ -32,7 +32,7 @@ pub enum LfoFixedFunction {
   Triangle,
   /// A sine wave that arcs between 0 and 1.
   Sine,
-  /// TODO: What shape does this produce?
+  /// TODO: What is this sampling to produce an output?
   SampleAndHold,
   /// A wave that moves linearly from 0 to 1, then jumps to 0 to repeat.
   SawtoothUp,
