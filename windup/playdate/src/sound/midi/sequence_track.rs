@@ -8,23 +8,31 @@ use super::track_note::TrackNote;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 
-pub struct SequenceTrackRef<'a> {
+/// A `SequenceTrack` plays (multiple at a time) notes on an `Instrument` as part of a full
+/// `Sequence`, which represents a MIDI file.
+///
+/// The data in a `SequenceTrack` is owned by the `Sequence`, so this represents a borrow of that
+/// data.
+pub struct SequenceTrack<'a> {
   ptr: NonNull<CSequenceTrack>,
   index: u32,
   instrument: Option<*mut Instrument>,
   _marker: PhantomData<&'a Sequence>,
 }
-impl<'a> SequenceTrackRef<'a> {
-  pub fn new(ptr: *mut CSequenceTrack, index: u32, instrument: Option<*mut Instrument>) -> Self {
-    SequenceTrackRef {
+impl<'a> SequenceTrack<'a> {
+  pub(crate) fn new<'b>(
+    ptr: *mut CSequenceTrack,
+    index: u32,
+    instrument: *const Instrument,
+  ) -> Self {
+    SequenceTrack {
       ptr: NonNull::new(ptr).unwrap(),
       index,
-      instrument,
+      // We store a mutable pointer here, but SequenceTrack will not mutate it. Only
+      // SequenceTrackMut would do so, and it received the same pointer as a *mut Instrument.
+      instrument: Some(instrument as *mut _),
       _marker: PhantomData,
     }
-  }
-  pub(crate) fn cptr(&self) -> *mut CSequenceTrack {
-    self.ptr.as_ptr()
   }
 
   /// Returns the track's index in its `Sequence`.
@@ -36,10 +44,6 @@ impl<'a> SequenceTrackRef<'a> {
   pub fn instrument(&self) -> Option<&'a Instrument> {
     self.instrument.map(|p| unsafe { &*p })
   }
-  /// Gets the `Instrument` assigned to the track.
-  pub fn instrument_mut(&mut self) -> Option<&'a mut Instrument> {
-    self.instrument.map(|p| unsafe { &mut *p })
-  }
 
   /// Returns the length, in steps, of the track - ​that is, the step where the last note in the
   /// track ends.
@@ -47,27 +51,19 @@ impl<'a> SequenceTrackRef<'a> {
     unsafe { SequenceTrack::fns().getLength.unwrap()(self.cptr()) }
   }
 
-  /// Adds a single note to the track.
-  pub fn add_note(&mut self, step: u32, note: TrackNote) {
-    unsafe {
-      SequenceTrack::fns().addNoteEvent.unwrap()(
-        self.cptr(),
-        step,
-        note.length,
-        note.midi_note as f32,
-        note.velocity.into(),
-      )
-    }
-  }
-  /// Removes the event at `step` playing `midi_note`.
-  pub fn remove_note_event(&mut self, step: u32, midi_note: f32) {
-    unsafe { SequenceTrack::fns().removeNoteEvent.unwrap()(self.cptr(), step, midi_note) }
-  }
-  /// Remove all notes from the track.
-  pub fn remove_all_notes(&mut self) {
-    unsafe { SequenceTrack::fns().clearNotes.unwrap()(self.cptr()) }
+  /// Returns the maximum number of notes simultaneously active in the track.
+  ///
+  /// Known bug: this currently only works for midi files.
+  pub fn polyphony(&self) -> i32 {
+    unsafe { SequenceTrack::fns().getPolyphony.unwrap()(self.cptr()) }
   }
 
+  /// Returns the current number of active notes in the track.
+  pub fn active_notes_count(&self) -> i32 {
+    unsafe { SequenceTrack::fns().activeVoiceCount.unwrap()(self.cptr()) }
+  }
+
+  /// Returns an iterator over all `TrackNote`s in the track that start at the given `step`.
   pub fn notes_at_step(&self, step: u32) -> impl Iterator<Item = TrackNote> {
     let mut v = Vec::new();
     let first_index = unsafe { SequenceTrack::fns().getIndexForStep.unwrap()(self.cptr(), step) };
@@ -98,6 +94,7 @@ impl<'a> SequenceTrackRef<'a> {
     v.into_iter()
   }
 
+  /// Returns an iterator over all `TrackNote`s in the track.
   pub fn notes(&self) -> impl Iterator<Item = TrackNote> {
     let mut v = Vec::new();
     for index in 0.. {
@@ -127,93 +124,77 @@ impl<'a> SequenceTrackRef<'a> {
     v.into_iter()
   }
 
-  pub fn control_signal_count(&self) -> i32 {
-    unsafe { SequenceTrack::fns().getControlSignalCount.unwrap()(self.cptr()) }
-  }
-  // TODO: Do something to expose the Control objects here, like an iterator or a slice.
-  pub fn control_signal_at_index(&self, index: i32) {
-    unsafe { SequenceTrack::fns().getControlSignal.unwrap()(self.cptr(), index) };
-  }
-  pub fn clear_control_signals(&mut self) {
-    unsafe { SequenceTrack::fns().clearControlEvents.unwrap()(self.cptr()) }
-  }
+  // TODO: Replace this function with a slice or iterator accessor of the signals.
+  // /// Returns the number of control signals in the track.
+  // pub fn control_signal_count(&self) -> i32 {
+  //   unsafe { SequenceTrack::fns().getControlSignalCount.unwrap()(self.cptr()) }
+  // }
 
-  // TODO: getSignalForController in a future update.
-  // https://devforum.play.date/t/c-api-sequencetrack-is-missing-addcontrolsignal/4508
+  // TODO: getControlSignal
 
-  /// Returns the maximum number of notes simultaneously active in the track.
-  ///
-  /// Known bug: this currently only works for midi files.
-  pub fn polyphony(&self) -> i32 {
-    unsafe { SequenceTrack::fns().getPolyphony.unwrap()(self.cptr()) }
-  }
+  // TODO: getSignalForController (with `create = false`)
 
-  /// Returns the current number of active notes in the track.
-  pub fn active_notes_count(&self) -> i32 {
-    unsafe { SequenceTrack::fns().activeVoiceCount.unwrap()(self.cptr()) }
+  pub(crate) fn cptr(&self) -> *mut CSequenceTrack {
+    self.ptr.as_ptr()
   }
-
-  /// Mutes the track.
-  pub fn set_muted(&mut self) {
-    unsafe { SequenceTrack::fns().setMuted.unwrap()(self.cptr(), true as i32) }
-  }
-  /// Unmutes the track.
-  pub fn set_unmuted(&mut self) {
-    unsafe { SequenceTrack::fns().setMuted.unwrap()(self.cptr(), false as i32) }
-  }
-}
-
-/// An immutable unowned `SequenceTrack`.
-pub struct SequenceTrack<'a> {
-  tref: SequenceTrackRef<'a>,
-  _seq: &'a Sequence,
-}
-impl<'a> SequenceTrack<'a> {
-  pub(crate) fn new<'b>(ptr: *mut CSequenceTrack, index: u32, seq: &'a Sequence) -> Self {
-    // SAFETY: This type only gives const access to the SequenceTrackRef so the pointee is not
-    // mutated.
-    let instrument = seq.track_instrument(index) as *const _ as *mut _;
-    SequenceTrack {
-      tref: SequenceTrackRef::new(ptr, index, Some(instrument)),
-      _seq: seq,
-    }
-  }
-
   pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_track {
     unsafe { &*CApiState::get().csound.track }
   }
 }
-impl<'a> core::ops::Deref for SequenceTrack<'a> {
-  type Target = SequenceTrackRef<'a>;
 
-  fn deref(&self) -> &Self::Target {
-    &self.tref
-  }
-}
-impl<'a> AsRef<SequenceTrackRef<'a>> for SequenceTrack<'a> {
-  fn as_ref(&self) -> &SequenceTrackRef<'a> {
-    self
-  }
-}
-
-/// A mutable unowned `SequenceTrack`.
+/// A `SequenceTrackMut` plays (multiple at a time) notes on an `Instrument` as part of a full
+/// `Sequence`, which represents a MIDI file.
+///
+/// The data in a `SequenceTrackMut` is owned by the `Sequence`, so this represents a borrow of that
+/// data.
 pub struct SequenceTrackMut<'a> {
-  tref: SequenceTrackRef<'a>,
-  seq: *mut Sequence,
+  track: SequenceTrack<'a>,
+  sequence_ptr: *mut Sequence,
 }
 impl<'a> SequenceTrackMut<'a> {
-  pub(crate) fn new(ptr: *mut CSequenceTrack, index: u32, seq: *mut Sequence) -> Self {
-    let instrument = unsafe { (*seq).track_instrument_mut(index) as *mut Instrument };
+  pub(crate) fn new(
+    ptr: *mut CSequenceTrack,
+    index: u32,
+    sequence_ptr: *mut Sequence,
+    instrument: *mut Instrument,
+  ) -> Self {
     SequenceTrackMut {
-      tref: SequenceTrackRef::new(ptr, index, Some(instrument)),
-      seq,
+      track: SequenceTrack::new(ptr, index, instrument as *const _),
+      sequence_ptr,
     }
   }
 
   unsafe fn sequence(&self) -> &'a mut Sequence {
     // SAFETY: Constructs a reference `&'a mut Sequence` that will not outlive the `Sequence` from
-    // which this object was constructed, as we hold a borrow on it with lifetime `&mut 'a`.
-    &mut *self.seq
+    // which this object was constructed, as we hold a borrow on it with lifetime `&mut 'a`. The
+    // reference should not be held more than a single function or it may alias with another call.
+    &mut *self.sequence_ptr
+  }
+
+  /// Gets the `Instrument` assigned to the track.
+  pub fn instrument_mut(&mut self) -> Option<&'a mut Instrument> {
+    self.instrument.map(|p| unsafe { &mut *p })
+  }
+
+  /// Adds a single note to the track.
+  pub fn add_note(&mut self, step: u32, note: TrackNote) {
+    unsafe {
+      SequenceTrack::fns().addNoteEvent.unwrap()(
+        self.cptr(),
+        step,
+        note.length,
+        note.midi_note as f32,
+        note.velocity.into(),
+      )
+    }
+  }
+  /// Removes the event at `step` playing `midi_note`.
+  pub fn remove_note_event(&mut self, step: u32, midi_note: f32) {
+    unsafe { SequenceTrack::fns().removeNoteEvent.unwrap()(self.cptr(), step, midi_note) }
+  }
+  /// Remove all notes from the track.
+  pub fn remove_all_notes(&mut self) {
+    unsafe { SequenceTrack::fns().clearNotes.unwrap()(self.cptr()) }
   }
 
   /// Sets the `Instrument` assigned to the track, taking ownership of the instrument.
@@ -225,29 +206,35 @@ impl<'a> SequenceTrackMut<'a> {
     let seq = unsafe { self.sequence() };
     seq.set_track_instrument(self.index, instrument);
     let iref: &mut Instrument = seq.track_instrument_mut(self.index);
-    self.tref.instrument = Some(iref);
+    self.track.instrument = Some(iref);
   }
+
+  /// Mutes the track.
+  pub fn set_muted(&mut self) {
+    unsafe { SequenceTrack::fns().setMuted.unwrap()(self.cptr(), true as i32) }
+  }
+  /// Unmutes the track.
+  pub fn set_unmuted(&mut self) {
+    unsafe { SequenceTrack::fns().setMuted.unwrap()(self.cptr(), false as i32) }
+  }
+
+  /// Remove all control signals from the track.
+  pub fn clear_control_signals(&mut self) {
+    unsafe { SequenceTrack::fns().clearControlEvents.unwrap()(self.cptr()) }
+  }
+
+  // TODO: getSignalForController (with `create = true`)
 }
 
 impl<'a> core::ops::Deref for SequenceTrackMut<'a> {
-  type Target = SequenceTrackRef<'a>;
+  type Target = SequenceTrack<'a>;
 
   fn deref(&self) -> &Self::Target {
-    &self.tref
+    &self.track
   }
 }
-impl core::ops::DerefMut for SequenceTrackMut<'_> {
-  fn deref_mut(&mut self) -> &mut Self::Target {
-    &mut self.tref
-  }
-}
-impl<'a> AsRef<SequenceTrackRef<'a>> for SequenceTrackMut<'a> {
-  fn as_ref(&self) -> &SequenceTrackRef<'a> {
-    self
-  }
-}
-impl<'a> AsMut<SequenceTrackRef<'a>> for SequenceTrackMut<'a> {
-  fn as_mut(&mut self) -> &mut SequenceTrackRef<'a> {
+impl<'a> AsRef<SequenceTrack<'a>> for SequenceTrackMut<'a> {
+  fn as_ref(&self) -> &SequenceTrack<'a> {
     self
   }
 }

@@ -104,7 +104,7 @@ impl Sequence {
   /// `SystemEvent::Callback` event. When that occurs, the application's `Callbacks` object which
   /// was used to construct the `completion_callback` can be `run()` to execute the closure bound in
   /// the `completion_callback`.
-  /// 
+  ///
   /// # Example
   /// ```
   /// let callbacks: Callbacks<i32> = Callbacks::new();
@@ -187,7 +187,7 @@ impl Sequence {
   /// Returns an iterator over all the tracks in the `Sequence`.
   pub fn tracks<'a>(&'a self) -> impl Iterator<Item = SequenceTrack> + 'a {
     SequenceTrackIter {
-      seq: self,
+      sequence: self,
       next: 0,
       count: self.tracks_count(),
     }
@@ -196,7 +196,6 @@ impl Sequence {
   pub fn tracks_mut<'a>(&'a mut self) -> impl Iterator<Item = SequenceTrackMut<'a>> + 'a {
     SequenceTrackIterMut {
       sequence: self,
-      sequence_cptr: self.cptr(),
       next: 0,
       count: self.tracks_count(),
       _marker: PhantomData,
@@ -212,14 +211,18 @@ impl Sequence {
     let instrument = Instrument::new();
     unsafe { SequenceTrack::fns().setInstrument.unwrap()(track_ptr, instrument.cptr()) };
     self.instruments.insert(index, instrument);
-    SequenceTrackMut::new(track_ptr, index, self)
+    SequenceTrackMut::new(track_ptr, index, self, self.track_instrument_mut(index))
   }
   /// Gets the `SequenceTrack` at the given `index` if there is one. Otherwise, returns `None`.
   pub fn track_at_index(&self, index: u32) -> Option<SequenceTrack> {
     if self.instruments.contains_key(&index) {
       let track_ptr = unsafe { Sequence::fns().getTrackAtIndex.unwrap()(self.cptr(), index) };
       assert!(!track_ptr.is_null());
-      Some(SequenceTrack::new(track_ptr, index, self))
+      Some(SequenceTrack::new(
+        track_ptr,
+        index,
+        self.track_instrument(index),
+      ))
     } else {
       None
     }
@@ -229,7 +232,12 @@ impl Sequence {
     if self.instruments.contains_key(&index) {
       let track_ptr = unsafe { Sequence::fns().getTrackAtIndex.unwrap()(self.cptr(), index) };
       assert!(!track_ptr.is_null());
-      Some(SequenceTrackMut::new(track_ptr, index, self))
+      Some(SequenceTrackMut::new(
+        track_ptr,
+        index,
+        self,
+        self.track_instrument_mut(index),
+      ))
     } else {
       None
     }
@@ -263,7 +271,7 @@ impl Drop for Sequence {
 }
 
 struct SequenceTrackIter<'a> {
-  seq: &'a Sequence,
+  sequence: &'a Sequence,
   next: u32,
   count: u32,
 }
@@ -277,10 +285,15 @@ impl<'a> Iterator for SequenceTrackIter<'a> {
       loop {
         let index = self.next;
         self.next += 1;
-        let track_ptr = unsafe { Sequence::fns().getTrackAtIndex.unwrap()(self.seq.cptr(), index) };
+        let track_ptr =
+          unsafe { Sequence::fns().getTrackAtIndex.unwrap()(self.sequence.cptr(), index) };
         if !track_ptr.is_null() {
           self.count -= 1;
-          return Some(SequenceTrack::new(track_ptr, index, self.seq));
+          return Some(SequenceTrack::new(
+            track_ptr,
+            index,
+            self.sequence.track_instrument(index),
+          ));
         }
       }
     }
@@ -289,7 +302,6 @@ impl<'a> Iterator for SequenceTrackIter<'a> {
 
 struct SequenceTrackIterMut<'a> {
   sequence: *mut Sequence,
-  sequence_cptr: *mut CSoundSequence,
   next: u32,
   count: u32,
   _marker: PhantomData<&'a Sequence>,
@@ -305,10 +317,15 @@ impl<'a> Iterator for SequenceTrackIterMut<'a> {
         let index = self.next;
         self.next += 1;
         let track_ptr =
-          unsafe { Sequence::fns().getTrackAtIndex.unwrap()(self.sequence_cptr, index) };
+          unsafe { Sequence::fns().getTrackAtIndex.unwrap()((*self.sequence).cptr(), index) };
         if !track_ptr.is_null() {
           self.count -= 1;
-          return Some(SequenceTrackMut::new(track_ptr, index, self.sequence));
+          return Some(SequenceTrackMut::new(
+            track_ptr,
+            index,
+            self.sequence,
+            unsafe { (*self.sequence).track_instrument_mut(index) },
+          ));
         }
       }
     }
