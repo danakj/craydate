@@ -181,18 +181,22 @@ impl MenuItem {
 impl<T> MenuItem<T> {
   /// Get the menu item's title.
   pub fn title(&self) -> &str {
-    let ptr = unsafe { Self::fns().getMenuItemTitle.unwrap()(self.cptr()) };
+    // getMenuItemTitle takes a mutable pointer but does not write to its data.
+    let ptr = unsafe { Self::fns().getMenuItemTitle.unwrap()(self.cptr() as *mut _) };
     // SAFETY: Strings returned from playdate are utf8 and null-terminated.
     unsafe { crate::null_terminated::parse_null_terminated_utf8(ptr).unwrap() }
   }
   /// Set the menu item's title.
   pub fn set_title(&mut self, title: &str) {
     unsafe {
-      Self::fns().setMenuItemTitle.unwrap()(self.cptr(), title.to_null_terminated_utf8().as_ptr())
+      Self::fns().setMenuItemTitle.unwrap()(self.cptr_mut(), title.to_null_terminated_utf8().as_ptr())
     }
   }
 
-  pub(crate) fn cptr(&self) -> *mut CMenuItem {
+  pub(crate) fn cptr(&self) -> *const CMenuItem {
+    self.ptr.as_ptr()
+  }
+  pub(crate) fn cptr_mut(&mut self) -> *mut CMenuItem {
     self.ptr.as_ptr()
   }
   pub(crate) fn fns() -> &'static playdate_sys::playdate_sys {
@@ -203,27 +207,29 @@ impl<T> MenuItem<T> {
 impl MenuItem<Checkmark> {
   /// Returns if the checkmark menu item was checked when the menu was closed.
   pub fn checked(&self) -> bool {
-    unsafe { Self::fns().getMenuItemValue.unwrap()(self.cptr()) != 0 }
+    // getMenuItemValue takes a mutable pointer but doesn't write to its data.
+    unsafe { Self::fns().getMenuItemValue.unwrap()(self.cptr() as *mut _) != 0 }
   }
   /// Sets if the checkmark menu item should be checked when the menu is next opened.
-  pub fn set_checked(&self, checked: bool) {
-    unsafe { Self::fns().setMenuItemValue.unwrap()(self.cptr(), checked as i32) }
+  pub fn set_checked(&mut self, checked: bool) {
+    unsafe { Self::fns().setMenuItemValue.unwrap()(self.cptr_mut(), checked as i32) }
   }
 }
 
 impl MenuItem<Options> {
   /// Returns the index of the option that was selected when the menu was closed.
   pub fn value(&self) -> i32 {
-    unsafe { Self::fns().getMenuItemValue.unwrap()(self.cptr()) }
+    // getMenuItemValue takes a mutable pointer but doesn't write to its data.
+    unsafe { Self::fns().getMenuItemValue.unwrap()(self.cptr() as *mut _) }
   }
   /// Sets the index of the option to be selected when the menu is next opened.
-  pub fn set_value(&self, value: i32) {
-    unsafe { Self::fns().setMenuItemValue.unwrap()(self.cptr(), value) }
+  pub fn set_value(&mut self, value: i32) {
+    unsafe { Self::fns().setMenuItemValue.unwrap()(self.cptr_mut(), value) }
   }
 }
 
 impl<Type> Drop for MenuItem<Type> {
   fn drop(&mut self) {
-    unsafe { Self::fns().removeMenuItem.unwrap()(self.cptr()) };
+    unsafe { Self::fns().removeMenuItem.unwrap()(self.cptr_mut()) };
   }
 }

@@ -266,7 +266,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
     }),
   );
   action_item.title();
-  let check_item = MenuItem::new_checkmark(
+  let mut check_item = MenuItem::new_checkmark(
     "dank",
     false,
     MenuCallback::with(&mut i32callbacks).call(|i| {
@@ -274,7 +274,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
     }),
   );
   check_item.set_checked(true);
-  let options_item = MenuItem::new_options(
+  let mut options_item = MenuItem::new_options(
     "temp",
     ["too hot", "too cold", "just right"],
     MenuCallback::with(&mut i32callbacks).call(|i| {
