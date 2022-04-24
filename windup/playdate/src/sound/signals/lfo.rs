@@ -6,7 +6,7 @@ use core::ptr::NonNull;
 
 use super::synth_signal::{SynthSignal, SynthSignalSubclass};
 use crate::capi_state::CApiState;
-use crate::ctypes::*;
+use crate::{ctypes::*, TimeTicks};
 
 struct LfoFunctionData {
   f: Box<dyn FnMut() -> f32>,
@@ -23,12 +23,20 @@ impl Drop for LfoSubclass {
 }
 impl SynthSignalSubclass for LfoSubclass {}
 
+/// The set of functions that can be used for an `Lfo`, if not providing a user-written function.
+/// The name of the function describes the shape of the function's output.
 pub enum LfoFixedFunction {
+  /// A wave that alternates between 0 and 1.
   Square,
+  /// A wave that moves linearly up and down between 0 and 1.
   Triangle,
+  /// A sine wave that arcs between 0 and 1.
   Sine,
+  /// TODO: What shape does this produce?
   SampleAndHold,
+  /// A wave that moves linearly from 0 to 1, then jumps to 0 to repeat.
   SawtoothUp,
+  /// A wave that moves linearly from 1 to 0, then jumps to 1 to repeat.
   SawtoothDown,
 }
 impl LfoFixedFunction {
@@ -44,7 +52,7 @@ impl LfoFixedFunction {
   }
 }
 
-/// An Lfo is used to modulate sounds in a `Synth` with a function.
+/// An `Lfo` (Low-frequency oscillation) is used to modulate sounds in a `Synth` with a function.
 pub struct Lfo {
   signal: SynthSignal,
   subclass: Rc<LfoSubclass>,
@@ -60,7 +68,7 @@ impl Lfo {
   }
 
   /// Constructs a new LFO with the given shape. See `set_fixed_function()`.
-  pub fn new_fixed_function(
+  pub fn new_with_fixed_function(
     lfo_type: LfoFixedFunction,
     rate: f32,
     phase: f32,
@@ -73,14 +81,14 @@ impl Lfo {
     lfo
   }
   /// Constructs a new LFO with an arpeggio. See `set_arpeggiation()`.
-  pub fn new_arpeggiation(steps: &[f32]) -> Self {
+  pub fn new_with_arpeggiation(steps: &[f32]) -> Self {
     let ptr = unsafe { Self::fns().newLFO.unwrap()(CSynthLfoType::kLFOTypeArpeggiator) };
     let mut lfo = Self::from_ptr(ptr);
     lfo.set_arpeggiation(steps);
     lfo
   }
   /// Constructs a new LFO with a custom function. See `set_user_function()`.
-  pub fn new_user_function(
+  pub fn new_with_user_function(
     &mut self,
     interpolate: bool,
     f: impl FnMut() -> f32 + Send + 'static,
@@ -126,15 +134,15 @@ impl Lfo {
   /// Provides a custom function for LFO values.
   ///
   /// TODO: What is `interpolate`?
-  /// TODO: Does `f` need access to the `SynthLfo`?
+  /// TODO: Does `f` need access to the `CSynthLfo`?
   pub fn set_user_function(&mut self, interpolate: bool, f: impl FnMut() -> f32 + Send + 'static) {
     unsafe { Lfo::fns().setType.unwrap()(self.cptr(), CSynthLfoType::kLFOTypeFunction) };
     unsafe extern "C" fn c_func(_clfo: *mut CSynthLfo, data: *mut c_void) -> f32 {
       let data = data as *mut LfoFunctionData;
       ((*data).f)()
     }
-    // We store the LfoFunctionData inside the LfoSubclass, which will live as long as the Lfo is
-    // running, even after the Lfo is dropped. Then we grab a pointer to it there, after it was
+    // We store the LfoFunctionData inside the LfoSubclass, which will live as long as the LFO is
+    // running, even after the LFO is dropped. Then we grab a pointer to it there, after it was
     // moved into place on the heap.
     *self.subclass.function_data.borrow_mut() = Some(LfoFunctionData { f: Box::new(f) });
     let data_ptr = unsafe {
@@ -150,7 +158,24 @@ impl Lfo {
     }
   }
 
-  // TODO: setGlobal in a future update.
+  /// Sets an initial holdoff time for the LFO where the LFO remains at its center value, and a ramp
+  /// time where the value increases linearly to its maximum depth.
+  pub fn set_delay(&mut self, holdoff: TimeTicks, ramp_time: TimeTicks) {
+    unsafe {
+      Self::fns().setDelay.unwrap()(self.cptr(), holdoff.to_seconds(), ramp_time.to_seconds())
+    }
+  }
+
+  /// If retrigger is on, the LFO’s phase is reset to 0 when a synth using the LFO starts playing a
+  /// note.
+  pub fn set_retrigger(&mut self, retrigger: bool) {
+    unsafe { Self::fns().setRetrigger.unwrap()(self.cptr(), retrigger as i32) }
+  }
+
+  /// If global is set, the LFO is continuously updated whether or not it’s currently in use.
+  pub fn set_global(&mut self, global: bool) {
+    unsafe { Self::fns().setGlobal.unwrap()(self.cptr(), global as i32) }
+  }
 
   /// Return the current output value of the LFO.
   pub fn get_value(&self) -> f32 {
