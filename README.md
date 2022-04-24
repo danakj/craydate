@@ -39,3 +39,4 @@
 - Turn all `*mut T` into `NonNull<T>` where it makes sense.
 - Add a `Self::fns() -> &'static capithing` fn to all the types.
 - Add a `Self::cptr(&self) -> *mut T` to all the types.
+- Impl size_hint(), ExactSizedIterator, and FusedIterator for user-defined Iterators.
