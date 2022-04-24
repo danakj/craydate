@@ -111,6 +111,9 @@ impl File {
   }
 
   /// Read the entire contents of the file at `path`.
+  /// 
+  /// The function will try to read from the game's data folder, and if it cannot find the file
+  /// there, it will fallback to look in the game pdx.
   pub fn read_file(&self, path: &str) -> Result<Vec<u8>, Error> {
     // To open a file for reading in the simulator and on the hardware you currently have to set the mode to kFileRead|kFileReadData
     let ptr = NonNull::new(unsafe {
@@ -137,7 +140,7 @@ impl File {
     }
   }
 
-  /// Write `contents` into the file at `path`.
+  /// Write `contents` into the file at `path` in the game's data folder.
   ///
   /// If a file exists at `path` it will be overwritten, otherwise a file will be created. If a
   /// folder exists at `path`, the write will fail.
@@ -168,7 +171,7 @@ impl File {
     }
   }
 
-  /// Deletes the file or folder at `path`.
+  /// Deletes the file or folder at `path` in the game's data folder.
   ///
   /// TODO: Currently the simulator appears to always fail with "Permission denied".
   ///
@@ -189,7 +192,8 @@ impl File {
     }
   }
 
-  /// Deletes the file at path, or the folder and its contents.
+  /// Deletes the file at path, or the folder and its contents. The path is searched for in the
+  /// game's data folder.
   ///
   /// TODO: Currently the simulator appears to always fail with "Permission denied".
   ///
