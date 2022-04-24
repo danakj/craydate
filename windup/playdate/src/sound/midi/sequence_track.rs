@@ -16,7 +16,7 @@ use crate::ctypes::*;
 pub struct SequenceTrack<'a> {
   ptr: NonNull<CSequenceTrack>,
   index: u32,
-  instrument: Option<*mut Instrument>,
+  instrument: NonNull<Instrument>,
   _marker: PhantomData<&'a Sequence>,
 }
 impl<'a> SequenceTrack<'a> {
@@ -28,9 +28,10 @@ impl<'a> SequenceTrack<'a> {
     SequenceTrack {
       ptr: NonNull::new(ptr).unwrap(),
       index,
-      // We store a mutable pointer here, but SequenceTrack will not mutate it. Only
-      // SequenceTrackMut would do so, and it received the same pointer as a *mut Instrument.
-      instrument: Some(instrument as *mut _),
+      // We store a mutable pointer here, but `SequenceTrack` will not mutate it. Only
+      // `SequenceTrackMut` would do so, and if this type is being constructed from there, then
+      // `SequenceTrackMut` did receive the same pointer as a `*mut Instrument`.
+      instrument: NonNull::new(instrument as *mut _).unwrap(),
       _marker: PhantomData,
     }
   }
@@ -41,8 +42,8 @@ impl<'a> SequenceTrack<'a> {
   }
 
   /// Gets the `Instrument` assigned to the track.
-  pub fn instrument(&self) -> Option<&'a Instrument> {
-    self.instrument.map(|p| unsafe { &*p })
+  pub fn instrument(&self) -> &'a Instrument {
+    unsafe { &*self.instrument.as_ptr() }
   }
 
   /// Returns the length, in steps, of the track - ​that is, the step where the last note in the
@@ -172,8 +173,8 @@ impl<'a> SequenceTrackMut<'a> {
   }
 
   /// Gets the `Instrument` assigned to the track.
-  pub fn instrument_mut(&mut self) -> Option<&'a mut Instrument> {
-    self.instrument.map(|p| unsafe { &mut *p })
+  pub fn instrument_mut(&mut self) -> &'a mut Instrument {
+    unsafe { &mut *self.instrument.as_ptr() }
   }
 
   /// Adds a single note to the track.
@@ -205,8 +206,8 @@ impl<'a> SequenceTrackMut<'a> {
     // that would alias with the `&mut Sequence` (as seen by its lack of lifetime parameter).
     let seq = unsafe { self.sequence() };
     seq.set_track_instrument(self.index, instrument);
-    let iref: &mut Instrument = seq.track_instrument_mut(self.index);
-    self.track.instrument = Some(iref);
+    let instrument: &mut Instrument = seq.track_instrument_mut(self.index);
+    self.track.instrument = unsafe { NonNull::new_unchecked(instrument as *mut _) };
   }
 
   /// Mutes the track.

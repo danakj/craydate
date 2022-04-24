@@ -226,7 +226,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
 
   let mut sequence = Sequence::from_midi_file("sounds/pirate.mid").unwrap();
   for mut track in sequence.tracks_mut() {
-    let mut instrument = track.instrument_mut().unwrap();
+    let mut instrument = track.instrument_mut();
     instrument.set_volume(StereoVolume::new(0.3, 0.3));
     api.sound.default_channel_mut().add_source(&mut instrument).unwrap();
 
