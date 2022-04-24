@@ -7,7 +7,7 @@
 
 # Status
 
-## Verion 1.9.3 Support
+## Verion 1.10.0 Support
 
 [Api](https://sdk.play.date/1.9.3/Inside%20Playdate%20with%20C.html#_api_reference) coverage:
 - 6.1 Utility **[ DONE ]**
@@ -22,6 +22,8 @@
 - 6.10 JSON **[ WONTFIX: Use [postcard](https://docs.rs/postcard/latest/postcard/) instead ]**
 - 6.11 Lua **[ WONTFIX: No current plan to support Rust backend for Lua games ]**
 - 6.12 Sprites  **[ WONTFIX: No current plan to support Sprites ]**
+
+There are still some TODOs around for a few missing functions.
 
 # Adding to OS target
 1. Make a new top-level crate, e.g. simulator-win
