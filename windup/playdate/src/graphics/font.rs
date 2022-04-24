@@ -120,7 +120,7 @@ impl FontPage {
     } else {
       // UNCLEAR: getPageGlyph says the `bitmap_ptr` and `advance` are optional but passing null
       // for either one crashes.
-      let mut bitmap_ptr: *mut CLCDBitmap = core::ptr::null_mut();
+      let mut bitmap_ptr: *mut CBitmap = core::ptr::null_mut();
       let mut advance = 0;
       let glyph_ptr = unsafe {
         CApiState::get().cgraphics.getPageGlyph.unwrap()(

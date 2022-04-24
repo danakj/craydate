@@ -12,7 +12,7 @@ use crate::null_terminated::ToNullTerminatedString;
 enum Context {
   None,
   Screen,
-  Bitmap(*mut CLCDBitmap),
+  Bitmap(NonNull<CBitmap>),
 }
 
 /// A Video file that can be rendered into the display or a `Bitmap`.
@@ -67,7 +67,7 @@ impl Video {
 
   /// Renders frame number `n` into the `bitmap`.
   pub fn render_frame_to_bitmap(&self, n: i32, bitmap: &mut BitmapRef) -> Result<(), Error> {
-    if self.context.get() != Context::Bitmap(bitmap.cptr()) {
+    if self.context.get() != Context::Bitmap(NonNull::new(bitmap.cptr()).unwrap()) {
       if unsafe { Self::fns().setContext.unwrap()(self.cptr(), bitmap.cptr()) } == 0 {
         return Err(self.get_render_error("render_frame_to_bitmap"));
       }

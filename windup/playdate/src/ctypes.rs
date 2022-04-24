@@ -31,7 +31,7 @@ pub use playdate_sys::DelayLine as CDelayLine;
 pub use playdate_sys::DelayLineTap as CDelayLineTap;
 pub use playdate_sys::FilePlayer as CFilePlayer;
 pub use playdate_sys::FileStat as CFileStat;
-pub use playdate_sys::LCDBitmap as CLCDBitmap;
+pub use playdate_sys::LCDBitmap as CBitmap;
 pub use playdate_sys::LCDColor as CLCDColor;
 pub use playdate_sys::LCDFont as CLCDFont;
 pub use playdate_sys::LCDFontGlyph as CLCDFontGlyph;
