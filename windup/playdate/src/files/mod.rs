@@ -1,8 +1,8 @@
 mod file;
-mod file_timestamp;
+mod file_path_timestamp;
 mod open_file;
-mod file_stat;
+mod file_path_stat;
 
 pub use file::File;
-pub use file_timestamp::FileTimestamp;
-pub use file_stat::FileStat;
+pub use file_path_timestamp::FilePathTimestamp;
+pub use file_path_stat::FilePathStat;
