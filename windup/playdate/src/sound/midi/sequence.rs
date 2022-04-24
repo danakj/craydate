@@ -58,11 +58,15 @@ impl Sequence {
     }
   }
 
+  /// Create an instrument for each track that doesn't have one set yet, so that all tracks in the
+  /// `Sequence` always have an `Instrument`.
   fn create_instrument_for_each_track(&mut self) {
     let mut instruments = BTreeMap::new();
     let mut count = self.tracks_count();
     let mut index = 0;
     while count > 0 {
+      // The track indices may not be contiguous, so we have to look for which indices don't have a
+      // null track.
       let track_ptr = unsafe { Sequence::fns().getTrackAtIndex.unwrap()(self.cptr(), index) };
       if !track_ptr.is_null() {
         count -= 1;
@@ -78,12 +82,16 @@ impl Sequence {
     self.instruments = instruments;
   }
 
+  /// Called from `SequenceTrack`, where an `Instrument` can be set on it. This holds ownership of
+  /// that `Instrument`.
   pub(crate) fn set_track_instrument(&mut self, index: u32, instrument: Instrument) {
     self.instruments.insert(index, instrument);
   }
+  /// Gives access to the `Instrument` of a `SequenceTrack` from the `SequenceTrack`.
   pub(crate) fn track_instrument(&self, index: u32) -> &Instrument {
     self.instruments.get(&index).unwrap()
   }
+  /// Gives access to the `Instrument` of a `SequenceTrack` from the `SequenceTrack`.
   pub(crate) fn track_instrument_mut(&mut self, index: u32) -> &mut Instrument {
     self.instruments.get_mut(&index).unwrap()
   }
@@ -195,6 +203,8 @@ impl Sequence {
     }
   }
 
+  /// Creates a new `SequenceTrack` at the given `index`, replacing an existing track if there was
+  /// one.
   pub fn create_track_at_index(&mut self, index: u32) -> SequenceTrackMut<'_> {
     let track_ptr = unsafe { SequenceTrack::fns().newTrack.unwrap()() };
     assert!(!track_ptr.is_null());
@@ -204,6 +214,7 @@ impl Sequence {
     self.instruments.insert(index, instrument);
     SequenceTrackMut::new(track_ptr, index, self)
   }
+  /// Gets the `SequenceTrack` at the given `index` if there is one. Otherwise, returns `None`.
   pub fn track_at_index(&self, index: u32) -> Option<SequenceTrack> {
     if self.instruments.contains_key(&index) {
       let track_ptr = unsafe { Sequence::fns().getTrackAtIndex.unwrap()(self.cptr(), index) };
@@ -213,6 +224,7 @@ impl Sequence {
       None
     }
   }
+  /// Gets the `SequenceTrack` at the given `index` if there is one. Otherwise, returns `None`.
   pub fn track_at_index_mut(&mut self, index: u32) -> Option<SequenceTrackMut<'_>> {
     if self.instruments.contains_key(&index) {
       let track_ptr = unsafe { Sequence::fns().getTrackAtIndex.unwrap()(self.cptr(), index) };
