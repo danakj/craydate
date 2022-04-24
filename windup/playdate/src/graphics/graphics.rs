@@ -171,7 +171,8 @@ impl Graphics {
   /// The font will remain active for drawing as long as the ActiveFont is not dropped, or another
   /// call to set_font() is made.
   pub fn set_font<'a>(&mut self, font: &'a Font) -> ActiveFont<'a> {
-    unsafe { Self::fns().setFont.unwrap()(font.cptr()) }
+    // setFont() takes a mutable pointer but does not write to the data.
+    unsafe { Self::fns().setFont.unwrap()(font.cptr() as *mut _) }
     ActiveFont::new(font)
   }
 

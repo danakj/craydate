@@ -52,8 +52,9 @@ impl Font {
   pub fn measure_text_width(&self, text: &str, tracking: i32) -> i32 {
     let utf = text.to_null_terminated_utf8();
     unsafe {
+      // getTextWidth() takes a mutable pointer but does not write to the data.
       Self::fns().getTextWidth.unwrap()(
-        self.cptr(),
+        self.cptr() as *mut _,
         utf.as_ptr() as *const core::ffi::c_void,
         utf.len() as u64 - 1, // Don't count the null.
         CStringEncoding::kUTF8Encoding,
@@ -64,7 +65,8 @@ impl Font {
 
   /// The height of the font.
   pub fn font_height(&self) -> u8 {
-    unsafe { Self::fns().getFontHeight.unwrap()(self.cptr()) }
+    // getFontHeight() takes a mutable pointer but does not write to the data.
+    unsafe { Self::fns().getFontHeight.unwrap()(self.cptr() as *mut _) }
   }
 
   /// Returns the FontPage for the character `c`.
@@ -73,14 +75,15 @@ impl Font {
   /// share a page; specifically, if `(c1 & ~0xff) == (c2 & ~0xff)`, then c1 and c2 belong to the
   /// same page. The FontPage can be used to query information about all characters in the page.
   pub fn font_page(&self, c: char) -> FontPage {
-    let page_ptr = unsafe { Self::fns().getFontPage.unwrap()(self.cptr(), c as u32) };
+    // getFontPage() takes a mutable pointer but does not write to the data.
+    let page_ptr = unsafe { Self::fns().getFontPage.unwrap()(self.cptr() as *mut _, c as u32) };
     FontPage {
       page_ptr: unsafe { NonNull::new_unchecked(page_ptr) },
       page_test: c as u32 & 0xffffff00,
     }
   }
 
-  pub(crate) fn cptr(&self) -> *mut CFont {
+  pub(crate) fn cptr(&self) -> *const CFont {
     self.font_ptr.as_ptr()
   }
   pub(crate) fn fns() -> &'static playdate_sys::playdate_graphics {
@@ -122,7 +125,13 @@ impl FontPage {
       let mut bitmap_ptr: *mut CBitmap = core::ptr::null_mut();
       let mut advance = 0;
       let glyph_ptr = unsafe {
-        Self::fns().getPageGlyph.unwrap()(self.cptr(), c as u32, &mut bitmap_ptr, &mut advance)
+        // getPageGlyph() takes a mutable pointer but does not write to the data.
+        Self::fns().getPageGlyph.unwrap()(
+          self.cptr() as *mut _,
+          c as u32,
+          &mut bitmap_ptr,
+          &mut advance,
+        )
       };
       Some(FontGlyph {
         glyph_ptr: NonNull::new(glyph_ptr).unwrap(),
@@ -133,7 +142,7 @@ impl FontPage {
     }
   }
 
-  pub(crate) fn cptr(&self) -> *mut CFontPage {
+  pub(crate) fn cptr(&self) -> *const CFontPage {
     self.page_ptr.as_ptr()
   }
   pub(crate) fn fns() -> &'static playdate_sys::playdate_graphics {
@@ -161,7 +170,12 @@ impl FontGlyph {
   /// The adjustment would be applied to the `advance()`.
   pub fn kerning(&self, next_char: char) -> i32 {
     unsafe {
-      Self::fns().getGlyphKerning.unwrap()(self.cptr(), self.glyph_char as u32, next_char as u32)
+      // getGlyphKerning() takes a mutable pointer but does not write to the data.
+      Self::fns().getGlyphKerning.unwrap()(
+        self.cptr() as *mut _,
+        self.glyph_char as u32,
+        next_char as u32,
+      )
     }
   }
 
@@ -170,7 +184,7 @@ impl FontGlyph {
     self.bitmap.clone()
   }
 
-  pub(crate) fn cptr(&self) -> *mut CFontGlyph {
+  pub(crate) fn cptr(&self) -> *const CFontGlyph {
     self.glyph_ptr.as_ptr()
   }
   pub(crate) fn fns() -> &'static playdate_sys::playdate_graphics {
