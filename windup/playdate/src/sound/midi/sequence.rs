@@ -188,16 +188,18 @@ impl Sequence {
   pub fn tracks<'a>(&'a self) -> impl Iterator<Item = SequenceTrack> + 'a {
     SequenceTrackIter {
       sequence: self,
-      next: 0,
-      count: self.tracks_count(),
+      next_index: 0,
+      count_left: self.tracks_count() as usize,
+      count_total: self.tracks_count() as usize,
     }
   }
   /// Returns a mutable iterator over all the tracks in the `Sequence`.
   pub fn tracks_mut<'a>(&'a mut self) -> impl Iterator<Item = SequenceTrackMut<'a>> + 'a {
     SequenceTrackIterMut {
       sequence: NonNull::new(self).unwrap(),
-      next: 0,
-      count: self.tracks_count(),
+      next_index: 0,
+      count_left: self.tracks_count() as usize,
+      count_total: self.tracks_count() as usize,
       _marker: PhantomData,
     }
   }
@@ -272,23 +274,24 @@ impl Drop for Sequence {
 
 struct SequenceTrackIter<'a> {
   sequence: &'a Sequence,
-  next: u32,
-  count: u32,
+  next_index: u32,
+  count_left: usize,
+  count_total: usize,
 }
 impl<'a> Iterator for SequenceTrackIter<'a> {
   type Item = SequenceTrack<'a>;
 
   fn next(&mut self) -> Option<Self::Item> {
-    if self.count == 0 {
+    if self.count_left == 0 {
       None
     } else {
       loop {
-        let index = self.next;
-        self.next += 1;
+        let index = self.next_index;
+        self.next_index += 1;
         let track_ptr =
           unsafe { Sequence::fns().getTrackAtIndex.unwrap()(self.sequence.cptr(), index) };
         if !track_ptr.is_null() {
-          self.count -= 1;
+          self.count_left -= 1;
           return Some(SequenceTrack::new(
             track_ptr,
             index,
@@ -298,28 +301,35 @@ impl<'a> Iterator for SequenceTrackIter<'a> {
       }
     }
   }
+
+  fn size_hint(&self) -> (usize, Option<usize>) {
+    (self.count_total, Some(self.count_total))
+  }
 }
+impl ExactSizeIterator for SequenceTrackIter<'_> {}
+impl core::iter::FusedIterator for SequenceTrackIter<'_> {}
 
 struct SequenceTrackIterMut<'a> {
   sequence: NonNull<Sequence>,
-  next: u32,
-  count: u32,
+  next_index: u32,
+  count_left: usize,
+  count_total: usize,
   _marker: PhantomData<&'a Sequence>,
 }
 impl<'a> Iterator for SequenceTrackIterMut<'a> {
   type Item = SequenceTrackMut<'a>;
 
   fn next(&mut self) -> Option<Self::Item> {
-    if self.count == 0 {
+    if self.count_left == 0 {
       None
     } else {
       loop {
-        let index = self.next;
-        self.next += 1;
+        let index = self.next_index;
+        self.next_index += 1;
         let track_ptr =
           unsafe { Sequence::fns().getTrackAtIndex.unwrap()(self.sequence.as_mut().cptr(), index) };
         if !track_ptr.is_null() {
-          self.count -= 1;
+          self.count_left -= 1;
           return Some(SequenceTrackMut::new(
             track_ptr,
             index,
@@ -330,4 +340,10 @@ impl<'a> Iterator for SequenceTrackIterMut<'a> {
       }
     }
   }
+
+  fn size_hint(&self) -> (usize, Option<usize>) {
+    (self.count_total, Some(self.count_total))
+  }
 }
+impl ExactSizeIterator for SequenceTrackIterMut<'_> {}
+impl core::iter::FusedIterator for SequenceTrackIterMut<'_> {}

@@ -33,6 +33,10 @@ impl<'a> Iterator for LayerIter<'a> {
   type Item = (tiled::LayerTile<'a>, i32, i32);
 
   fn next(&mut self) -> Option<Self::Item> {
+    if self.y > self.extents.max_y {
+      return None;
+    }
+
     loop {
       let orig_x = self.x;
       let orig_y = self.y;
@@ -44,16 +48,26 @@ impl<'a> Iterator for LayerIter<'a> {
         self.x = self.extents.min_x;
       }
       if self.y > self.extents.max_y {
-        break;
+        return None;
       }
 
       if let Some(tile) = tile {
         return Some((tile, orig_x, orig_y));
       }
     }
-    None
+  }
+
+  fn size_hint(&self) -> (usize, Option<usize>) {
+    (
+      0,
+      Some(
+        (self.extents.max_x + 1 - self.extents.min_x) as usize
+          * (self.extents.max_y + 1 - self.extents.min_y) as usize,
+      ),
+    )
   }
 }
+impl core::iter::FusedIterator for LayerIter<'_> {}
 
 pub fn relative_image_path(path: &PathBuf) -> Option<String> {
   let source = path.canonicalize().unwrap();

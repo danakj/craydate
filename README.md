@@ -41,4 +41,3 @@ There are still some TODOs around for a few missing functions.
 - Split `Self::cptr(&self) -> *mut T` into `Self::cptr(&self) -> *const T` and
   `Self::cptr_mut(&self) -> *mut T` and document where we cast from *const to
   *mut that it's intended/won't be mutated.
-- Impl size_hint(), ExactSizedIterator, and FusedIterator for user-defined Iterators.
