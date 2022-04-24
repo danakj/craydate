@@ -222,6 +222,8 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   dline.set_len(TimeDelta::from_seconds(3));
   log(format!("dline length {}", dline.len()));
 
+  let _cb_source = CallbackSource::new_mono_for_channel(api.sound.default_channel_mut(), |_buf: &mut [i16]| false);
+
   let mut sequence = Sequence::from_midi_file("sounds/pirate.mid").unwrap();
   for mut track in sequence.tracks_mut() {
     let mut instrument = track.instrument_mut().unwrap();

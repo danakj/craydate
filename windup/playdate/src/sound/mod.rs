@@ -24,14 +24,15 @@ pub use midi::track_note::TrackNote;
 pub use signals::control::Control;
 pub use signals::envelope::Envelope;
 pub use signals::lfo::Lfo;
-pub use signals::synth_signal::{SynthSignal, AsSynthSignal};
-pub use sound_channel::{SoundChannel, SoundChannelRef};
+pub use signals::synth_signal::{AsSynthSignal, SynthSignal};
+pub use sound_channel::SoundChannel;
 pub use sound_format::*;
 pub use sources::delay_line_tap::DelayLineTap;
+pub use sources::callback_source::CallbackSource;
 pub use sources::file_player::FilePlayer;
 pub use sources::instrument::{Instrument, VoiceId};
 pub use sources::sample_player::SamplePlayer;
-pub use sources::sound_source::{SoundSource, AsSoundSource};
+pub use sources::sound_source::{AsSoundSource, SoundSource};
 pub use sources::synth::{Synth, SynthGenerator, SynthGeneratorVTable, SynthRender};
 pub use stereo_volume::StereoVolume;
 
@@ -48,37 +49,41 @@ pub type SoundCompletionCallback<'a, T, F, S> =
 /// Access to the speaker and headphone outputs of the Playdate device, along with the audio clock.
 #[derive(Debug)]
 pub struct Sound {
-  default_channel: SoundChannelRef,
+  default_channel: SoundChannel,
 }
 impl Sound {
   pub(crate) fn new() -> Self {
     Sound {
-      default_channel: SoundChannelRef::from_ptr(unsafe {
+      default_channel: SoundChannel::new_system_channel(unsafe {
         Self::fns().getDefaultChannel.unwrap()()
       }),
     }
   }
 
   /// The default `SoundChannel`. Attaching a `SoundSource` to it will play from the device.
-  pub fn default_channel(&self) -> &SoundChannelRef {
+  pub fn default_channel(&self) -> &SoundChannel {
     &self.default_channel
   }
   /// The default `SoundChannel`. Attaching a `SoundSource` to it will play from the device.
-  pub fn default_channel_mut(&mut self) -> &mut SoundChannelRef {
+  pub fn default_channel_mut(&mut self) -> &mut SoundChannel {
     &mut self.default_channel
   }
 
   /// Add a user-created `SoundChannel` to have it play from the device.
   pub fn add_channel(&mut self, channel: &mut SoundChannel) {
-    channel.set_added(true);
-    unsafe { Self::fns().addChannel.unwrap()(channel.cptr()) };
+    if !channel.is_system_channel() {
+      channel.set_added(true);
+      unsafe { Self::fns().addChannel.unwrap()(channel.cptr()) };
+    }
   }
   /// Remove a user-created `SoundChannel` to no longer have it play from the device.
-  /// 
+  ///
   /// Does nothing if the `SoundChannel` was not already added with `add_channel()`.
   pub fn remove_channel(&mut self, channel: &mut SoundChannel) {
-    channel.set_added(false);
-    unsafe { Self::fns().removeChannel.unwrap()(channel.cptr()) }
+    if !channel.is_system_channel() {
+      channel.set_added(false);
+      unsafe { Self::fns().removeChannel.unwrap()(channel.cptr()) }
+    }
   }
 
   /// Returns the sound engine’s current time value.
@@ -93,7 +98,7 @@ impl Sound {
 
   // TODO: setMicCallback - consider recordToSample() instead like for LUA:
   // https://sdk.play.date/1.10.0/Inside%20Playdate.html#f-sound.micinput.recordToSample
-  
+
   // TODO: getHeadphoneState
 
   // TODO: Microphone monitoring functions are missing:
