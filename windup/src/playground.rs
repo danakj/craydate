@@ -16,20 +16,17 @@ pub async fn _run(mut api: playdate::Api) -> ! {
     }
   }
   let _grey50 = Pattern::from_bitmap(&grey50, 0, 0);
-  let mut grey50_colors = [None; 8 * 8];
+  let mut grey50_colors = [PixelColor::BLACK; 8 * 8];
   for x in 0..8 {
     for y in 0..8 {
       let xodd = x % 2 != 0;
       let yodd = y % 2 != 0;
-      let white = if yodd { xodd } else { !xodd };
-      grey50_colors[y * 8 + x] = Some(if white {
-        PixelColor::WHITE
-      } else {
-        PixelColor::BLACK
-      })
+      if yodd == xodd {
+        grey50_colors[y * 8 + x] = PixelColor::WHITE;
+      }
     }
   }
-  let grey50 = Pattern::new(grey50_colors);
+  let grey50 = Pattern::new_unmasked(grey50_colors);
   graphics.clear(&grey50);
 
   let mut bmp = Bitmap::new(100, 40, SolidColor::kColorWhite);
@@ -65,7 +62,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
 
   {
     let _stencil_holder = graphics.set_stencil(&stencil);
-    graphics.draw_text("Bloop", StringEncoding::kASCIIEncoding, 30, 20);
+    graphics.draw_text("Bloop", 30, 20);
   }
 
   let mut copy = graphics.working_frame_bitmap();

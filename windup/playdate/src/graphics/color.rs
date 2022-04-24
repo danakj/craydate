@@ -4,7 +4,7 @@ use crate::ctypes::*;
 
 /// A pattern is 8 bytes representing 8x8 bits of `PixelColor`s followed by 8 bytes representing 8x8
 /// bits of a mask to apply the color bits (or to not apply them).
-const PATTERN_SIZE: usize = 16;
+const PATTERN_SIZE: usize = 8 + 8;
 
 /// Represents a method used for operations that draw to the display or a bitmap.
 #[derive(Debug)]
@@ -49,12 +49,35 @@ impl<'a> From<&'a Pattern> for Color<'a> {
 #[repr(transparent)]
 pub struct Pattern(CLCDPattern);
 impl Pattern {
+  /// Creates a `Pattern` from an 8x8 set of colors.
+  ///
+  /// The pattern is opaque, so all colors will be drawn when the pattern is used. The values are
+  /// provided in row-major order, so the first 8 elements make up the first row.
+  pub fn new_unmasked(colors: [PixelColor; 8 * 8]) -> Self {
+    let mut arr = [0; PATTERN_SIZE];
+    let mut bit = 0;
+    let mut byte = 0;
+    for color in colors {
+      let shift = 7 - bit;
+      arr[byte] |= (color.to_bit() as u8) << shift;
+      bit = (bit + 1) % 8;
+      if bit == 0 {
+        byte += 1;
+      }
+    }
+    debug_assert_eq!(byte, PATTERN_SIZE / 2);
+    debug_assert_eq!(bit, 0);
+    for b in &mut arr[PATTERN_SIZE / 2..] {
+      *b = 0xff
+    }
+    Pattern(arr)
+  }
   /// Creates a `Pattern` from an 8x8 set of masked colors.
   ///
   /// For each input value, if it's None, then the pattern draws nothing. Otherwise, the pattern
   /// draws the given color. The values are provided in row-major order, so the first 8 elements
   /// make up the first row.
-  pub fn new(colors: [Option<PixelColor>; 8 * 8]) -> Self {
+  pub fn new_masked(colors: [Option<PixelColor>; 8 * 8]) -> Self {
     let mut arr = [0; PATTERN_SIZE];
     let mut bit = 0;
     let mut byte = 0;
@@ -73,6 +96,16 @@ impl Pattern {
     debug_assert_eq!(bit, 0);
     Pattern(arr)
   }
+
+  /// Creates a `Pattern` from an array of pattern data, in the same format it's stored internally.
+  ///
+  /// Each byte of the first 8 bytes represents a row of color values, where for each bit, `1` is
+  /// white and `0` is black. Each byte of the last 8 bytes represents a row of a mask, where for
+  /// each bit `1` means to draw the pattern's color and `0` means to not draw.
+  pub fn from_raw_array(arr: [u8; PATTERN_SIZE]) -> Self {
+    Pattern(arr)
+  }
+
   /// Creates a `Pattern` by reading an 8x8 set of pixels from the bitmap and its mask (if it has a
   /// mask).
   pub fn from_bitmap(bitmap: &BitmapRef, x: i32, y: i32) -> Pattern {
