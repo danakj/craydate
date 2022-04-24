@@ -12,6 +12,7 @@ struct LfoFunctionData {
   f: Box<dyn FnMut() -> f32>,
 }
 
+/// Holds (refcounted) ownership of the C Api object inside the SynthSignal.
 struct LfoSubclass {
   ptr: NonNull<CSynthLfo>,
   function_data: RefCell<Option<LfoFunctionData>>,

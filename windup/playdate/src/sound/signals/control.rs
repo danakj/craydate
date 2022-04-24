@@ -5,6 +5,7 @@ use super::synth_signal::{SynthSignal, SynthSignalSubclass};
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 
+/// Holds (refcounted) ownership of the C Api object inside the SynthSignal.
 struct ControlSubclass {
   ptr: NonNull<CControlSignal>,
 }
@@ -15,7 +16,7 @@ impl Drop for ControlSubclass {
 }
 impl SynthSignalSubclass for ControlSubclass {}
 
-/// An Control is used to modulate sounds in a `Synth`.
+/// A `Control` signal object is used for automating effect parameters, channel pan and level, etc.
 pub struct Control {
   signal: SynthSignal,
   subclass: Rc<ControlSubclass>,
@@ -55,13 +56,12 @@ impl Control {
 
   /// Control signals in midi files are assigned a controller number, which describes the intent of
   /// the control. This function returns the controller number.
-  /// 
+  ///
   /// Returns the MIDI controller number for this ControlSignal, if it was created from a MIDI file
-  /// Sequence::from_midi_file().
+  /// via `Sequence::from_midi_file()`.
   pub fn midi_controller_number(&self) -> i32 {
     unsafe { Self::fns().getMIDIControllerNumber.unwrap()(self.cptr()) }
   }
-
 
   pub(crate) fn cptr(&self) -> *mut CControlSignal {
     self.subclass.ptr.as_ptr() as *mut CControlSignal

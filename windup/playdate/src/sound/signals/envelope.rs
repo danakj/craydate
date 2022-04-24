@@ -3,8 +3,9 @@ use core::ptr::NonNull;
 
 use super::synth_signal::{SynthSignal, SynthSignalSubclass};
 use crate::capi_state::CApiState;
-use crate::ctypes::*;
+use crate::{ctypes::*, TimeTicks};
 
+/// Holds (refcounted) ownership of the C Api object inside the SynthSignal.
 struct EnvelopeSubclass {
   ptr: NonNull<CSynthEnvelope>,
 }
@@ -16,6 +17,13 @@ impl Drop for EnvelopeSubclass {
 impl SynthSignalSubclass for EnvelopeSubclass {}
 
 /// An Envelope is used to modulate sounds in a `Synth`.
+/// 
+/// TODO: Some functions are missing here as they are missing from the C API, as described here:
+/// <https://devforum.play.date/t/c-apis-envelope-is-missing-some-functions-from-the-lua-apis/4925>
+/// - setScale
+/// - setOffset
+/// - trigger
+/// - setGlobal
 pub struct Envelope {
   signal: SynthSignal,
   subclass: Rc<EnvelopeSubclass>,
@@ -40,21 +48,25 @@ impl Envelope {
     Self::from_ptr(ptr)
   }
 
-  /// TODO: What are the units of `attack`? Should it be a TimeTicks?
-  pub fn set_attack(&mut self, attack: f32) {
-    unsafe { Self::fns().setAttack.unwrap()(self.cptr(), attack) }
+  /// Sets the envelope attack time to `attack`.
+  pub fn set_attack(&mut self, attack: TimeTicks) {
+    unsafe { Self::fns().setAttack.unwrap()(self.cptr(), attack.to_seconds()) }
   }
-  /// TODO: What are the units of `decay`? Should it be a TimeTicks?
-  pub fn set_decay(&mut self, decay: f32) {
-    unsafe { Self::fns().setDecay.unwrap()(self.cptr(), decay) }
+  /// Sets the envelope decay time to `decay`.
+  pub fn set_decay(&mut self, decay: TimeTicks) {
+    unsafe { Self::fns().setDecay.unwrap()(self.cptr(), decay.to_seconds()) }
   }
-  /// TODO: What are the units of `sustain`? Should it be a TimeTicks?
-  pub fn set_sustain(&mut self, sustain: f32) {
+  /// Sets the envelope sustain level to `sustain`, as a proportion of the maximum.
+  ///
+  /// For example, if the sustain level is 0.5, the signal value rises to its full value over the
+  /// attack phase of the envelope, then drops to half its maximum over the decay phase, and remains
+  /// there while the envelope is active.
+  pub fn set_sustain_level(&mut self, sustain: f32) {
     unsafe { Self::fns().setSustain.unwrap()(self.cptr(), sustain) }
   }
-  /// TODO: What are the units of `release`? Should it be a TimeTicks?
-  pub fn set_release(&mut self, release: f32) {
-    unsafe { Self::fns().setRelease.unwrap()(self.cptr(), release) }
+  /// Sets the envelope release time to `release`.
+  pub fn set_release(&mut self, release: TimeTicks) {
+    unsafe { Self::fns().setRelease.unwrap()(self.cptr(), release.to_seconds()) }
   }
 
   /// Sets whether to use legato phrasing for the envelope.
@@ -66,7 +78,7 @@ impl Envelope {
   }
 
   /// Sets whether to start from 0 when playing a note.
-  /// 
+  ///
   /// If retrigger is on, the envelope always starts from 0 when a note starts playing, instead of
   /// the current value if it’s active.
   pub fn set_retrigger(&mut self, retrigger: bool) {
@@ -75,7 +87,7 @@ impl Envelope {
 
   /// Return the current output value of the `Envelope`.
   pub fn get_value(&self) -> f32 {
-      unsafe { Self::fns().getValue.unwrap()(self.cptr()) }
+    unsafe { Self::fns().getValue.unwrap()(self.cptr()) }
   }
 
   pub(crate) fn cptr(&self) -> *mut CSynthEnvelope {
