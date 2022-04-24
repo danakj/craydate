@@ -54,8 +54,8 @@ impl<'a> SequenceTrackRef<'a> {
         self.cptr(),
         step,
         note.length,
-        note.midi_note,
-        note.velocity,
+        note.midi_note as f32,
+        note.velocity.into(),
       )
     }
   }
@@ -91,8 +91,8 @@ impl<'a> SequenceTrackRef<'a> {
       }
       v.push(TrackNote {
         length,
-        midi_note,
-        velocity,
+        midi_note: midi_note as u8,
+        velocity: velocity.into(),
       });
     }
     v.into_iter()
@@ -120,8 +120,8 @@ impl<'a> SequenceTrackRef<'a> {
       }
       v.push(TrackNote {
         length,
-        midi_note,
-        velocity,
+        midi_note: midi_note as u8,
+        velocity: velocity.into(),
       });
     }
     v.into_iter()
