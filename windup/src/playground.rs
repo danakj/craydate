@@ -103,6 +103,10 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   );
   log(format!("collision: {}", c));
 
+  let id = graphics.push_context_bitmap(copy);
+  graphics.pop_context();
+  let _copy = graphics.take_popped_context_bitmap(id).unwrap();
+
   // working image
   let yo_path = "images/yo";
   let load = Bitmap::from_file(yo_path);

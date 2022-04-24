@@ -4,10 +4,11 @@ use super::active_font::ActiveFont;
 use super::bitmap::{Bitmap, BitmapRef};
 use super::bitmap_collider::BitmapCollider;
 use super::color::Color;
+use super::context_stack::ContextStackId;
 use super::font::Font;
 use super::framebuffer_stencil_bitmap::FramebufferStencilBitmap;
 use super::unowned_bitmap::UnownedBitmapMut;
-use crate::capi_state::{CApiState, ContextStackId};
+use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::null_terminated::ToNullTerminatedString;
 

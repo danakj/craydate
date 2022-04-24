@@ -60,7 +60,7 @@ pub use menu::*;
 pub use sound::*;
 pub use system::*;
 pub use system_event::*;
-pub use time::{SoundTicks, TimeDelta, TimeTicks};
+pub use time::*;
 
 /// The global allocator, which will defer allocation requests to the playdate system, and deal with
 /// ensuring correct alignment.
