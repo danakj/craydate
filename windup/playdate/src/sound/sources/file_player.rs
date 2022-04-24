@@ -32,21 +32,20 @@ pub struct FilePlayer {
 }
 impl FilePlayer {
   /// Prepares the player to steam the file at `path`.
-  pub fn from_file(path: &str) -> Self {
+  ///
+  /// Returns `Error::NotFoundError` if the file was not found or could not be loaded.
+  pub fn from_file(path: &str) -> Result<Self, Error> {
     let ptr = unsafe { Self::fns().newPlayer.unwrap()() };
-    unsafe {
-      Self::fns().loadIntoPlayer.unwrap()(
-        ptr,
-        path.to_null_terminated_utf8().as_ptr(),
-      )
-    }
-    // TODO: If file loading fails, file_length() would return -1 in the future:
-    // https://devforum.play.date/t/playing-sounds-using-c-api/4228/3, and we should surface errors
-    // somehow.
-    FilePlayer {
-      source: ManuallyDrop::new(SoundSource::from_ptr(ptr as *mut CSoundSource)),
-      ptr: NonNull::new(ptr).unwrap(),
-      fade_callback: None,
+    let r =
+      unsafe { Self::fns().loadIntoPlayer.unwrap()(ptr, path.to_null_terminated_utf8().as_ptr()) };
+    if r == 0 {
+      Err(Error::NotFoundError)
+    } else {
+      Ok(FilePlayer {
+        source: ManuallyDrop::new(SoundSource::from_ptr(ptr as *mut CSoundSource)),
+        ptr: NonNull::new(ptr).unwrap(),
+        fade_callback: None,
+      })
     }
   }
 
@@ -58,12 +57,7 @@ impl FilePlayer {
 
   /// Sets the length of the buffer which will be filled from the file.
   pub fn set_buffer_len(&mut self, length: TimeTicks) {
-    unsafe {
-      Self::fns().setBufferLength.unwrap()(
-        self.cptr(),
-        length.to_seconds(),
-      )
-    };
+    unsafe { Self::fns().setBufferLength.unwrap()(self.cptr(), length.to_seconds()) };
   }
 
   /// Pauses the file player.
@@ -103,15 +97,11 @@ impl FilePlayer {
   }
   /// Sets the current offset for the player.
   pub fn set_offset(&mut self, offset: TimeTicks) {
-    unsafe {
-      Self::fns().setOffset.unwrap()(self.cptr(), offset.to_seconds())
-    }
+    unsafe { Self::fns().setOffset.unwrap()(self.cptr(), offset.to_seconds()) }
   }
   /// Gets the current offset for the player.
   pub fn offset(&self) -> TimeTicks {
-    TimeTicks::from_seconds_lossy(unsafe {
-      Self::fns().getOffset.unwrap()(self.cptr())
-    })
+    TimeTicks::from_seconds_lossy(unsafe { Self::fns().getOffset.unwrap()(self.cptr()) })
   }
   /// Sets the playback rate for the player.
   ///
@@ -127,9 +117,7 @@ impl FilePlayer {
   /// If flag evaluates to true, the player will restart playback (after an audible stutter) as soon
   /// as data is available.
   pub fn set_stop_on_underrun(&mut self, stop: bool) {
-    unsafe {
-      Self::fns().setStopOnUnderrun.unwrap()(self.cptr(), stop as i32)
-    }
+    unsafe { Self::fns().setStopOnUnderrun.unwrap()(self.cptr(), stop as i32) }
   }
   /// Changes the volume of the fileplayer to `volume` over a length of `duration`.
   ///

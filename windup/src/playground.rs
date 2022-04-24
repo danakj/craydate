@@ -170,7 +170,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
 
   let mut i32callbacks = Callbacks::<i32>::new();
 
-  let mut fileplayer = FilePlayer::from_file("sounds/mojojojo.pda");
+  let mut fileplayer = FilePlayer::from_file("sounds/mojojojo.pda").unwrap();
   api.sound.default_channel_mut().add_source(&mut fileplayer).unwrap();
   fileplayer.as_mut().set_completion_callback(
     SoundCompletionCallback::with(&mut i32callbacks).call(|i| {
