@@ -41,4 +41,7 @@ There are still some TODOs around for a few missing functions.
 - Turn all `*mut T` into `NonNull<T>` where it makes sense.
 - Add a `Self::fns() -> &'static capithing` fn to all the types.
 - Add a `Self::cptr(&self) -> *mut T` to all the types.
+- Split `Self::cptr(&self) -> *mut T` into `Self::cptr(&self) -> *const T` and
+  `Self::cptr_mut(&self) -> *mut T` and document where we cast from *const to
+  *mut that it's intended/won't be mutated.
 - Impl size_hint(), ExactSizedIterator, and FusedIterator for user-defined Iterators.
