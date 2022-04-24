@@ -6,13 +6,15 @@ use super::sound_effect::SoundEffect;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 
+// A ring modulator effect. A `RingModulator` acts as a `SoundEffect` which can be added to a
+// `SoundChannel`.
 pub struct RingModulator {
   effect: ManuallyDrop<SoundEffect>,
   ptr: NonNull<CRingModulator>,
   frequency_modulator: Option<SynthSignal>,
 }
 impl RingModulator {
-  /// Creates a new RingModulator, which acts as a SoundEffect.
+  /// Creates a new `RingModulator`.
   pub fn new() -> Self {
     let ptr = unsafe { Self::fns().newRingmod.unwrap()() };
     RingModulator {
@@ -40,7 +42,7 @@ impl RingModulator {
   pub(crate) fn cptr(&self) -> *mut CRingModulator {
     self.ptr.as_ptr()
   }
-  fn fns() -> &'static playdate_sys::playdate_sound_effect_ringmodulator {
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_effect_ringmodulator {
     unsafe { &*(*CApiState::get().csound.effect).ringmodulator }
   }
 }

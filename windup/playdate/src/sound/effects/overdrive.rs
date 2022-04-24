@@ -6,6 +6,8 @@ use super::sound_effect::SoundEffect;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 
+// An `Overdrive` effect. An `Overdrive` acts as a `SoundEffect` which can be added to a
+// `SoundChannel`.
 pub struct Overdrive {
   effect: ManuallyDrop<SoundEffect>,
   ptr: NonNull<COverdrive>,
@@ -13,7 +15,7 @@ pub struct Overdrive {
   offset_modulator: Option<SynthSignal>,
 }
 impl Overdrive {
-  /// Creates a new Overdrive, which acts as a SoundEffect.
+  /// Creates a new `Overdrive` effect.
   pub fn new() -> Self {
     let ptr = unsafe { Self::fns().newOverdrive.unwrap()() };
     Overdrive {
@@ -62,7 +64,7 @@ impl Overdrive {
   pub(crate) fn cptr(&self) -> *mut COverdrive {
     self.ptr.as_ptr()
   }
-  fn fns() -> &'static playdate_sys::playdate_sound_effect_overdrive {
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_effect_overdrive {
     unsafe { &*(*CApiState::get().csound.effect).overdrive }
   }
 }

@@ -6,7 +6,8 @@ use super::sound_effect::SoundEffect;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 
-// A two pole IIR filter, which is one of the `TwoPoleFilterType` types.
+// A two pole IIR filter, which is one of the `TwoPoleFilterType` types. A `TwoPoleFilter` acts as a
+// `SoundEffect` which can be added to a `SoundChannel`.
 pub struct TwoPoleFilter {
   effect: ManuallyDrop<SoundEffect>,
   ptr: NonNull<CTwoPoleFilter>,
@@ -14,7 +15,7 @@ pub struct TwoPoleFilter {
   resonance_modulator: Option<SynthSignal>,
 }
 impl TwoPoleFilter {
-  /// Creates a new TwoPoleFilter, which acts as a SoundEffect.
+  /// Creates a new `TwoPoleFilter`.
   pub fn new(filter_type: TwoPoleFilterType) -> Self {
     let ptr = unsafe { Self::fns().newFilter.unwrap()() };
     let mut f = TwoPoleFilter {
@@ -72,7 +73,7 @@ impl TwoPoleFilter {
   pub(crate) fn cptr(&self) -> *mut CTwoPoleFilter {
     self.ptr.as_ptr()
   }
-  fn fns() -> &'static playdate_sys::playdate_sound_effect_twopolefilter {
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_effect_twopolefilter {
     unsafe { &*(*CApiState::get().csound.effect).twopolefilter }
   }
 }

@@ -8,6 +8,8 @@ use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::time::TimeDelta;
 
+// A `DelayLine` effect. A `DelayLine` acts as a `SoundEffect` which can be added to a
+// `SoundChannel`.
 #[derive(Debug)]
 pub struct DelayLine {
   effect: ManuallyDrop<SoundEffect>,
@@ -17,7 +19,7 @@ pub struct DelayLine {
   max_tap_position_in_frames: i32,
 }
 impl DelayLine {
-  /// Creates a new DelayLine, which acts as a SoundEffect.
+  /// Creates a new `DelayLine` effect.
   pub fn new(length: TimeDelta, stereo: bool) -> Self {
     let ptr =
       unsafe { Self::fns().newDelayLine.unwrap()(length.to_sample_frames(), stereo as i32) };

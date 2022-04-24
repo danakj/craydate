@@ -13,6 +13,14 @@ enum Attachment {
   Channel(Weak<NonNull<CSoundChannel>>),
 }
 
+/// A `SoundEffect` can be attached to a `SoundChannel` to filter/mutate the sound being played on
+/// it. They all include a mix modulator that allows adjusting how much to mix the `SoundEffect`
+/// into the channel, between replacing the existing signal or leaving it unchanged.
+/// 
+/// There are many types which act as a `SoundEffect`. Any such type would implement
+/// `AsRef<SoundEffect>` and `AsMut<SoundEffect>`. They also have `as_sound_effect()` and
+/// `as_sound_effect_mut()` methods, through the `AsSoundEffect` trait, to access the `SoundEffect`
+/// methods more easily.
 #[derive(Debug)]
 pub struct SoundEffect {
   ptr: NonNull<CSoundEffect>,
@@ -48,6 +56,8 @@ impl SoundEffect {
     self.mix_modulator.as_ref()
   }
 
+  /// Called from `SoundChannel` when the effect is attached to it, in order to update its
+  /// attachment state.
   pub(crate) fn attach_to_channel(
     &mut self,
     channel: &Rc<NonNull<CSoundChannel>>,
@@ -63,6 +73,8 @@ impl SoundEffect {
     }
   }
 
+  /// Called from `SoundChannel` when the effect is detached from it, in order to update its
+  /// attachment state.
   pub(crate) fn detach_from_channel(
     &mut self,
     channel: &Rc<NonNull<CSoundChannel>>,
@@ -81,7 +93,7 @@ impl SoundEffect {
   pub(crate) fn cptr(&self) -> *mut CSoundEffect {
     self.ptr.as_ptr()
   }
-  fn fns() -> &'static playdate_sys::playdate_sound_effect {
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_effect {
     unsafe { &*CApiState::get().csound.effect }
   }
 }

@@ -6,13 +6,17 @@ use super::sound_effect::SoundEffect;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 
+/// The `OnePoleFilter` is a simple low/high pass filter, with a single parameter describing the
+/// cutoff frequency: values above 0 (up to 1) are high-pass, values below 0 (down to -1) are
+/// low-pass. A `OnePoleFilter` acts as a `SoundEffect` which can be added to a
+// `SoundChannel`.
 pub struct OnePoleFilter {
   effect: ManuallyDrop<SoundEffect>,
   ptr: NonNull<COnePoleFilter>,
   parameter_modulator: Option<SynthSignal>,
 }
 impl OnePoleFilter {
-  /// Creates a new OnePoleFilter, which acts as a SoundEffect.
+  /// Creates a new `OnePoleFilter`.
   pub fn new() -> Self {
     let ptr = unsafe { Self::fns().newFilter.unwrap()() };
     OnePoleFilter {
@@ -42,7 +46,7 @@ impl OnePoleFilter {
   pub(crate) fn cptr(&self) -> *mut COnePoleFilter {
     self.ptr.as_ptr()
   }
-  fn fns() -> &'static playdate_sys::playdate_sound_effect_onepolefilter {
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_effect_onepolefilter {
     unsafe { &*(*CApiState::get().csound.effect).onepolefilter }
   }
 }

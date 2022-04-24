@@ -6,6 +6,8 @@ use super::sound_effect::SoundEffect;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 
+// A `BitCrusher` effect. A `BitCrusher` acts as a `SoundEffect` which can be added to a
+// `SoundChannel`.
 pub struct BitCrusher {
   effect: ManuallyDrop<SoundEffect>,
   ptr: NonNull<CBitCrusher>,
@@ -13,7 +15,7 @@ pub struct BitCrusher {
   undersampling_modulator: Option<SynthSignal>,
 }
 impl BitCrusher {
-  /// Creates a new BitCrusher, which acts as a SoundEffect.
+  /// Creates a new `BitCrusher` effect.
   pub fn new() -> Self {
     let ptr = unsafe { Self::fns().newBitCrusher.unwrap()() };
     BitCrusher {
