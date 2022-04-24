@@ -64,10 +64,7 @@ pub mod __private {
         // of the main function. The main function can never return (its output is `!`), so the
         // future will never be complete. We will poll() it to actually run the code in the main
         // function on the first execution of update_callback().
-        Executor::set_main_future(
-          capi_state.executor.as_ptr(),
-          (config.main_fn)(api::Api::new()),
-        );
+        Executor::set_main_future(capi_state.executor, (config.main_fn)(api::Api::new()));
 
         unsafe {
           capi_state.csystem.setUpdateCallback.unwrap()(
@@ -79,35 +76,35 @@ pub mod __private {
       CSystemEvent::kEventInitLua => (),
       CSystemEvent::kEventKeyPressed => {
         CApiState::get().add_system_event(SystemEvent::SimulatorKeyPressed { keycode: arg });
-        Executor::wake_system_wakers(CApiState::get().executor.as_ptr());
+        Executor::wake_system_wakers(CApiState::get().executor);
       }
       CSystemEvent::kEventKeyReleased => {
         CApiState::get().add_system_event(SystemEvent::SimulatorKeyReleased { keycode: arg });
-        Executor::wake_system_wakers(CApiState::get().executor.as_ptr());
+        Executor::wake_system_wakers(CApiState::get().executor);
       }
       CSystemEvent::kEventLock => {
         CApiState::get().add_system_event(SystemEvent::WillLock);
-        Executor::wake_system_wakers(CApiState::get().executor.as_ptr());
+        Executor::wake_system_wakers(CApiState::get().executor);
       }
       CSystemEvent::kEventLowPower => {
         CApiState::get().add_system_event(SystemEvent::WillSleep);
-        Executor::wake_system_wakers(CApiState::get().executor.as_ptr());
+        Executor::wake_system_wakers(CApiState::get().executor);
       }
       CSystemEvent::kEventPause => {
         CApiState::get().add_system_event(SystemEvent::WillPause);
-        Executor::wake_system_wakers(CApiState::get().executor.as_ptr());
+        Executor::wake_system_wakers(CApiState::get().executor);
       }
       CSystemEvent::kEventResume => {
         CApiState::get().add_system_event(SystemEvent::WillResume);
-        Executor::wake_system_wakers(CApiState::get().executor.as_ptr());
+        Executor::wake_system_wakers(CApiState::get().executor);
       }
       CSystemEvent::kEventTerminate => {
         CApiState::get().add_system_event(SystemEvent::WillTerminate);
-        Executor::wake_system_wakers(CApiState::get().executor.as_ptr());
+        Executor::wake_system_wakers(CApiState::get().executor);
       }
       CSystemEvent::kEventUnlock => {
         CApiState::get().add_system_event(SystemEvent::DidUnlock);
-        Executor::wake_system_wakers(CApiState::get().executor.as_ptr());
+        Executor::wake_system_wakers(CApiState::get().executor);
       }
       _ => (),
     }
@@ -125,7 +122,7 @@ pub mod __private {
     // to await the FrameWatcher and immediately be woken instead of having to skip a frame. In
     // particular this allows the main function to wait for the next frame at the top of its main loop
     // without missing the first frame.
-    Executor::poll_futures(capi.executor.as_ptr());
+    Executor::poll_futures(capi.executor);
 
     capi.frame_number.set(capi.frame_number.get() + 1);
 
@@ -149,7 +146,7 @@ pub mod __private {
         &capi.button_state_per_frame.get().map(|b| b.unwrap()),
       ),
     });
-    Executor::wake_system_wakers(capi.executor.as_ptr());
+    Executor::wake_system_wakers(capi.executor);
 
     1 // Returning 0 will pause the simulator.
   }

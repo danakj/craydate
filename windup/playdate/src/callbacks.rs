@@ -182,7 +182,7 @@ impl CCallbacks {
     // Waking the executors should cause them to poll() and receive back a `SystemEvent::Callback`,
     // as set on the line above. They would run the callback via `Callbacks` then eventually yield
     // back to us here.
-    Executor::wake_system_wakers(CApiState::get().executor.as_ptr());
+    Executor::wake_system_wakers(CApiState::get().executor);
     unsafe { CURRENT_CALLBACK = CallbackArguments::None };
   }
 

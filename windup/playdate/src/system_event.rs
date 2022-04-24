@@ -107,7 +107,7 @@ impl Future for SystemEventFuture<'_> {
       None => {
         // Register the waker to be woken when an event occurs. We were polled and nothing had
         // happened yet.
-        Executor::add_waker_for_system_event(CApiState::get().executor.as_ptr(), ctxt.waker());
+        Executor::add_waker_for_system_event(CApiState::get().executor, ctxt.waker());
         Poll::Pending
       }
     }
