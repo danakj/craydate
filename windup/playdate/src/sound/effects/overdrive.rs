@@ -23,12 +23,6 @@ impl Overdrive {
       offset_modulator: None,
     }
   }
-  pub fn as_sound_effect(&self) -> &SoundEffect {
-    &self.effect
-  }
-  pub fn as_sound_effect_mut(&mut self) -> &mut SoundEffect {
-    &mut self.effect
-  }
 
   /// Sets the gain of the overdrive effect.
   pub fn set_gain(&mut self, gain: f32) {

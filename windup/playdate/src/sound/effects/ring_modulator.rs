@@ -21,12 +21,6 @@ impl RingModulator {
       frequency_modulator: None,
     }
   }
-  pub fn as_sound_effect(&self) -> &SoundEffect {
-    &self.effect
-  }
-  pub fn as_sound_effect_mut(&mut self) -> &mut SoundEffect {
-    &mut self.effect
-  }
 
   /// Sets the frequency of the modulation signal.
   pub fn set_frequency(&mut self, frequency: f32) {

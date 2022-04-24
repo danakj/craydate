@@ -21,12 +21,6 @@ impl OnePoleFilter {
       parameter_modulator: None,
     }
   }
-  pub fn as_sound_effect(&self) -> &SoundEffect {
-    &self.effect
-  }
-  pub fn as_sound_effect_mut(&mut self) -> &mut SoundEffect {
-    &mut self.effect
-  }
 
   /// Sets the filter’s single parameter (cutoff frequency) to `parameter`.
   /// 

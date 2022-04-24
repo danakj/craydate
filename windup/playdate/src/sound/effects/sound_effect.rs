@@ -99,3 +99,13 @@ impl Drop for SoundEffect {
     }
   }
 }
+
+pub trait AsSoundEffect: AsRef<SoundEffect> + AsMut<SoundEffect> {
+  fn as_sound_effect(&self) -> &SoundEffect {
+    self.as_ref()
+  }
+  fn as_sound_effect_mut(&mut self) -> &mut SoundEffect {
+    self.as_mut()
+  }
+}
+impl<T> AsSoundEffect for T where T: AsRef<SoundEffect> + AsMut<SoundEffect> {}

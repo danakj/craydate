@@ -29,13 +29,6 @@ impl DelayLine {
       max_tap_position_in_frames: 0,
     }
   }
-  // TODO: Make this an AsSoundEffect trait like for SoundChannel.
-  pub fn as_sound_effect(&self) -> &SoundEffect {
-    &self.effect
-  }
-  pub fn as_sound_effect_mut(&mut self) -> &mut SoundEffect {
-    &mut self.effect
-  }
 
   /// Adds a new tap on the DelayLine, at the given time position within the `DelayLine`.
   ///

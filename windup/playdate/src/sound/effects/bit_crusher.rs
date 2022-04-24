@@ -23,12 +23,6 @@ impl BitCrusher {
       undersampling_modulator: None,
     }
   }
-  pub fn as_sound_effect(&self) -> &SoundEffect {
-    &self.effect
-  }
-  pub fn as_sound_effect_mut(&mut self) -> &mut SoundEffect {
-    &mut self.effect
-  }
 
   /// Sets the amount of crushing to amount.
   ///

@@ -6,6 +6,7 @@ use super::sound_effect::SoundEffect;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 
+// A two pole IIR filter, which is one of the `TwoPoleFilterType` types.
 pub struct TwoPoleFilter {
   effect: ManuallyDrop<SoundEffect>,
   ptr: NonNull<CTwoPoleFilter>,
@@ -14,20 +15,16 @@ pub struct TwoPoleFilter {
 }
 impl TwoPoleFilter {
   /// Creates a new TwoPoleFilter, which acts as a SoundEffect.
-  pub fn new() -> Self {
+  pub fn new(filter_type: TwoPoleFilterType) -> Self {
     let ptr = unsafe { Self::fns().newFilter.unwrap()() };
-    TwoPoleFilter {
+    let mut f = TwoPoleFilter {
       effect: ManuallyDrop::new(SoundEffect::from_ptr(ptr as *mut CSoundEffect)),
       ptr: NonNull::new(ptr).unwrap(),
       frequency_modulator: None,
       resonance_modulator: None,
-    }
-  }
-  pub fn as_sound_effect(&self) -> &SoundEffect {
-    &self.effect
-  }
-  pub fn as_sound_effect_mut(&mut self) -> &mut SoundEffect {
-    &mut self.effect
+    };
+    f.set_type(filter_type);
+    f
   }
 
   /// Sets the type of the filter.
