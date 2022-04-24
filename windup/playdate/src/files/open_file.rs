@@ -23,13 +23,13 @@ impl OpenFile {
   }
 
   /// Read the entire contents of the file.
-  pub fn read_file(&self) -> Option<Vec<u8>> {
+  pub fn read_file(&mut self) -> Option<Vec<u8>> {
     let mut out = Vec::new();
     const BUF_SIZE: u32 = 256;
     let mut buf = [0; BUF_SIZE as usize];
     loop {
       let result = unsafe {
-        Self::fns().read.unwrap()(self.cptr(), buf.as_mut_ptr() as *mut c_void, BUF_SIZE)
+        Self::fns().read.unwrap()(self.cptr_mut(), buf.as_mut_ptr() as *mut c_void, BUF_SIZE)
       };
       let bytes = match result {
         // Reached the end of the file.
@@ -44,7 +44,7 @@ impl OpenFile {
   }
 
   /// Write the entire contents of the file, returns if the operation was successful.
-  pub fn write_file(&self, contents: &[u8]) -> bool {
+  pub fn write_file(&mut self, contents: &[u8]) -> bool {
     // TODO: This would be needed if we support other operations beyond read/write the whole
     // file.
     // Self::fns().seek.unwrap()(self.cptr(), 0, playdate_sys::SEEK_SET as i32);
@@ -55,7 +55,7 @@ impl OpenFile {
       loop {
         let result = unsafe {
           Self::fns().write.unwrap()(
-            self.cptr().add(written_from_buffer),
+            self.cptr_mut().add(written_from_buffer),
             buf.as_ptr() as *const c_void,
             (buf.len() - written_from_buffer) as u32,
           )
@@ -79,11 +79,11 @@ impl OpenFile {
   #[must_use]
   pub fn close(mut self) -> bool {
     self.closed = true;
-    let result = unsafe { Self::fns().close.unwrap()(self.cptr()) };
+    let result = unsafe { Self::fns().close.unwrap()(self.cptr_mut()) };
     result == 0
   }
 
-  pub(crate) fn cptr(&self) -> *mut COpenFile {
+  pub(crate) fn cptr_mut(&mut self) -> *mut COpenFile {
     self.handle.as_ptr()
   }
   pub(crate) fn fns() -> &'static playdate_sys::playdate_file {

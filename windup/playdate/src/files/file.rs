@@ -130,7 +130,7 @@ impl File {
         playdate: last_err(),
       }),
       Some(handle) => {
-        let f = OpenFile::new(handle);
+        let mut f = OpenFile::new(handle);
         let read_result = f.read_file();
         let _close_result = f.close(); // We don't care if close() fails on a read.
         read_result.ok_or_else(|| FilePathError {
@@ -159,7 +159,7 @@ impl File {
         playdate: last_err(),
       }),
       Some(handle) => {
-        let f = OpenFile::new(handle);
+        let mut f = OpenFile::new(handle);
         let write_result = f.write_file(contents);
         // If close() fails on a write, we return an error as the file content may not be complete.
         if f.close() && write_result {
