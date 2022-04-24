@@ -12,10 +12,24 @@ pub async fn _run(mut api: playdate::Api) -> ! {
     for y in 0..8 {
       let xwrite = x + y % 2;
       let ywrite = y;
-      grey50.pixels_mut().set(xwrite, ywrite, true)
+      grey50.as_pixels_mut().set(xwrite, ywrite, PixelColor::WHITE)
     }
   }
-  let grey50 = Pattern::from_bitmap(&grey50, 0, 0);
+  let _grey50 = Pattern::from_bitmap(&grey50, 0, 0);
+  let mut grey50_colors = [None; 8 * 8];
+  for x in 0..8 {
+    for y in 0..8 {
+      let xodd = x % 2 != 0;
+      let yodd = y % 2 != 0;
+      let white = if yodd { xodd } else { !xodd };
+      grey50_colors[y * 8 + x] = Some(if white {
+        PixelColor::WHITE
+      } else {
+        PixelColor::BLACK
+      })
+    }
+  }
+  let grey50 = Pattern::new(grey50_colors);
   graphics.clear(&grey50);
 
   let mut bmp = Bitmap::new(100, 40, SolidColor::kColorWhite);
@@ -28,7 +42,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   for y in 0..64 as usize {
     let c = y % 4 != 0;
     for x in 0..64 as usize {
-      stencil.pixels_mut().set(x, y, c);
+      stencil.as_pixels_mut().set(x, y, c.into());
     }
   }
 
@@ -58,7 +72,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
 
   for y in 20..30 {
     for x in 10..20 {
-      copy.pixels_mut().set(x, y, false);
+      copy.as_pixels_mut().set(x, y, PixelColor::BLACK);
     }
   }
   graphics.draw_bitmap(&copy, 0, 30, BitmapFlip::kBitmapUnflipped);
@@ -221,7 +235,8 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   dline.set_len(TimeDelta::from_seconds(3));
   log(format!("dline length {}", dline.len()));
 
-  let _cb_source = CallbackSource::new_mono_for_channel(api.sound.default_channel_mut(), |_buf: &mut [i16]| false);
+  let _cb_source =
+    CallbackSource::new_mono_for_channel(api.sound.default_channel_mut(), |_buf: &mut [i16]| false);
 
   let mut sequence = Sequence::from_midi_file("sounds/pirate.mid").unwrap();
   for mut track in sequence.tracks_mut() {
