@@ -10,6 +10,8 @@ pub enum Error {
   LoadMidiFileError,
   /// A SoundChannel or SoundSource was already attached and can not be attached again.
   AlreadyAttachedError,
+  /// Bitmap dimentions are required to match but they failed to.
+  DimensionsDoNotMatch,
 }
 impl From<String> for Error {
   fn from(s: String) -> Self {
@@ -33,6 +35,7 @@ impl core::fmt::Debug for Error {
       Error::NotFoundError => write!(f, "Error(NotFoundError)"),
       Error::AlreadyAttachedError => write!(f, "Error(AlreadyAttachedError)"),
       Error::LoadMidiFileError => write!(f, "Error(LoadMidiFileError"),
+      Error::DimensionsDoNotMatch => write!(f, "Error(DimensionsDoNotMatch"),
       Error::String(e) => write!(f, "Error(String({:?}))", e),
     }
   }
@@ -43,6 +46,7 @@ impl core::fmt::Display for Error {
       Error::NotFoundError => write!(f, "not found"),
       Error::AlreadyAttachedError => write!(f, "already attached"),
       Error::LoadMidiFileError => write!(f, "MIDI file failed to load"),
+      Error::DimensionsDoNotMatch => write!(f, "dimensions to not match"),
       Error::String(e) => write!(f, "{}", e),
     }
   }

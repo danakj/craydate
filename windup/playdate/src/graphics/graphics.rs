@@ -1,11 +1,12 @@
 use core::ffi::c_void;
 
 use super::active_font::ActiveFont;
-use super::bitmap::{Bitmap, BitmapRef, SharedBitmapRef};
+use super::bitmap::{Bitmap, BitmapRef};
 use super::bitmap_collider::BitmapCollider;
 use super::color::Color;
 use super::font::Font;
 use super::framebuffer_stencil_bitmap::FramebufferStencilBitmap;
+use super::unowned_bitmap::UnownedBitmapMut;
 use crate::capi_state::{CApiState, ContextStackId};
 use crate::ctypes::*;
 use crate::null_terminated::ToNullTerminatedString;
@@ -19,6 +20,10 @@ impl Graphics {
     Graphics
   }
 
+  /// Test if the opaque pixels of two bitmaps overlap.
+  ///
+  /// The overlap testing is limited to witin the `in_rect`, and each bitmap has a position
+  /// specified in its `BitmapCollider` which may move them relative to the `in_rect`.
   pub fn bitmaps_collide(
     &self,
     a: BitmapCollider,
@@ -27,13 +32,13 @@ impl Graphics {
   ) -> bool {
     unsafe {
       // checkMaskCollision expects `*mut CLCDBitmap` but it only reads from the bitmaps to check
-      // for collision, so we can cast from a shared reference on Bitmap to a mut pointer.
+      // for collision, so we can act on `&self`.
       CApiState::get().cgraphics.checkMaskCollision.unwrap()(
-        a.bitmap.as_bitmap_ptr(),
+        a.bitmap.cptr(),
         a.x,
         a.y,
         a.flipped,
-        b.bitmap.as_bitmap_ptr(),
+        b.bitmap.cptr(),
         b.x,
         b.y,
         b.flipped,
@@ -43,12 +48,9 @@ impl Graphics {
   }
 
   /// Clears the entire display, filling it with `color`.
-  pub fn clear<'a, C>(&mut self, color: C)
-  where
-    Color<'a>: From<C>,
-  {
+  pub fn clear<'a, C: Into<Color<'a>>>(&mut self, color: C) {
     unsafe {
-      CApiState::get().cgraphics.clear.unwrap()(Color::<'a>::from(color).to_c_color());
+      CApiState::get().cgraphics.clear.unwrap()(color.into().to_c_color());
     }
   }
 
@@ -71,12 +73,12 @@ impl Graphics {
 
   /// Returns the debug framebuffer as a bitmap.
   ///
-  /// Only valid in the simulator, so not compiled for device builds.
+  /// Only valid in the simulator, so not present in for-device builds.
   #[cfg(not(all(target_arch = "arm", target_os = "none")))]
-  pub fn debug_frame_bitmap(&self) -> SharedBitmapRef<'static> {
+  pub fn debug_frame_bitmap(&self) -> UnownedBitmapMut<'static> {
     let bitmap_ptr = unsafe { CApiState::get().cgraphics.getDebugBitmap.unwrap()() };
     assert!(!bitmap_ptr.is_null());
-    SharedBitmapRef::from_ptr(bitmap_ptr)
+    UnownedBitmapMut::from_ptr(bitmap_ptr)
   }
 
   /// Returns a copy of the contents of the display front buffer.
@@ -156,7 +158,7 @@ impl Graphics {
   /// The bitmap will remain the stencil as long as the FramebufferStencilBitmap is not dropped, or another
   /// call to set_stencil() is made.
   pub fn set_stencil<'a>(&mut self, bitmap: &'a BitmapRef) -> FramebufferStencilBitmap<'a> {
-    unsafe { CApiState::get().cgraphics.setStencil.unwrap()(bitmap.as_bitmap_ptr()) }
+    unsafe { CApiState::get().cgraphics.setStencil.unwrap()(bitmap.cptr()) }
     FramebufferStencilBitmap::new(bitmap)
   }
 
@@ -197,8 +199,6 @@ impl Graphics {
     }
   }
 
-  // TODO: all the graphics->video functions
-
   /// Sets the mode used for drawing bitmaps. Note that text drawing uses bitmaps, so this
   /// affects how fonts are displayed as well.
   pub fn set_draw_mode(&mut self, mode: BitmapDrawMode) {
@@ -210,7 +210,7 @@ impl Graphics {
   /// The bitmap's upper-left corner is positioned at location (`x`, `y`), and the contents have
   /// the `flip` orientation applied.
   pub fn draw_bitmap(&mut self, bitmap: &BitmapRef, x: i32, y: i32, flip: BitmapFlip) {
-    unsafe { CApiState::get().cgraphics.drawBitmap.unwrap()(bitmap.as_bitmap_ptr(), x, y, flip) }
+    unsafe { CApiState::get().cgraphics.drawBitmap.unwrap()(bitmap.cptr(), x, y, flip) }
   }
 
   /// Draws the bitmap to the screen, scaled by `xscale` and `yscale`.
@@ -226,13 +226,7 @@ impl Graphics {
     yscale: f32,
   ) {
     unsafe {
-      CApiState::get().cgraphics.drawScaledBitmap.unwrap()(
-        bitmap.as_bitmap_ptr(),
-        x,
-        y,
-        xscale,
-        yscale,
-      )
+      CApiState::get().cgraphics.drawScaledBitmap.unwrap()(bitmap.cptr(), x, y, xscale, yscale)
     }
   }
 
@@ -254,7 +248,7 @@ impl Graphics {
   ) {
     unsafe {
       CApiState::get().cgraphics.drawRotatedBitmap.unwrap()(
-        bitmap.as_bitmap_ptr(),
+        bitmap.cptr(),
         x,
         y,
         degrees,
@@ -278,27 +272,25 @@ impl Graphics {
     flip: BitmapFlip,
   ) {
     unsafe {
-      CApiState::get().cgraphics.tileBitmap.unwrap()(
-        bitmap.as_bitmap_ptr(),
-        x,
-        y,
-        width,
-        height,
-        flip,
-      )
+      CApiState::get().cgraphics.tileBitmap.unwrap()(bitmap.cptr(), x, y, width, height, flip)
     }
   }
 
-  // TODO: getTableBitmap
-  // TODO: loadBitmapTable
-  // TODO: loadIntoBitmapTable
-  // TODO: newBitmapTable
+  // TODO: Bitmap tables are incomplete in the C Api so we've omitted them. The C Api functions that
+  // do exist and are ommitted are:
+  // - getTableBitmap
+  // - loadBitmapTable
+  // - loadIntoBitmapTable
+  // - newBitmapTable
 
-  pub fn draw_text(&mut self, text: &str, encoding: StringEncoding, x: i32, y: i32) {
+  /// Draw a text string on the screen at the given (`x`, `y`) coordinates.
+  pub fn draw_text(&mut self, text: &str, x: i32, y: i32) {
     let null_term = text.to_null_terminated_utf8();
     let ptr = null_term.as_ptr() as *const c_void;
     let len = null_term.len() as u64;
-    unsafe { CApiState::get().cgraphics.drawText.unwrap()(ptr, len, encoding, x, y) }; // TODO: Return the int from Playdate?
+    unsafe {
+      CApiState::get().cgraphics.drawText.unwrap()(ptr, len, CStringEncoding::kUTF8Encoding, x, y)
+    }; // TODO: Return the int from Playdate?
   }
 
   /// Draws the current FPS on the screen at the given (`x`, `y`) coordinates.
@@ -419,7 +411,8 @@ impl Graphics {
       )
     }
   }
-  /// Fills the polygon with vertices at the given coordinates (an array of points) using the given color and fill, or winding, rule.
+  /// Fills the polygon with vertices at the given coordinates (an array of points) using the given
+  /// color and fill, or winding, rule.
   ///
   /// See <https://en.wikipedia.org/wiki/Nonzero-rule> for an explanation of the winding rule.
   pub fn fill_polygon<'a>(

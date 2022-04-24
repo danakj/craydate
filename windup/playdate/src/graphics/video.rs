@@ -1,10 +1,11 @@
+use alloc::format;
 use core::cell::Cell;
 use core::ptr::NonNull;
 
+use super::bitmap::BitmapRef;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::error::Error;
-use crate::format;
 use crate::null_terminated::ToNullTerminatedString;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -14,12 +15,13 @@ enum Context {
   Bitmap(*mut CLCDBitmap),
 }
 
+/// A Video file that can be rendered into the display or a `Bitmap`.
 pub struct Video {
   ptr: NonNull<CVideoPlayer>,
   context: Cell<Context>,
 }
 impl Video {
-  /// Opens the pdv file at path and returns a new video player object for rendering its frames.
+  /// Opens the `.pdv` file at path and returns a new video player object for rendering its frames.
   ///
   /// If the file can not be read, the function returns an `Error::NotFoundError`.
   pub fn from_file(path: &str) -> Result<Video, Error> {
@@ -64,13 +66,9 @@ impl Video {
   }
 
   /// Renders frame number `n` into the `bitmap`.
-  pub fn render_frame_to_bitmap(
-    &self,
-    n: i32,
-    bitmap: &mut super::graphics::BitmapRef,
-  ) -> Result<(), Error> {
-    if self.context.get() != Context::Bitmap(unsafe { bitmap.as_bitmap_ptr() }) {
-      if unsafe { Self::fns().setContext.unwrap()(self.cptr(), bitmap.as_bitmap_ptr()) } == 0 {
+  pub fn render_frame_to_bitmap(&self, n: i32, bitmap: &mut BitmapRef) -> Result<(), Error> {
+    if self.context.get() != Context::Bitmap(bitmap.cptr()) {
+      if unsafe { Self::fns().setContext.unwrap()(self.cptr(), bitmap.cptr()) } == 0 {
         return Err(self.get_render_error("render_frame_to_bitmap"));
       }
     }

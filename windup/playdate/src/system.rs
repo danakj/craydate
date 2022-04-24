@@ -113,7 +113,7 @@ impl System {
     // SAFETY: Playdate makes a copy from the given pointer, so we can pass it in and then drop the
     // reference on `bitmap` when we leave the function.
     unsafe {
-      CApiState::get().csystem.setMenuImage.unwrap()(bitmap.as_bitmap_ptr(), xoffset.clamp(0, 200))
+      CApiState::get().csystem.setMenuImage.unwrap()(bitmap.cptr(), xoffset.clamp(0, 200))
     }
   }
 

@@ -16,6 +16,7 @@ impl<'a> FramebufferStencilBitmap<'a> {
     FramebufferStencilBitmap { generation, bitmap }
   }
 
+  /// The bitmap that was set as the stencil when the `FramebufferStencilBitmap` was constructed.
   pub fn bitmap(&self) -> &'a BitmapRef {
     self.bitmap
   }
@@ -24,6 +25,7 @@ impl<'a> FramebufferStencilBitmap<'a> {
     CApiState::get().cgraphics
   }
 }
+
 impl Drop for FramebufferStencilBitmap<'_> {
   fn drop(&mut self) {
     // Use a generation tag to avoid unsetting the stencil if another bitmap was set before this

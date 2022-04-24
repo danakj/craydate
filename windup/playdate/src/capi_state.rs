@@ -173,8 +173,8 @@ impl ContextStack {
 
     self.stack.push(None)
   }
-  pub fn push_bitmap(&mut self, mut bitmap: Bitmap) -> ContextStackId {
-    unsafe { CApiState::get().cgraphics.pushContext.unwrap()(bitmap.as_bitmap_mut_ptr()) };
+  pub fn push_bitmap(&mut self, bitmap: Bitmap) -> ContextStackId {
+    unsafe { CApiState::get().cgraphics.pushContext.unwrap()(bitmap.cptr()) };
 
     static mut NEXT_ID: usize = 1;
     let id = unsafe {

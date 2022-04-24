@@ -1,10 +1,10 @@
 use alloc::format;
 use core::ptr::NonNull;
 
+use super::unowned_bitmap::UnownedBitmapRef;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::error::Error;
-use crate::graphics::SharedBitmapRef;
 use crate::null_terminated::ToNullTerminatedString;
 
 /// Font which can be used to draw text when made active with `Graphics::set_font()`.
@@ -13,6 +13,12 @@ pub struct Font {
   font_ptr: NonNull<CLCDFont>,
 }
 impl Font {
+  pub(crate) fn from_ptr(font_ptr: *mut CLCDFont) -> Self {
+    Font {
+      font_ptr: unsafe { NonNull::new_unchecked(font_ptr) },
+    }
+  }
+
   /// Returns the Font object for the font file at `path`.
   pub fn from_file(path: &str) -> Result<Font, Error> {
     let mut out_err: *const u8 = core::ptr::null_mut();
@@ -42,12 +48,6 @@ impl Font {
     }
   }
 
-  pub(crate) fn from_ptr(font_ptr: *mut CLCDFont) -> Self {
-    Font {
-      font_ptr: unsafe { NonNull::new_unchecked(font_ptr) },
-    }
-  }
-
   /// Measure the `text` string as drawn with the font.
   ///
   /// The `tracking` value is the number of pixels of whitespace between each character drawn in a
@@ -59,7 +59,7 @@ impl Font {
         self.font_ptr.as_ptr(),
         utf.as_ptr() as *const core::ffi::c_void,
         utf.len() as u64 - 1, // Don't count the null.
-        StringEncoding::kUTF8Encoding,
+        CStringEncoding::kUTF8Encoding,
         tracking,
       )
     }
@@ -134,7 +134,7 @@ impl FontPage {
         glyph_ptr: NonNull::new(glyph_ptr).unwrap(),
         advance,
         glyph_char: c,
-        bitmap: SharedBitmapRef::<'static>::from_ptr(bitmap_ptr),
+        bitmap: UnownedBitmapRef::<'static>::from_ptr(bitmap_ptr),
       })
     }
   }
@@ -146,7 +146,7 @@ pub struct FontGlyph {
   advance: i32,
   glyph_char: char,
   // Fonts can not be unloaded/destroyed, so the bitmap has a static lifetime.
-  bitmap: SharedBitmapRef<'static>,
+  bitmap: UnownedBitmapRef<'static>,
 }
 impl FontGlyph {
   /// Returns the advance value for the glyph, which is the width that should be allocated for the
@@ -169,7 +169,7 @@ impl FontGlyph {
   }
 
   /// The bitmap representation of the font glyph.
-  pub fn bitmap(&self) -> SharedBitmapRef<'static> {
+  pub fn bitmap(&self) -> UnownedBitmapRef<'static> {
     self.bitmap.clone()
   }
 }

@@ -232,14 +232,13 @@ pub async fn run(mut api: playdate::Api) -> ! {
 
     graphics.draw_text(
       "turn crank, hit up to jump",
-      StringEncoding::kASCIIEncoding,
       5,
       0,
     );
-    graphics.draw_text("hit A to reset", StringEncoding::kASCIIEncoding, 5, 15);
+    graphics.draw_text("hit A to reset", 5, 15);
 
     let crank_str = format!("{:.1}", accum.crank_accum);
-    graphics.draw_text(&crank_str, StringEncoding::kASCIIEncoding, 5, 30);
+    graphics.draw_text(&crank_str, 5, 30);
     graphics.draw_fps(400 - 15, 0);
   }
 }
