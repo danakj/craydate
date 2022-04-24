@@ -110,7 +110,9 @@ impl System {
   pub fn set_menu_image(&mut self, bitmap: &crate::graphics::BitmapRef, xoffset: i32) {
     // SAFETY: Playdate makes a copy from the given pointer, so we can pass it in and then drop the
     // reference on `bitmap` when we leave the function.
-    unsafe { Self::fns().setMenuImage.unwrap()(bitmap.cptr(), xoffset.clamp(0, 200)) }
+    //
+    // setMenuItem() takes a mutable pointer but does not write to the data inside it.
+    unsafe { Self::fns().setMenuImage.unwrap()(bitmap.cptr() as *mut _, xoffset.clamp(0, 200)) }
   }
 
   /// Removes the user-specified bitmap from beside the system menu. The default image is displayed

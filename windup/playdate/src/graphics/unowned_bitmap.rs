@@ -1,3 +1,5 @@
+use core::ptr::NonNull;
+
 use super::bitmap::BitmapRef;
 use crate::ctypes::*;
 
@@ -15,21 +17,17 @@ impl UnownedBitmapRef<'_> {
   /// Construct a UnownedBitmapRef from a non-owning pointer.
   ///
   /// Requires being told the lifetime of the Bitmap this is making a reference to.
-  pub(crate) fn from_ptr<'a>(bitmap_ptr: *mut CBitmap) -> UnownedBitmapRef<'a> {
+  pub(crate) fn from_ptr<'a>(bitmap_ptr: NonNull<CBitmap>) -> UnownedBitmapRef<'a> {
     UnownedBitmapRef {
       bref: BitmapRef::from_ptr(bitmap_ptr),
       _marker: core::marker::PhantomData,
     }
   }
-
-  pub(crate) fn cptr(&self) -> *mut CBitmap {
-    self.bref.cptr()
-  }
 }
 
 impl Clone for UnownedBitmapRef<'_> {
   fn clone(&self) -> Self {
-    UnownedBitmapRef::from_ptr(self.cptr())
+    UnownedBitmapRef::from_ptr(self.copy_non_null())
   }
 }
 
@@ -59,20 +57,17 @@ impl UnownedBitmapMut<'_> {
   /// Construct a UnownedBitmapMut from a non-owning pointer.
   ///
   /// Requires being told the lifetime of the Bitmap this is making a reference to.
-  pub(crate) fn from_ptr<'a>(bitmap_ptr: *mut CBitmap) -> UnownedBitmapMut<'a> {
+  pub(crate) fn from_ptr<'a>(bitmap_ptr: NonNull<CBitmap>) -> UnownedBitmapMut<'a> {
     UnownedBitmapMut {
       bref: UnownedBitmapRef::from_ptr(bitmap_ptr),
     }
-  }
-
-  pub(crate) fn cptr(&self) -> *mut CBitmap {
-    self.bref.bref.cptr()
   }
 }
 
 impl Clone for UnownedBitmapMut<'_> {
   fn clone(&self) -> Self {
-    UnownedBitmapMut::from_ptr(self.cptr())
+    // The clone() has writable access so requires a mutable pointer just as the original does.
+    UnownedBitmapMut::from_ptr(self.copy_non_null())
   }
 }
 

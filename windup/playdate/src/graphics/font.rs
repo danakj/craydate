@@ -122,18 +122,13 @@ impl FontPage {
       let mut bitmap_ptr: *mut CBitmap = core::ptr::null_mut();
       let mut advance = 0;
       let glyph_ptr = unsafe {
-        Self::fns().getPageGlyph.unwrap()(
-          self.cptr(),
-          c as u32,
-          &mut bitmap_ptr,
-          &mut advance,
-        )
+        Self::fns().getPageGlyph.unwrap()(self.cptr(), c as u32, &mut bitmap_ptr, &mut advance)
       };
       Some(FontGlyph {
         glyph_ptr: NonNull::new(glyph_ptr).unwrap(),
         advance,
         glyph_char: c,
-        bitmap: UnownedBitmapRef::<'static>::from_ptr(bitmap_ptr),
+        bitmap: UnownedBitmapRef::<'static>::from_ptr(NonNull::new(bitmap_ptr).unwrap()),
       })
     }
   }
@@ -166,11 +161,7 @@ impl FontGlyph {
   /// The adjustment would be applied to the `advance()`.
   pub fn kerning(&self, next_char: char) -> i32 {
     unsafe {
-      Self::fns().getGlyphKerning.unwrap()(
-        self.cptr(),
-        self.glyph_char as u32,
-        next_char as u32,
-      )
+      Self::fns().getGlyphKerning.unwrap()(self.cptr(), self.glyph_char as u32, next_char as u32)
     }
   }
 

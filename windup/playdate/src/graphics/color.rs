@@ -115,7 +115,14 @@ impl Pattern {
     unsafe {
       // The setColorToPattern function wants a `*mut CLCDBitmap`, but it only reads from the bitmap
       // to make a pattern, so we can act on a shared `&BitmapRef`.
-      CApiState::get().cgraphics.setColorToPattern.unwrap()(&mut c_color, bitmap.cptr(), x, y);
+      //
+      // setColorToPattern takes a mutable pointer but does not change the data inside it.
+      CApiState::get().cgraphics.setColorToPattern.unwrap()(
+        &mut c_color,
+        bitmap.cptr() as *mut _,
+        x,
+        y,
+      );
       // The `c_color`, when it's a pattern, contains a pointer to the pattern data. The pattern
       // data here is in static memory that is owned by and will be reused by Playdate. So we must
       // copy the bits out of the pattern pointer, and not free it.

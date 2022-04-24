@@ -42,7 +42,8 @@ impl ContextStack {
     self.stack.push(None)
   }
   pub fn push_bitmap(&mut self, bitmap: Bitmap) -> ContextStackId {
-    unsafe { Self::fns().pushContext.unwrap()(bitmap.cptr()) };
+    // pushContext() takes a mutable pointer but does not change the data inside it.
+    unsafe { Self::fns().pushContext.unwrap()(bitmap.cptr() as *mut _) };
 
     static mut NEXT_ID: usize = 1;
     let id = unsafe {

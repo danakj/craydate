@@ -1,6 +1,5 @@
-use core::ptr::NonNull;
-
 use alloc::format;
+use core::ptr::NonNull;
 
 use super::bitmap_data::BitmapData;
 use super::color::{Color, PixelColor};
@@ -19,8 +18,8 @@ pub struct BitmapRef {
 }
 impl BitmapRef {
   /// Construct an BitmapRef from a non-owning pointer.
-  pub(crate) fn from_ptr(bitmap_ptr: *mut CBitmap) -> Self {
-    BitmapRef { ptr: NonNull::new(bitmap_ptr).unwrap() }
+  pub(crate) fn from_ptr(ptr: NonNull<CBitmap>) -> Self {
+    BitmapRef { ptr }
   }
 
   fn data_and_pixels_ptr(&self) -> (BitmapData, *mut u8) {
@@ -30,8 +29,9 @@ impl BitmapRef {
     let mut hasmask = 0;
     let mut pixels = core::ptr::null_mut();
     unsafe {
+      // getBitmapData takes a mutable pointer but does not change the data inside it.
       Bitmap::fns().getBitmapData.unwrap()(
-        self.cptr(),
+        self.cptr() as *mut _,
         &mut width,
         &mut height,
         &mut rowbytes,
@@ -54,7 +54,7 @@ impl BitmapRef {
     unsafe {
       Bitmap::fns().loadIntoBitmap.unwrap()(
         path.to_null_terminated_utf8().as_ptr(),
-        self.cptr(),
+        self.cptr_mut(),
         &mut out_err,
       )
     };
@@ -124,7 +124,7 @@ impl BitmapRef {
   /// Clears the bitmap, filling with the given `bg_color`.
   pub fn clear<'a, C: Into<Color<'a>>>(&mut self, bg_color: C) {
     unsafe {
-      Bitmap::fns().clearBitmap.unwrap()(self.cptr(), bg_color.into().to_c_color());
+      Bitmap::fns().clearBitmap.unwrap()(self.cptr_mut(), bg_color.into().to_c_color());
     }
   }
 
@@ -134,8 +134,10 @@ impl BitmapRef {
   /// The mask bitmap is copied, so no reference is held to it. Returns an
   /// Error::DimensionsDoNotMatch if the mask bitmap dimensions do not match with `self`.
   pub fn set_mask_bitmap(&mut self, mask: &BitmapRef) -> Result<(), Error> {
-    // Playdate makes a copy of the mask bitmap.
-    let result = unsafe { Bitmap::fns().setBitmapMask.unwrap()(self.cptr(), mask.cptr()) };
+    // Playdate makes a copy of the mask bitmap. It takes a mutable pointer but it only reads from
+    // it to do the copy.
+    let result =
+      unsafe { Bitmap::fns().setBitmapMask.unwrap()(self.cptr_mut(), mask.cptr() as *mut _) };
     match result {
       1 => Ok(()),
       0 => Err(Error::DimensionsDoNotMatch),
@@ -150,17 +152,21 @@ impl BitmapRef {
     let mask = unsafe {
       // Playdate owns the mask bitmap, and reference a pointer to it. Playdate would free the mask
       // presumably when `self` is freed.
-      Bitmap::fns().getBitmapMask.unwrap()(self.cptr())
+      //
+      // getBitmapMask() takes a mutable pointer but does not change the data inside it.
+      Bitmap::fns().getBitmapMask.unwrap()(self.cptr() as *mut _)
     };
-    if !mask.is_null() {
-      Some(UnownedBitmapMut::from_ptr(mask))
-    } else {
-      None
-    }
+    Some(UnownedBitmapMut::from_ptr(NonNull::new(mask)?))
   }
 
-  pub(crate) fn cptr(&self) -> *mut CBitmap {
+  pub(crate) fn cptr(&self) -> *const CBitmap {
     self.ptr.as_ptr()
+  }
+  pub(crate) fn cptr_mut(&mut self) -> *mut CBitmap {
+    self.ptr.as_ptr()
+  }
+  pub(crate) fn copy_non_null(&self) -> NonNull<CBitmap> {
+    self.ptr
   }
 }
 
@@ -170,7 +176,9 @@ impl alloc::borrow::ToOwned for BitmapRef {
   /// Makes a deep copy of the `BitmapRef` to produce a new application-owned `Bitmap` that contains
   /// a copy of the pixel data from the `BitmapRef`.
   fn to_owned(&self) -> Self::Owned {
-    Bitmap::from_owned_ptr(unsafe { Bitmap::fns().copyBitmap.unwrap()(self.cptr()) })
+    // copyBitmap() takes a mutable pointer but does not change the data inside it.
+    let ptr = unsafe { Bitmap::fns().copyBitmap.unwrap()(self.cptr() as *mut _) };
+    Bitmap::from_owned_ptr(NonNull::new(ptr).unwrap())
   }
 }
 
@@ -189,7 +197,7 @@ pub struct Bitmap {
 }
 impl Bitmap {
   /// Construct an Bitmap from an owning pointer.
-  pub(crate) fn from_owned_ptr(bitmap_ptr: *mut CBitmap) -> Self {
+  pub(crate) fn from_owned_ptr(bitmap_ptr: NonNull<CBitmap>) -> Self {
     Bitmap {
       owned: BitmapRef::from_ptr(bitmap_ptr),
     }
@@ -201,7 +209,7 @@ impl Bitmap {
     // FIXME: for some reason, patterns don't appear to work here, but do work with a C example.
     let bitmap_ptr =
       unsafe { Self::fns().newBitmap.unwrap()(width, height, bg_color.into().to_c_color()) };
-    Bitmap::from_owned_ptr(bitmap_ptr)
+    Bitmap::from_owned_ptr(NonNull::new(bitmap_ptr).unwrap())
   }
 
   /// Returns a new, rotated and scaled Bitmap based on the given `bitmap`.
@@ -215,15 +223,16 @@ impl Bitmap {
     // alloced size of the new bitmap.  You can get this off the bitmap data more or less if needed.
     let mut _alloced_size: i32 = 0;
     let bitmap_ptr = unsafe {
+      // rotatedBitmap() takes a mutable pointer but does not change the data inside it.
       Self::fns().rotatedBitmap.unwrap()(
-        bitmap.cptr(),
+        bitmap.cptr() as *mut _,
         rotation,
         xscale,
         yscale,
         &mut _alloced_size,
       )
     };
-    Bitmap::from_owned_ptr(bitmap_ptr)
+    Bitmap::from_owned_ptr(NonNull::new(bitmap_ptr).unwrap())
   }
 
   pub fn from_file(path: &str) -> Result<Bitmap, Error> {
@@ -247,7 +256,7 @@ impl Bitmap {
       }
     } else {
       assert!(!bitmap_ptr.is_null());
-      Ok(Bitmap::from_owned_ptr(bitmap_ptr))
+      Ok(Bitmap::from_owned_ptr(NonNull::new(bitmap_ptr).unwrap()))
     }
   }
 
@@ -259,14 +268,15 @@ impl Bitmap {
 impl Clone for Bitmap {
   /// Clones the `Bitmap` which includes making a copy of all its pixels.
   fn clone(&self) -> Self {
-    Bitmap::from_owned_ptr(unsafe { Self::fns().copyBitmap.unwrap()(self.cptr()) })
+    use alloc::borrow::ToOwned;
+    self.as_ref().to_owned()
   }
 }
 
 impl Drop for Bitmap {
   fn drop(&mut self) {
     unsafe {
-      Self::fns().freeBitmap.unwrap()(self.cptr());
+      Self::fns().freeBitmap.unwrap()(self.cptr_mut());
     }
   }
 }

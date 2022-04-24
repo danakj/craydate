@@ -1,4 +1,5 @@
 use core::ffi::c_void;
+use core::ptr::NonNull;
 
 use super::active_font::ActiveFont;
 use super::bitmap::{Bitmap, BitmapRef};
@@ -34,13 +35,13 @@ impl Graphics {
   ) -> bool {
     unsafe {
       // checkMaskCollision expects `*mut CLCDBitmap` but it only reads from the bitmaps to check
-      // for collision, so we can act on `&self`.
+      // for collision.
       Self::fns().checkMaskCollision.unwrap()(
-        a.bitmap.cptr(),
+        a.bitmap.cptr() as *mut _,
         a.x,
         a.y,
         a.flipped,
-        b.bitmap.cptr(),
+        b.bitmap.cptr() as *mut _,
         b.x,
         b.y,
         b.flipped,
@@ -79,8 +80,7 @@ impl Graphics {
   #[cfg(not(all(target_arch = "arm", target_os = "none")))]
   pub fn debug_frame_bitmap(&self) -> UnownedBitmapMut<'static> {
     let bitmap_ptr = unsafe { Self::fns().getDebugBitmap.unwrap()() };
-    assert!(!bitmap_ptr.is_null());
-    UnownedBitmapMut::from_ptr(bitmap_ptr)
+    UnownedBitmapMut::from_ptr(NonNull::new(bitmap_ptr).unwrap())
   }
 
   /// Returns a copy of the contents of the display front buffer.
@@ -89,7 +89,7 @@ impl Graphics {
   pub fn display_frame_bitmap(&self) -> Bitmap {
     let bitmap_ptr = unsafe { Self::fns().getDisplayBufferBitmap.unwrap()() };
     use alloc::borrow::ToOwned;
-    BitmapRef::from_ptr(bitmap_ptr).to_owned()
+    BitmapRef::from_ptr(NonNull::new(bitmap_ptr).unwrap()).to_owned()
   }
 
   /// Returns a copy the contents of the working frame buffer as a bitmap.
@@ -98,7 +98,7 @@ impl Graphics {
   /// next frame.
   pub fn working_frame_bitmap(&self) -> Bitmap {
     let bitmap_ptr = unsafe { Self::fns().copyFrameBufferBitmap.unwrap()() };
-    Bitmap::from_owned_ptr(bitmap_ptr)
+    Bitmap::from_owned_ptr(NonNull::new(bitmap_ptr).unwrap())
   }
 
   /// After updating pixels in the buffer returned by `get_frame()`, you must tell the graphics
@@ -160,7 +160,9 @@ impl Graphics {
   /// The bitmap will remain the stencil as long as the FramebufferStencilBitmap is not dropped, or another
   /// call to set_stencil() is made.
   pub fn set_stencil<'a>(&mut self, bitmap: &'a BitmapRef) -> FramebufferStencilBitmap<'a> {
-    unsafe { Self::fns().setStencil.unwrap()(bitmap.cptr()) }
+    // setStencil() takes a mutable pointer to a bitmap, but it only reads from the bitmap (in order
+    // to perform stenciling).
+    unsafe { Self::fns().setStencil.unwrap()(bitmap.cptr() as *mut _) }
     FramebufferStencilBitmap::new(bitmap)
   }
 
@@ -212,7 +214,8 @@ impl Graphics {
   /// The bitmap's upper-left corner is positioned at location (`x`, `y`), and the contents have
   /// the `flip` orientation applied.
   pub fn draw_bitmap(&mut self, bitmap: &BitmapRef, x: i32, y: i32, flip: BitmapFlip) {
-    unsafe { Self::fns().drawBitmap.unwrap()(bitmap.cptr(), x, y, flip) }
+    // drawBitmap() takes a mutable pointer to a bitmap, but it only reads from the bitmap.
+    unsafe { Self::fns().drawBitmap.unwrap()(bitmap.cptr() as *mut _, x, y, flip) }
   }
 
   /// Draws the bitmap to the screen, scaled by `xscale` and `yscale`.
@@ -227,7 +230,8 @@ impl Graphics {
     xscale: f32,
     yscale: f32,
   ) {
-    unsafe { Self::fns().drawScaledBitmap.unwrap()(bitmap.cptr(), x, y, xscale, yscale) }
+    // drawScaledBitmap() takes a mutable pointer to a bitmap, but it only reads from the bitmap.
+    unsafe { Self::fns().drawScaledBitmap.unwrap()(bitmap.cptr() as *mut _, x, y, xscale, yscale) }
   }
 
   /// Draws the bitmap to the screen, scaled by `xscale` and `yscale` then rotated by `degrees` with
@@ -247,8 +251,9 @@ impl Graphics {
     yscale: f32,
   ) {
     unsafe {
+      // drawRotatedBitmap() takes a mutable pointer to a bitmap, but it only reads from the bitmap.
       Self::fns().drawRotatedBitmap.unwrap()(
-        bitmap.cptr(),
+        bitmap.cptr() as *mut _,
         x,
         y,
         degrees,
@@ -271,7 +276,8 @@ impl Graphics {
     height: i32,
     flip: BitmapFlip,
   ) {
-    unsafe { Self::fns().tileBitmap.unwrap()(bitmap.cptr(), x, y, width, height, flip) }
+    // tileBitmap() takes a mutable pointer to a bitmap, but it only reads from the bitmap.
+    unsafe { Self::fns().tileBitmap.unwrap()(bitmap.cptr() as *mut _, x, y, width, height, flip) }
   }
 
   // TODO: Bitmap tables are incomplete in the C Api so we've omitted them. The C Api functions that
