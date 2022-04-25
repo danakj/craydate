@@ -4,7 +4,8 @@ use core::ptr::NonNull;
 use super::super::loop_sound_span::LoopTimeSpan;
 use super::super::{SoundCompletionCallback, StereoVolume};
 use super::sound_source::{AsSoundSource, SoundSource};
-use crate::callbacks::{Constructed, RegisteredCallback};
+use crate::callback_builder::Constructed;
+use crate::callbacks::RegisteredCallback;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::error::Error;
@@ -148,7 +149,7 @@ impl FilePlayer {
   /// match system_event_watcher.next() {
   ///   SystemEvent::Callback => {
   ///     // Run the closure registered above.
-  ///     callbacks.runs();
+  ///     callbacks.run(12);
   ///   }
   /// }
   /// ```
@@ -158,6 +159,7 @@ impl FilePlayer {
     duration: TimeDelta,
     completion_callback: SoundCompletionCallback<'a, T, F, Constructed>,
   ) {
+    self.fade_callback = None;
     let func = completion_callback.into_inner().and_then(|(callbacks, cb)| {
       let key = self.as_source_mut().cptr() as usize;
       let (func, reg) = callbacks.add_sound_source_completion(key, cb);

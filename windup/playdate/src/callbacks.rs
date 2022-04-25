@@ -8,6 +8,7 @@ use core::ffi::c_void;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::executor::Executor;
+use crate::sound::headphone_state::HeadphoneState;
 use crate::system_event::SystemEvent;
 
 static mut CURRENT_CALLBACK: CallbackArguments = CallbackArguments::None;
@@ -21,6 +22,7 @@ enum CallbackKey {
   SoundSourceCompletion(usize),
   MenuItem(usize),
   SequenceFinished(usize),
+  HeadphoneChanged,
 }
 
 /// The arguments given to the C callback function for each type of function. These are used to find
@@ -35,6 +37,7 @@ enum CallbackArguments {
   SoundSourceCompletion(usize),
   MenuItem(usize),
   SequenceFinished(usize),
+  HeadphoneChanged(HeadphoneState),
 }
 impl CallbackArguments {
   fn is_none(&self) -> bool {
@@ -69,6 +72,7 @@ pub struct Callbacks<T> {
   sound_source_completion_callbacks: BTreeMap<usize, Box<dyn Fn(T)>>,
   menu_item_callbacks: BTreeMap<usize, Box<dyn Fn(T)>>,
   sequence_finished_callbacks: BTreeMap<usize, Box<dyn Fn(T)>>,
+  headphone_changed_callback: Option<Box<dyn Fn(HeadphoneState, T)>>,
   removed: Rc<RefCell<Vec<CallbackKey>>>,
 }
 impl<T> Callbacks<T> {
@@ -78,6 +82,7 @@ impl<T> Callbacks<T> {
       sound_source_completion_callbacks: BTreeMap::new(),
       menu_item_callbacks: BTreeMap::new(),
       sequence_finished_callbacks: BTreeMap::new(),
+      headphone_changed_callback: None,
       removed: Rc::new(RefCell::new(Vec::new())),
     }
   }
@@ -86,10 +91,17 @@ impl<T> Callbacks<T> {
     for r in core::mem::take(&mut self.removed).borrow().iter() {
       match r {
         CallbackKey::SoundSourceCompletion(key) => {
-          self.sound_source_completion_callbacks.remove(key)
+          self.sound_source_completion_callbacks.remove(key);
         }
-        CallbackKey::MenuItem(key) => self.menu_item_callbacks.remove(key),
-        CallbackKey::SequenceFinished(key) => self.sequence_finished_callbacks.remove(key),
+        CallbackKey::MenuItem(key) => {
+          self.menu_item_callbacks.remove(key);
+        }
+        CallbackKey::SequenceFinished(key) => {
+          self.sequence_finished_callbacks.remove(key);
+        }
+        CallbackKey::HeadphoneChanged => {
+          self.headphone_changed_callback = None;
+        }
       };
     }
   }
@@ -119,6 +131,10 @@ impl<T> Callbacks<T> {
         let cb = self.sequence_finished_callbacks.get(key);
         cb.and_then(|f| Some(f(t))).is_some()
       }
+      CallbackArguments::HeadphoneChanged(state) => {
+        let cb = self.headphone_changed_callback.as_ref();
+        cb.and_then(|f| Some(f(*state, t))).is_some()
+      }
     }
   }
 }
@@ -130,7 +146,8 @@ impl<T> Callbacks<T> {
     key: usize,
     cb: impl Fn(T) + 'static,
   ) -> (unsafe extern "C" fn(*mut CSoundSource), RegisteredCallback) {
-    self.sound_source_completion_callbacks.insert(key, Box::new(cb));
+    let r = self.sound_source_completion_callbacks.insert(key, Box::new(cb));
+    assert!(r.is_none());
     (
       CCallbacks::on_sound_source_completion_callback,
       RegisteredCallback {
@@ -146,7 +163,8 @@ impl<T> Callbacks<T> {
     key: usize,
     cb: impl Fn(T) + 'static,
   ) -> (unsafe extern "C" fn(*mut c_void), RegisteredCallback) {
-    self.menu_item_callbacks.insert(key, Box::new(cb));
+    let r = self.menu_item_callbacks.insert(key, Box::new(cb));
+    assert!(r.is_none());
     (
       CCallbacks::on_menu_item_callback,
       RegisteredCallback {
@@ -161,12 +179,32 @@ impl<T> Callbacks<T> {
     &mut self,
     key: usize,
     cb: impl Fn(T) + 'static,
-  ) -> (unsafe extern "C" fn(*mut CSoundSequence, *mut c_void), RegisteredCallback) {
-    self.sound_source_completion_callbacks.insert(key, Box::new(cb));
+  ) -> (
+    unsafe extern "C" fn(*mut CSoundSequence, *mut c_void),
+    RegisteredCallback,
+  ) {
+    let r = self.sound_source_completion_callbacks.insert(key, Box::new(cb));
+    assert!(r.is_none());
     (
       CCallbacks::on_sequence_finished_callback,
       RegisteredCallback {
         cb_type: Some(CallbackKey::SequenceFinished(key)),
+        weak_removed: Rc::downgrade(&self.removed),
+      },
+    )
+  }
+
+  #[must_use]
+  pub(crate) fn add_headphone_change(
+    &mut self,
+    cb: impl Fn(HeadphoneState, T) + 'static,
+  ) -> (unsafe extern "C" fn(i32, i32), RegisteredCallback) {
+    assert!(self.headphone_changed_callback.is_none());
+    self.headphone_changed_callback = Some(Box::new(cb));
+    (
+      CCallbacks::on_headphone_change_callback,
+      RegisteredCallback {
+        cb_type: Some(CallbackKey::HeadphoneChanged),
         weak_removed: Rc::downgrade(&self.removed),
       },
     )
@@ -197,60 +235,11 @@ impl CCallbacks {
   pub extern "C" fn on_sequence_finished_callback(seq: *mut CSoundSequence, _data: *mut c_void) {
     Self::run_callback(CallbackArguments::SequenceFinished(seq as usize))
   }
-}
 
-pub enum NoNull {}
-pub enum AllowNull {}
-pub enum Unconstructed {}
-pub enum WithCallacks {}
-pub enum Constructed {}
-
-/// A builder pattern to construct a callback that will later be called when `SystemEvent::Callback`
-/// fires. Connects a closure to a `Callbacks` object which can later run the closure.
-pub struct CallbackBuilder<
-  'a,
-  T = (),
-  F: Fn(T) + 'static = fn(T),
-  Rule = AllowNull,
-  State = Unconstructed,
-> {
-  callbacks: Option<&'a mut Callbacks<T>>,
-  cb: Option<F>,
-  _marker: core::marker::PhantomData<(&'a u8, T, F, Rule, State)>,
-}
-impl<'a> CallbackBuilder<'a, (), fn(()), AllowNull, Unconstructed> {
-  /// A null callback, which is used to specify a callback should not be set, or should be removed.
-  pub fn none() -> CallbackBuilder<'a, (), fn(()), AllowNull, Constructed> {
-    CallbackBuilder {
-      callbacks: None,
-      cb: None,
-      _marker: core::marker::PhantomData,
-    }
-  }
-}
-impl<'a, T, F: Fn(T) + 'static, Rule> CallbackBuilder<'a, T, F, Rule, Unconstructed> {
-  /// Attach a `Callbacks` object to this builder, that will hold the closure.
-  pub fn with(callbacks: &'a mut Callbacks<T>) -> CallbackBuilder<'a, T, F, Rule, WithCallacks> {
-    CallbackBuilder {
-      callbacks: Some(callbacks),
-      cb: None,
-      _marker: core::marker::PhantomData,
-    }
-  }
-}
-impl<'a, T, F: Fn(T) + 'static, Rule> CallbackBuilder<'a, T, F, Rule, WithCallacks> {
-  /// Attach a closure to this builder, which will be held in the `Callbacks` object and called via
-  /// that same `Callbacks` object.
-  pub fn call(self, cb: F) -> CallbackBuilder<'a, T, F, Rule, Constructed> {
-    CallbackBuilder {
-      callbacks: self.callbacks,
-      cb: Some(cb),
-      _marker: core::marker::PhantomData,
-    }
-  }
-}
-impl<'a, T, F: Fn(T) + 'static, Rule> CallbackBuilder<'a, T, F, Rule, Constructed> {
-  pub(crate) fn into_inner(self) -> Option<(&'a mut Callbacks<T>, F)> {
-    self.callbacks.zip(self.cb)
+  pub extern "C" fn on_headphone_change_callback(headphones: i32, mic: i32) {
+    Self::run_callback(CallbackArguments::HeadphoneChanged(HeadphoneState::new(
+      headphones != 0,
+      mic != 0,
+    )))
   }
 }

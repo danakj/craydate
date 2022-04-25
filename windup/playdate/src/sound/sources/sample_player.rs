@@ -5,7 +5,8 @@ use core::ptr::NonNull;
 use super::super::audio_sample::AudioSample;
 use super::super::SoundCompletionCallback;
 use super::sound_source::{AsSoundSource, SoundSource};
-use crate::callbacks::{Constructed, RegisteredCallback};
+use crate::callback_builder::Constructed;
+use crate::callbacks::RegisteredCallback;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::time::{RelativeTimeSpan, TimeDelta};
@@ -121,7 +122,7 @@ impl SamplePlayer<'_> {
   /// match system_event_watcher.next() {
   ///   SystemEvent::Callback => {
   ///     // Run the closure registered above.
-  ///     callbacks.runs();
+  ///     callbacks.run(12);
   ///   }
   /// }
   /// ```
@@ -129,6 +130,7 @@ impl SamplePlayer<'_> {
     &mut self,
     loop_callback: SoundCompletionCallback<'a, T, F, Constructed>,
   ) {
+    self.loop_callback = None;
     let func = loop_callback.into_inner().and_then(|(callbacks, cb)| {
       // This pointer is not aligned, but we will not deref it. It's only used as a map key.
       let key = unsafe { self.as_source_mut().cptr().add(1) } as usize;

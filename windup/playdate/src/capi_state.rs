@@ -3,6 +3,7 @@ use alloc::rc::Rc;
 use core::cell::{Cell, RefCell};
 use core::ptr::NonNull;
 
+use crate::callbacks::RegisteredCallback;
 use crate::ctypes::*;
 use crate::executor::Executor;
 use crate::graphics::ContextStack;
@@ -29,6 +30,8 @@ pub(crate) struct CApiState {
   // Tracks how many times the font was set.
   pub font_generation: Cell<usize>,
   pub system_event_watcher_state: RefCell<Rc<SystemEventWatcherState>>,
+  pub headphone_change_callback: RefCell<Option<RegisteredCallback>>,
+  pub headphone_change_func: RefCell<Option<unsafe extern "C" fn(i32, i32)>>,
 }
 impl CApiState {
   pub fn new(capi: &'static CPlaydateApi) -> CApiState {
@@ -46,6 +49,8 @@ impl CApiState {
       stencil_generation: Cell::new(0),
       font_generation: Cell::new(0),
       system_event_watcher_state: RefCell::new(Rc::new(SystemEventWatcherState::new())),
+      headphone_change_callback: RefCell::new(None),
+      headphone_change_func: RefCell::new(None),
     }
   }
   pub fn set_instance(capi: &'static CApiState) {

@@ -3,13 +3,14 @@ use core::ffi::c_void;
 use core::marker::PhantomData;
 use core::ptr::NonNull;
 
-use crate::callbacks::*;
+use crate::callbacks::RegisteredCallback;
+use crate::callback_builder::*;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::null_terminated::ToNullTerminatedString;
 
 /// A callback builder for a closure to be called on menu events.
-pub type MenuCallback<'a, T, F, S> = crate::callbacks::CallbackBuilder<'a, T, F, NoNull, S>;
+pub type MenuCallback<'a, T, F, S> = CallbackBuilder<'a, T, F, NoNull, S>;
 
 static mut MENU_KEY: usize = 0;
 /// Makes a unique id to pass as a "userdata" key to determine which callback is being called.
@@ -52,7 +53,7 @@ impl MenuItem {
   /// match system_event_watcher.next() {
   ///   SystemEvent::Callback => {
   ///     // Run the closure registered above.
-  ///     callbacks.runs();
+  ///     callbacks.run(12);
   ///   }
   /// }
   /// ```
@@ -98,7 +99,7 @@ impl MenuItem {
   /// match system_event_watcher.next() {
   ///   SystemEvent::Callback => {
   ///     // Run the closure registered above.
-  ///     callbacks.runs();
+  ///     callbacks.run(12);
   ///   }
   /// }
   /// ```
@@ -146,7 +147,7 @@ impl MenuItem {
   /// match system_event_watcher.next() {
   ///   SystemEvent::Callback => {
   ///     // Run the closure registered above.
-  ///     callbacks.runs();
+  ///     callbacks.run(12);
   ///   }
   /// }
   /// ```

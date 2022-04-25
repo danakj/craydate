@@ -2,7 +2,8 @@ use alloc::rc::{Rc, Weak};
 use core::ptr::NonNull;
 
 use super::super::{SoundCompletionCallback, StereoVolume};
-use crate::callbacks::{Constructed, RegisteredCallback};
+use crate::callback_builder::Constructed;
+use crate::callbacks::RegisteredCallback;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::error::Error;
@@ -139,7 +140,7 @@ impl SoundSource {
   /// match system_event_watcher.next() {
   ///   SystemEvent::Callback => {
   ///     // Run the closure registered above.
-  ///     callbacks.runs();
+  ///     callbacks.run(12);
   ///   }
   /// }
   /// ```
@@ -147,6 +148,7 @@ impl SoundSource {
     &mut self,
     completion_callback: SoundCompletionCallback<'a, T, F, Constructed>,
   ) {
+    self.completion_callback = None;
     let func = completion_callback.into_inner().and_then(|(callbacks, cb)| {
       let key = self.cptr_mut() as usize;
       let (func, reg) = callbacks.add_sound_source_completion(key, cb);

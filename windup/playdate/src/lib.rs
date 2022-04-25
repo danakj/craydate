@@ -17,6 +17,7 @@ pub use playdate_macro::main;
 
 mod allocator;
 mod api;
+mod callback_builder;
 mod callbacks;
 mod capi_state;
 mod clamped_float;
@@ -46,7 +47,8 @@ pub mod macro_helpers;
 pub use alloc::{borrow::ToOwned, format, string::String};
 
 pub use api::*;
-pub use callbacks::{CallbackBuilder, Callbacks};
+pub use callback_builder::{CallbackBuilder, CallbackBuilderWithArg};
+pub use callbacks::Callbacks;
 pub use clamped_float::*;
 pub use ctypes_enums::*;
 pub use display::*;

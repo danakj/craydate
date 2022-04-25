@@ -6,7 +6,8 @@ use core::ptr::NonNull;
 use super::super::sources::instrument::Instrument;
 use super::super::SoundCompletionCallback;
 use super::sequence_track::{SequenceTrack, SequenceTrackMut};
-use crate::callbacks::{Constructed, RegisteredCallback};
+use crate::callback_builder::Constructed;
+use crate::callbacks::RegisteredCallback;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 use crate::error::Error;
@@ -115,7 +116,7 @@ impl Sequence {
   /// match system_event_watcher.next() {
   ///   SystemEvent::Callback => {
   ///     // Run the closure registered above.
-  ///     callbacks.runs();
+  ///     callbacks.run(12);
   ///   }
   /// }
   /// ```
@@ -123,6 +124,7 @@ impl Sequence {
     &mut self,
     finished_callback: SoundCompletionCallback<'a, T, F, Constructed>,
   ) {
+    self.finished_callback = None;
     let func = finished_callback.into_inner().and_then(|(callbacks, cb)| {
       let key = self.cptr_mut() as usize;
       let (func, reg) = callbacks.add_sequence_finished(key, cb);
