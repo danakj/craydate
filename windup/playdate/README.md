@@ -21,14 +21,17 @@ Building a #[no_std] application that is compiled for the Playdate simulator req
 extra work and Cargo setup. The dependency structure of your project will look like this:
 
 ```
-- your-game-project** (crate of type "cdylib")
-  ├── [dependencies] your-game** (#[no_std] crate of type "rlib")
-  |   ├── [dependencies] playdate (#[no_std] crate of type "rlib")
+- your-game-project**
+  ├── [dependencies] your-game** (`#![no_std]` crate)
+  |   ├── [dependencies] playdate (`#![no_std]` crate)
   |   └── [dependencies] euclid (with `default-features = false` to keep it compatible with #[no_std]) (used in the playdate API)
   └── [build-dependencies] playdate-build
 
 ** = is specific to your game and provided by the game developer.
 ```
+
+Note that your game's crate must includew the `#![no_std]` directive in its crate root in order
+to build for the Playdate device.
 
 ## The root project crate
 
