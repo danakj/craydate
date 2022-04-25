@@ -176,12 +176,14 @@ impl File {
 
   /// Deletes the file or folder at `path` in the game's data folder.
   ///
-  /// TODO: Currently the simulator appears to always fail with "Permission denied".
+  /// BUG: This is currently broken, and always reports "permission denied" in the simulator:
+  /// <https://devforum.play.date/t/unlink-gives-permission-denied-in-c-api-in-windows-simulator/4979>
   ///
   /// If the path is to a non-empty folder, it will fail. The path will be relocated relative to the
   /// Data/<gameid> folder, so it can not refer to things that are part of the game's pdx image.
   pub fn delete(&self, path: &str) -> Result<(), FilePathError> {
-    let result = unsafe { Self::fns().unlink.unwrap()(path.to_null_terminated_utf8().as_ptr(), 0) };
+    let result =
+      unsafe { Self::fns().unlink.unwrap()(path.to_null_terminated_utf8().as_ptr(), false as i32) };
     match result {
       0 => Ok(()),
       _ => Err(FilePathError {
@@ -194,13 +196,15 @@ impl File {
   /// Deletes the file at path, or the folder and its contents. The path is searched for in the
   /// game's data folder.
   ///
-  /// TODO: Currently the simulator appears to always fail with "Permission denied".
+  /// BUG: This is currently broken, and always reports "permission denied" in the simulator:
+  /// <https://devforum.play.date/t/unlink-gives-permission-denied-in-c-api-in-windows-simulator/4979>
   ///
   /// If the path is a folder, and all files and folders inside it are deleted as well. The path
   /// will be relocated relative to the Data/<gameid> folder, so it can not refer to things that are
   /// part of the game's pdx image.
   pub fn delete_recursive(&self, path: &str) -> Result<(), FilePathError> {
-    let result = unsafe { Self::fns().unlink.unwrap()(path.to_null_terminated_utf8().as_ptr(), 1) };
+    let result =
+      unsafe { Self::fns().unlink.unwrap()(path.to_null_terminated_utf8().as_ptr(), true as i32) };
     match result {
       0 => Ok(()),
       _ => Err(FilePathError {

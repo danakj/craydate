@@ -51,7 +51,8 @@ impl SamplePlayer<'_> {
   /// an octave, etc.
   pub fn play(&mut self, repeat: i32, rate: f32) {
     // TODO: What does the return value of play() mean here?
-    unsafe { Self::fns().play.unwrap()(self.cptr_mut(), repeat, rate) };
+    let r = unsafe { Self::fns().play.unwrap()(self.cptr_mut(), repeat, rate) };
+    assert!(r != 0)
   }
   pub fn stop(&mut self) {
     unsafe { Self::fns().stop.unwrap()(self.cptr_mut()) };

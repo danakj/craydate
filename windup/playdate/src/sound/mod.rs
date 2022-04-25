@@ -101,7 +101,7 @@ impl Sound {
 
   // TODO: getHeadphoneState
 
-  // TODO: Microphone monitoring functions are missing:
+  // BUG: Microphone monitoring functions are missing:
   // https://devforum.play.date/t/c-api-missing-microphone-monitoring-functions/4926
 
   pub(crate) fn fns() -> &'static playdate_sys::playdate_sound {

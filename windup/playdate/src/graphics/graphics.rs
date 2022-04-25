@@ -289,11 +289,16 @@ impl Graphics {
   // - newBitmapTable
 
   /// Draw a text string on the screen at the given (`x`, `y`) coordinates.
+  ///
+  /// If no font has been set with `Graphics::set_font()`, the default system font "Asheville Sans
+  /// 14 Light" is used.
   pub fn draw_text(&mut self, text: &str, x: i32, y: i32) {
     let null_term = text.to_null_terminated_utf8();
     let ptr = null_term.as_ptr() as *const c_void;
     let len = null_term.len() as u64;
-    unsafe { Self::fns().drawText.unwrap()(ptr, len, CStringEncoding::kUTF8Encoding, x, y) }; // TODO: Return the int from Playdate?
+    let r =
+      unsafe { Self::fns().drawText.unwrap()(ptr, len, CStringEncoding::kUTF8Encoding, x, y) };
+    assert!(r != 0)
   }
 
   /// Draws the current FPS on the screen at the given (`x`, `y`) coordinates.

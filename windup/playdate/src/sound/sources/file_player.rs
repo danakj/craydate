@@ -69,10 +69,13 @@ impl FilePlayer {
   ///
   /// If `times` is greater than one, it loops the given number of times. If zero, it loops
   /// endlessly until it is stopped with `stop()`.
+  ///
+  /// The FilePlayer lazily opens the file when it needs to, which means it's possible for the
+  /// `FilePlayer` to be constructed successfully from a file, but then fail to `play()` when it
+  /// tries to open and read from the file. In that case, an error is returned.
   pub fn play(&mut self, times: i32) -> Result<(), Error> {
-    // TODO: Return play()'s int output value? What is it?
     match unsafe { Self::fns().play.unwrap()(self.cptr_mut(), times) } {
-      0 => Err("FilePlayer error on play".into()),
+      0 => Err(Error::PlayFileError),
       _ => Ok(()),
     }
   }

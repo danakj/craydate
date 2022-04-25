@@ -58,9 +58,6 @@ fn main() {
     .newtype_enum("TwoPoleFilterType")
     .bitfield_enum("PDButtons")
     .bitfield_enum("FileOptions")
-    // TODO: maybe do something with these if needed
-    .opaque_type("playdate_json")
-    .opaque_type("playdate_lua")
     // The input header we would like to generate
     // bindings for.
     .header("wrapper.h")

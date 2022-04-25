@@ -4,7 +4,7 @@ use core::ptr::NonNull;
 
 use super::super::sources::instrument::Instrument;
 use super::sequence::Sequence;
-use super::track_note::TrackNote;
+use super::track_note::{ResolvedTrackNote, TrackNote};
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
 
@@ -67,12 +67,17 @@ impl<'a> SequenceTrack<'a> {
     unsafe { SequenceTrack::fns().activeVoiceCount.unwrap()(self.cptr() as *mut _) }
   }
 
-  /// Returns an iterator over all `TrackNote`s in the track that start at the given `step`.
-  pub fn notes_at_step(&self, step: u32) -> impl Iterator<Item = TrackNote> {
+  /// Returns an iterator over all notes, as `ResolvedTrackNote`, in the track that start between
+  /// `start_step` and `end_step`, inclusive.
+  pub fn notes_in_step_range(
+    &self,
+    start_step: u32,
+    end_step: u32,
+  ) -> impl Iterator<Item = ResolvedTrackNote> {
     let mut v = Vec::new();
     // getIndexForStep() takes a mutable pointer but doesn't mutate any visible state.
     let first_index =
-      unsafe { SequenceTrack::fns().getIndexForStep.unwrap()(self.cptr() as *mut _, step) };
+      unsafe { SequenceTrack::fns().getIndexForStep.unwrap()(self.cptr() as *mut _, start_step) };
     for index in first_index.. {
       let mut out_step = 0;
       let mut length = 0;
@@ -89,10 +94,10 @@ impl<'a> SequenceTrack<'a> {
           &mut velocity,
         )
       };
-      if r == 0 || out_step != step {
+      if r == 0 || out_step > end_step {
         break;
       }
-      v.push(TrackNote {
+      v.push(ResolvedTrackNote {
         length,
         midi_note: midi_note as u8,
         velocity: velocity.into(),
@@ -101,8 +106,8 @@ impl<'a> SequenceTrack<'a> {
     v.into_iter()
   }
 
-  /// Returns an iterator over all `TrackNote`s in the track.
-  pub fn notes(&self) -> impl Iterator<Item = TrackNote> {
+  /// Returns an iterator over all notes, as `ResolvedTrackNote`, in the track.
+  pub fn notes(&self) -> impl Iterator<Item = ResolvedTrackNote> {
     let mut v = Vec::new();
     for index in 0.. {
       let mut out_step = 0;
@@ -123,7 +128,7 @@ impl<'a> SequenceTrack<'a> {
       if r == 0 {
         break;
       }
-      v.push(TrackNote {
+      v.push(ResolvedTrackNote {
         length,
         midi_note: midi_note as u8,
         velocity: velocity.into(),
@@ -184,13 +189,15 @@ impl<'a> SequenceTrackMut<'a> {
     unsafe { &mut *self.instrument.as_ptr() }
   }
 
-  /// Adds a single note to the track.
-  pub fn add_note(&mut self, step: u32, note: TrackNote) {
+  /// Adds a single note to the track, with a length specified in steps, not time.
+  ///
+  /// The speed that steps are played depends on the tempo of the sequence.
+  pub fn add_note(&mut self, step: u32, note: TrackNote, length: u32) {
     unsafe {
       SequenceTrack::fns().addNoteEvent.unwrap()(
         self.cptr_mut(),
         step,
-        note.length,
+        length,
         note.midi_note as f32,
         note.velocity.into(),
       )

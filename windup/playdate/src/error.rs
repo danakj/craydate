@@ -34,6 +34,8 @@ pub enum Error {
   AlreadyAttachedError,
   /// Bitmap dimentions are required to match but they failed to.
   DimensionsDoNotMatch,
+  /// An error occured trying to read from a file to play it as audio.
+  PlayFileError,
 }
 impl From<String> for Error {
   fn from(s: String) -> Self {
@@ -91,6 +93,7 @@ impl core::fmt::Debug for Error {
       Error::AlreadyAttachedError => write!(f, "Error::AlreadyAttachedError"),
       Error::LoadMidiFileError => write!(f, "Error::LoadMidiFileError"),
       Error::DimensionsDoNotMatch => write!(f, "Error::DimensionsDoNotMatch"),
+      Error::PlayFileError => write!(f, "Error::PlayFileError"),
       Error::String(e) => write!(f, "Error::String({:?})", e),
     }
   }
@@ -124,6 +127,7 @@ impl core::fmt::Display for Error {
       Error::AlreadyAttachedError => write!(f, "already attached"),
       Error::LoadMidiFileError => write!(f, "MIDI file failed to load"),
       Error::DimensionsDoNotMatch => write!(f, "dimensions to not match"),
+      Error::PlayFileError => write!(f, "failed to read file to play it as audio"),
       Error::String(e) => e.fmt(f),
     }
   }

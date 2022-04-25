@@ -79,7 +79,8 @@ impl Executor {
       unsafe { Self::poll_main(exec_ptr, waker) }
     }
 
-    // TODO: Other Futures given to spawn().
+    // Note: If we had a spawn() function with other Futures given to it, we'd need to poll them
+    // here.
   }
 
   pub fn wake_system_wakers(exec_ptr: NonNull<Executor>) {

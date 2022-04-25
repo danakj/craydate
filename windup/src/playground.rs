@@ -214,8 +214,6 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   let mut splayer = SamplePlayer::new(&sample);
   splayer.play(1, 1.0);
 
-  // TODO: This crashes?
-  // https://devforum.play.date/t/c-api-playdate-sound-synth-setgenerator-has-incorrect-api/4482
   struct GeneratorData {}
   let data = Box::new(GeneratorData {});
   static VTABLE: SynthGeneratorVTable = SynthGeneratorVTable {
@@ -227,7 +225,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   };
   let generator = unsafe { SynthGenerator::new(Box::into_raw(data) as *const (), &VTABLE) };
   let mut synth = Synth::new_with_generator(generator);
-  synth.play_frequency_note(0.0, 1.0, None, None);
+  synth.play_frequency_note(0.0, 1.0.into(), None, None);
   log(format!("synth playing: {}", synth.as_source().is_playing()));
 
   let mut dline = DelayLine::new(TimeDelta::from_seconds(8), false);
@@ -255,8 +253,6 @@ pub async fn _run(mut api: playdate::Api) -> ! {
       instrument.add_voice(synth, MidiNoteRange::All, 0.0).unwrap();
     }
   }
-  // TODO: Dropping the synths or the instruments does bad things. We need to keep them alive inside
-  // the instrument and the track, or clean them up...
   sequence.play(SoundCompletionCallback::none());
 
   let action_item = MenuItem::new_action(

@@ -18,7 +18,7 @@ impl SynthSignalSubclass for EnvelopeSubclass {}
 
 /// An Envelope is used to modulate sounds in a `Synth`.
 ///
-/// TODO: Some functions are missing here as they are missing from the C API, as described here:
+/// BUG: Some functions are missing here as they are missing from the C API, as described here:
 /// <https://devforum.play.date/t/c-apis-envelope-is-missing-some-functions-from-the-lua-apis/4925>
 /// - setScale
 /// - setOffset
@@ -39,12 +39,17 @@ impl Envelope {
 
   /// Constructs a new `Envelope`.
   ///
-  /// TODO: What are the units of `attack`? Should it be a TimeTicks?
-  /// TODO: What are the units of `decay`? Should it be a TimeTicks?
-  /// TODO: What are the units of `sustain`? Should it be a TimeTicks?
-  /// TODO: What are the units of `release`? Should it be a TimeTicks?
-  pub fn new(attack: f32, decay: f32, sustain: f32, release: f32) -> Self {
-    let ptr = unsafe { Self::fns().newEnvelope.unwrap()(attack, decay, sustain, release) };
+  ///  See `set_attack()`, `set_decay()`, `set_sustain()`, and `set_release()` for more details on
+  ///  the parameters.
+  pub fn new(attack: TimeTicks, decay: TimeTicks, sustain: f32, release: TimeTicks) -> Self {
+    let ptr = unsafe {
+      Self::fns().newEnvelope.unwrap()(
+        attack.to_seconds(),
+        decay.to_seconds(),
+        sustain,
+        release.to_seconds(),
+      )
+    };
     Self::from_ptr(ptr)
   }
 

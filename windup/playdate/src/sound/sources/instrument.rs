@@ -7,6 +7,7 @@ use super::super::StereoVolume;
 use super::sound_source::SoundSource;
 use super::synth::Synth;
 use crate::capi_state::CApiState;
+use crate::clamped_float::ClampedFloatInclusive;
 use crate::ctypes::*;
 use crate::error::Error;
 use crate::time::{TimeDelta, TimeTicks};
@@ -49,7 +50,12 @@ impl<'data> Instrument {
     midi_range: MidiNoteRange,
     transpose: f32,
   ) -> Result<VoiceId, (Error, Synth)> {
-    if synth.as_mut().attach_to_instrument() {
+    // The Instrument takes ownership of the `Synth`, so once we ensure it was not attached, we
+    // don't need to worry about it being attached to a `SoundChannel` later. Thus we don't change
+    // the attachment state in the `SoundSource` part of the `Synth`. That's normally used to remove
+    // itself on destruction but there's no way to remove a `Synth` from an `Instrument` anyhow,
+    // which is why the `Instrument` takes ownership of the `Synth` here.
+    if !synth.as_ref().is_attached() {
       let (start, end) = midi_range.to_start_end();
       let r = unsafe {
         Instrument::fns().addVoice.unwrap()(
@@ -94,7 +100,7 @@ impl<'data> Instrument {
   pub fn play_frequency_note(
     &mut self,
     frequency: f32,
-    volume: f32, // TODO: Replace this with a type that clamps within 0-1.
+    volume: ClampedFloatInclusive<0, 1>,
     length: Option<TimeDelta>,
     when: Option<TimeTicks>,
   ) -> usize {
@@ -102,7 +108,7 @@ impl<'data> Instrument {
       Instrument::fns().playNote.unwrap()(
         self.cptr_mut(),
         frequency,
-        volume,
+        volume.into(),
         length.map_or(-1.0, |l| l.to_seconds()),
         when.map_or(0, |w| w.to_sample_frames()),
       )
@@ -124,7 +130,7 @@ impl<'data> Instrument {
   pub fn play_midi_note(
     &mut self,
     midi_note: f32,
-    volume: f32, // TODO: Replace this with a type that clamps within 0-1.
+    volume: ClampedFloatInclusive<0, 1>,
     length: Option<TimeDelta>,
     when: Option<TimeTicks>,
   ) -> usize {
@@ -132,7 +138,7 @@ impl<'data> Instrument {
       Instrument::fns().playMIDINote.unwrap()(
         self.cptr_mut(),
         midi_note,
-        volume,
+        volume.into(),
         length.map_or(-1.0, |l| l.to_seconds()),
         when.map_or(0, |w| w.to_sample_frames()),
       )
@@ -223,6 +229,9 @@ impl Drop for Instrument {
     // Ensure the SoundSource has a chance to clean up before it is freed.
     unsafe { ManuallyDrop::drop(&mut self.source) };
     unsafe { Instrument::fns().freeInstrument.unwrap()(self.cptr_mut()) }
+    // There's no way to remove a Synth from the instrument, so we just have them outlive the
+    // instrument and be dropped afterward.
+    self.synths.clear()
   }
 }
 

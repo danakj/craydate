@@ -15,7 +15,6 @@ use crate::error::Error;
 enum Attachment {
   None,
   Channel(Weak<NonNull<CSoundChannel>>),
-  Instrument,
 }
 impl Attachment {
   fn is_none(&self) -> bool {
@@ -95,17 +94,9 @@ impl SoundSource {
     }
   }
 
-  /// Attach the SoundSource to the `instrument` if it is not already attached to a `SoundChannel`
-  /// or `Instrument`.
-  pub(crate) fn attach_to_instrument(&mut self) -> bool {
-    // Mimic the Playdate API behaviour. Attaching a Source to a Channel when it's already attached
-    // does nothing.
-    if self.attachment.is_none() {
-      self.attachment = Attachment::Instrument;
-      true
-    } else {
-      false
-    }
+  /// Return if the SoundSouce is currently attached to a `SoundChannel`.
+  pub(crate) fn is_attached(&self) -> bool {
+    !self.attachment.is_none()
   }
 
   /// Gets the playback volume (0.0 - 1.0) for left and right channels of the source.
@@ -187,14 +178,6 @@ impl Drop for SoundSource {
           let r = self.detach_from_channel(&rc_ptr);
           assert!(r.is_ok()); // Otherwise, `self.channel` was lying.
         }
-      }
-      Attachment::Instrument => {
-        // Synth claims that it removes itself from the sound system, and there's no function to
-        // remove it from the Instrument ourselves:
-        // https://sdk.play.date/1.9.3/Inside%20Playdate%20with%20C.html#f-sound.synth.freeSynth
-
-        // TODO: It's wrong, Playdate plays garbage if you drop the Synths that were added to
-        // instruments.
       }
     }
   }

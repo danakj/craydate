@@ -256,7 +256,8 @@ impl Sequence {
   ///
   /// If loops is 0, the loop repeats endlessly.
   pub fn set_loops(&mut self, start_step: u32, end_step: u32, count: i32) {
-    // TODO: The step numbers should be u32 but Playdate has them as `int`.
+    // BUG: The step numbers should be u32 but Playdate has them as `int`:
+    // <https://devforum.play.date/t/playdate-sound-sequence-setloops-takes-int-but-should-take-uint32-t/4980>
     unsafe {
       Self::fns().setLoops.unwrap()(self.cptr_mut(), start_step as i32, end_step as i32, count)
     }

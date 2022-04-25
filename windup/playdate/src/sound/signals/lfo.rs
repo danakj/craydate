@@ -134,8 +134,7 @@ impl Lfo {
 
   /// Provides a custom function for LFO values.
   ///
-  /// TODO: What is `interpolate`?
-  /// TODO: Does `f` need access to the `CSynthLfo`?
+  /// TODO: What does `interpolate` mean for this function?
   pub fn set_user_function(&mut self, interpolate: bool, f: impl FnMut() -> f32 + Send + 'static) {
     unsafe { Lfo::fns().setType.unwrap()(self.cptr_mut(), CSynthLfoType::kLFOTypeFunction) };
     unsafe extern "C" fn c_func(_clfo: *mut CSynthLfo, data: *mut c_void) -> f32 {

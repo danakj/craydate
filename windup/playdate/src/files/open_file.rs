@@ -45,7 +45,7 @@ impl OpenFile {
 
   /// Write the entire contents of the file, returns if the operation was successful.
   pub fn write_file(&mut self, contents: &[u8]) -> bool {
-    // TODO: This would be needed if we support other operations beyond read/write the whole
+    // Note: This would be needed if we support other operations beyond read/write the whole
     // file.
     // Self::fns().seek.unwrap()(self.cptr(), 0, playdate_sys::SEEK_SET as i32);
 

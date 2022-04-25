@@ -5,9 +5,11 @@ use core::mem::ManuallyDrop;
 use core::ptr::NonNull;
 
 use super::super::audio_sample::AudioSample;
+use super::super::midi::track_note::TrackNote;
 use super::super::signals::synth_signal::SynthSignal;
 use super::sound_source::SoundSource;
 use crate::capi_state::CApiState;
+use crate::clamped_float::ClampedFloatInclusive;
 use crate::ctypes::*;
 use crate::ctypes_enums::SoundWaveform;
 use crate::error::Error;
@@ -88,6 +90,8 @@ impl Synth {
         c_release_func as *mut Option<CReleaseFunc>,
         c_set_parameter_func as *mut Option<CSetParameterFunc>,
         c_dealloc_func as *mut Option<CDeallocFunc>,
+        // The generator vtable includes a dealloc function which will be responsible for dropping
+        // this `Box<SynthGenerator>`.
         Box::into_raw(Box::new(generator)) as *mut c_void,
       )
     };
@@ -200,7 +204,7 @@ impl Synth {
   pub fn play_frequency_note(
     &mut self,
     frequency: f32,
-    volume: f32, // TODO: Replace this with a type that clamps within 0-1.
+    volume: ClampedFloatInclusive<0, 1>,
     length: Option<TimeDelta>,
     when: Option<TimeTicks>,
   ) {
@@ -208,7 +212,7 @@ impl Synth {
       Self::fns().playNote.unwrap()(
         self.cptr_mut(),
         frequency,
-        volume,
+        volume.into(),
         length.map_or(-1.0, |l| l.to_seconds()),
         when.map_or(0, |w| w.to_sample_frames()),
       )
@@ -222,16 +226,15 @@ impl Synth {
   /// absolute time. Use `Sound::current_sound_time()` to get the current time.
   pub fn play_midi_note(
     &mut self,
-    note: f32,   // TODO: Make a MidiNote type with note names?
-    volume: f32, // TODO: Replace this with a type that clamps within 0-1.
+    note: TrackNote,
     length: Option<TimeDelta>,
     when: Option<TimeTicks>,
   ) {
     unsafe {
       Self::fns().playMIDINote.unwrap()(
         self.cptr_mut(),
-        note,
-        volume,
+        note.midi_note as f32,
+        note.velocity.into(),
         length.map_or(-1.0, |l| l.to_seconds()),
         when.map_or(0, |w| w.to_sample_frames()),
       )
@@ -243,7 +246,9 @@ impl Synth {
   /// If `when` is `None`, the note is stopped immediately. Otherwise it is scheduled to be stopped
   /// at the given absolute time. Use `Sound::current_sound_time()` to get the current time.
   pub fn stop(&mut self, when: Option<TimeTicks>) {
-    unsafe { Self::fns().noteOff.unwrap()(self.cptr_mut(), when.map_or(0, |w| w.to_sample_frames())) }
+    unsafe {
+      Self::fns().noteOff.unwrap()(self.cptr_mut(), when.map_or(0, |w| w.to_sample_frames()))
+    }
   }
 
   pub(crate) fn cptr(&self) -> *const CSynth {
@@ -261,8 +266,6 @@ impl Drop for Synth {
   fn drop(&mut self) {
     // Ensure the SoundSource has a chance to clean up before it is freed.
     unsafe { ManuallyDrop::drop(&mut self.source) };
-    // TODO: Does the generator userdata get dropped via `dealloc`?
-    //
     // The AudioSample will be freed after the `Synth` which references it.
     unsafe { Self::fns().freeSynth.unwrap()(self.cptr_mut()) };
   }
@@ -314,15 +317,17 @@ pub struct SynthGeneratorVTable {
   /// The data provider callback for a generator. The generator should add its samples to the data
   /// already in the `left` and `right` buffers in the `SynthRender`.
   ///
-  /// TODO: What is the return value?
-  pub render_func: fn(userdata: *const (), SynthRender<'_>) -> i32,
+  /// The `render_func` should write data into the `SynthRender::left` and `SynthRender::right`
+  /// buffers and return `true` if it has done so. Or it can return `false` to indicate that the
+  /// generator is silent for the sound frame.
+  pub render_func: fn(userdata: *const (), SynthRender<'_>) -> bool,
   /// TODO: What is this?
   pub note_on_func: fn(userdata: *const (), note: f32, volume: f32, length: Option<TimeTicks>),
   /// TODO: What is this?
   pub release_func: fn(userdata: *const (), ended: bool),
   /// TODO: Is this called in response to set_parameter()? What parameters go here verses elsewhere?
-  /// How does get_parameters() know what to return? What is the return value? Is `bool` even right,
-  ///  or should be it `i32` like the C function?
+  /// How does get_parameters() know what to return? What is the return value? Is `bool` the right
+  /// output value, or should be it `i32` like the C function?
   pub set_parameter_func: fn(userdata: *const (), parameter: u8, value: f32) -> bool,
   /// Called to deallocate the `userdata`. This is called when the other generator functions will no
   /// longer be called for this `userdata`.
@@ -358,6 +363,12 @@ impl Drop for SynthGenerator {
     (self.vtable.dealloc_func)(self.data)
   }
 }
+impl core::fmt::Debug for SynthGenerator {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    // The vtable field is not representable.
+    f.debug_struct("SynthGenerator").field("data", &self.data).finish()
+  }
+}
 
 type CRenderFunc =
   unsafe extern "C" fn(*mut c_void, *mut i32, *mut i32, i32, u32, i32, i32, i32, i32, i32) -> i32;
@@ -388,7 +399,7 @@ unsafe extern "C" fn c_render_func(
       r,
       dr,
     },
-  )
+  ) as i32
 }
 type CNoteOnFunc = unsafe extern "C" fn(*mut c_void, f32, f32, f32);
 unsafe extern "C" fn c_note_on_func(generator: *mut c_void, note: f32, volume: f32, length: f32) {
