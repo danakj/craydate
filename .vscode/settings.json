@@ -1,10 +1,15 @@
 {
-    "simulatorWinRoot": "windup-simulator-win",
+    "projectRootCrate": "windup-simulator-win",
     "rust-analyzer.linkedProjects": [
         "windup-simulator-win/Cargo.toml",
     ],
+    "rust-analyzer.cargo.features": [
+        "bins"
+    ],
     "rust-analyzer.checkOnSave.allTargets": false,
     "[rust]": {
-        "editor.rulers": [ 100 ],
+        "editor.rulers": [
+            100
+        ],
     }
 }

@@ -17,11 +17,11 @@ fn main() {
   let builder = bindgen::Builder::default();
   // It's not clear if we use TARGET_SIMULATOR or PLAYDATE_SIMULATOR. Half the examples
   // use one and half use the other.
-  #[cfg(not(all(target_arch = "arm", target_os = "none")))]
+  #[cfg(not(target_arch = "arm"))]
   let builder = builder.clang_arg("-DTARGET_SIMULATOR=1");
-  #[cfg(not(all(target_arch = "arm", target_os = "none")))]
+  #[cfg(not(target_arch = "arm"))]
   let builder = builder.clang_arg("-DPLAYDATE_SIMULATOR=1");
-  #[cfg(all(target_arch = "arm", target_os = "none"))]
+  #[cfg(target_arch = "arm")]
   let builder = builder.clang_arg("-DTARGET_PLAYDATE=1");
 
   let bindings = builder

@@ -1,3 +1,9 @@
+#[cfg(not(feature = "bins"))]
+fn main() {
+  compile_error!("compile with the feature \"bins\" enabled (`--features=bins`)");
+}
+
+#[cfg(feature = "bins")]
 fn main() {
   if let Err(e) = game_build::generate_assets(env!("PDX_SOURCE_DIR")) {
     println!("Failed to build assets\n{}", e);

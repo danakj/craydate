@@ -33,7 +33,6 @@ impl ActiveMicrophoneCallback {
     let boxed_c_function_data = unsafe { Box::from_raw(c_function_data) };
 
     unsafe extern "C" fn c_func(c_data: *mut c_void, buf: *mut i16, len: i32) -> i32 {
-      crate::log::log_to_stdout_with_newline("c_func");
       let closure = c_data as *mut ActiveMicrophoneInnerBox;
       let out = (*closure)(core::slice::from_raw_parts(buf, len as usize));
       match out {

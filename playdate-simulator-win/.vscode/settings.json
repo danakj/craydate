@@ -1,5 +1,5 @@
 {
-    "simulatorWinRoot": ".",
+    "projectRootCrate": ".",
     "rust-analyzer.linkedProjects": [
         "./Cargo.toml",
     ],

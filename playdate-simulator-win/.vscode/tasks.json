@@ -11,7 +11,7 @@
                 "build"
             ],
             "options": {
-                "cwd": "${config:simulatorWinRoot}",
+                "cwd": "${config:projectRootCrate}",
             },
             "group": "build",
             "presentation": {
@@ -26,7 +26,7 @@
                 "check",
             ],
             "options": {
-                "cwd": "${config:simulatorWinRoot}",
+                "cwd": "${config:projectRootCrate}",
             },
             "group": "build",
             "presentation": {
@@ -36,7 +36,7 @@
         {
             "type": "process",
             "label": "game-simulator-win: make pdx (dev)",
-            "command": "${config:simulatorWinRoot}\\target\\x86_64-pc-windows-msvc\\debug\\make_pdx.exe",
+            "command": "${config:projectRootCrate}\\target\\x86_64-pc-windows-msvc\\debug\\make_pdx.exe",
             "dependsOn": [
                 "game-simulator-win: cargo build (dev)",
             ],
@@ -45,7 +45,7 @@
         {
             "type": "shell",
             "label": "game-simulator-win: run simulator (dev)",
-            "command": "${config:simulatorWinRoot}\\target\\x86_64-pc-windows-msvc\\debug\\run_simulator.exe",
+            "command": "${config:projectRootCrate}\\target\\x86_64-pc-windows-msvc\\debug\\run_simulator.exe",
             "args": [
                 ">stdout.txt",
                 "2>&1",

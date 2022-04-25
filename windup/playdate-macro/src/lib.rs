@@ -42,10 +42,10 @@ pub fn main(_attr: TokenStream, item: TokenStream) -> TokenStream {
         0  // What does it do? We don't know.
       }
 
-      #[cfg(all(target_arch = "arm", target_os = "none"))]
+      #[cfg(target_arch = "arm")]
       type EventHandlerFn = extern "C" fn(EventHandler1, EventHandler2, EventHandler3) -> i32;
 
-      #[cfg(all(target_arch = "arm", target_os = "none"))]
+      #[cfg(target_arch = "arm")]
       #[used]
       #[link_section = ".capi_handler"]
       static EVENT_HANDLER: EventHandlerFn = eventHandler;

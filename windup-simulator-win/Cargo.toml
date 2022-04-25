@@ -4,7 +4,7 @@ name = "windup-simulator-win"
 version = "0.1.0"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "staticlib"]
 
 [build-dependencies]
 playdate-build = {path = "../windup/playdate-build"}
@@ -12,22 +12,19 @@ playdate-build = {path = "../windup/playdate-build"}
 [dependencies]
 playdate = {path = "../windup/playdate"}
 game = {package = "windup", path = "../windup"}
-# These use std so they can't be used from the library. They are used from the binaries.
 playdate-build = {path = "../windup/playdate-build", optional = true}
 game-build = {package = "windup-build", path = "../windup/windup-build", optional = true}
 
 [[bin]]
 name = "make_pdx"
-required-features = ["binaries"]
 [[bin]]
 name = "run_simulator"
-required-features = ["binaries"]
 
 [features]
-default = ["binaries"]
-binaries = ["playdate-build", "game-build"]
+bins = ["playdate-build", "game-build"]
 
 [profile.dev]
 panic = "abort"
 [profile.release]
 panic = "abort"
+
