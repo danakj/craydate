@@ -1,6 +1,6 @@
 [package]
 description = "An attribute macro to specify a path to a module dynamically."
-license = "MIT or Apache-2.0"
+license = "MIT/Apache-2.0"
 name = "dynpath"
 version = "0.1.0"
 

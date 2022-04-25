@@ -1,6 +1,6 @@
 [package]
 description = "Proc macros for using the playdate crate."
-license = "MIT or Apache-2.0"
+license = "MIT/Apache-2.0"
 name = "playdate-macro"
 version = "0.1.0"
 
