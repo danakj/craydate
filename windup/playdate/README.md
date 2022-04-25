@@ -30,7 +30,7 @@ extra work and Cargo setup. The dependency structure of your project will look l
 ** = is specific to your game and provided by the game developer.
 ```
 
-Note that your game's crate must includew the `#![no_std]` directive in its crate root in order
+Note that your game's crate must include the `#![no_std]` directive in its crate root in order
 to build for the Playdate device.
 
 ## The root project crate
