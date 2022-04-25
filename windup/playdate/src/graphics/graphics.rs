@@ -281,7 +281,7 @@ impl Graphics {
     unsafe { Self::fns().tileBitmap.unwrap()(bitmap.cptr() as *mut _, x, y, width, height, flip) }
   }
 
-  // TODO: Bitmap tables are incomplete in the C Api so we've omitted them. The C Api functions that
+  // BUG: Bitmap tables are incomplete in the C Api so we've omitted them. The C Api functions that
   // do exist and are ommitted are:
   // - getTableBitmap
   // - loadBitmapTable
