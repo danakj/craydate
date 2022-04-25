@@ -217,7 +217,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   struct GeneratorData {}
   let data = Box::new(GeneratorData {});
   static VTABLE: SynthGeneratorVTable = SynthGeneratorVTable {
-    render_func: |_data, _r| 0,
+    render_func: |_data, _r| false,
     note_on_func: |_data, _note, _volume, _len| {},
     release_func: |_data, _ended| {},
     set_parameter_func: |_data, _parameter, _value| false,
