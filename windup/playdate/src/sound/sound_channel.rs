@@ -105,16 +105,20 @@ impl SoundChannel {
 
   /// Gets the volume for the channel, in the range [0-1].
   pub fn volume(&self) -> ClampedFloatInclusive<0, 1> {
-    unsafe { Self::fns().getVolume.unwrap()(self.cptr()).into() }
+    // getVolume() takes a mutable pointer but doesn't mutate any visible state.
+    unsafe { Self::fns().getVolume.unwrap()(self.cptr() as *mut _).into() }
   }
   /// Sets the volume for the channel, in the range [0-1].
   pub fn set_volume(&mut self, volume: ClampedFloatInclusive<0, 1>) {
-    unsafe { Self::fns().setVolume.unwrap()(self.cptr(), volume.into()) }
+    unsafe { Self::fns().setVolume.unwrap()(self.cptr_mut(), volume.into()) }
   }
   /// Sets a signal to modulate the channel volume.
   pub fn set_volume_modulator<T: AsRef<SynthSignal>>(&mut self, signal: Option<&T>) {
-    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| signal.as_ref().cptr());
-    unsafe { Self::fns().setVolumeModulator.unwrap()(self.cptr(), modulator_ptr) }
+    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal|
+      // setVolumeModulator() takes a mutable pointer to the modulator but there is no visible state
+      // on the modulator.
+      signal.as_ref().cptr() as *mut _);
+    unsafe { Self::fns().setVolumeModulator.unwrap()(self.cptr_mut(), modulator_ptr) }
     self.volume_modulator = signal.map(|signal| signal.as_ref().clone());
   }
   /// Gets the current signal modulating the channel volume.
@@ -126,12 +130,15 @@ impl SoundChannel {
   ///
   /// The pan value is between -1 which is left and 1 which is right. 0 is center.
   pub fn set_pan(&mut self, pan: ClampedFloatInclusive<-1, 1>) {
-    unsafe { Self::fns().setPan.unwrap()(self.cptr(), pan.into()) }
+    unsafe { Self::fns().setPan.unwrap()(self.cptr_mut(), pan.into()) }
   }
   /// Sets a signal to modulate the channel pan.
   pub fn set_pan_modulator<T: AsRef<SynthSignal>>(&mut self, signal: Option<&T>) {
-    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| signal.as_ref().cptr());
-    unsafe { Self::fns().setPanModulator.unwrap()(self.cptr(), modulator_ptr) }
+    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal|
+      // setPanModulator() takes a mutable pointer to the modulator but there is no visible state on
+      // the modulator.
+      signal.as_ref().cptr() as *mut _);
+    unsafe { Self::fns().setPanModulator.unwrap()(self.cptr_mut(), modulator_ptr) }
     self.pan_modulator = signal.map(|signal| signal.as_ref().clone());
   }
   /// Gets the current signal modulating the channel pan.
@@ -148,7 +155,10 @@ impl SoundChannel {
     &self.wet_level_signal
   }
 
-  pub(crate) fn cptr(&self) -> *mut CSoundChannel {
+  pub(crate) fn cptr(&self) -> *const CSoundChannel {
+    self.ptr.as_ptr()
+  }
+  pub(crate) fn cptr_mut(&mut self) -> *mut CSoundChannel {
     self.ptr.as_ptr()
   }
   pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_channel {
@@ -159,10 +169,10 @@ impl SoundChannel {
 impl Drop for SoundChannel {
   fn drop(&mut self) {
     if self.added {
-      unsafe { Sound::fns().removeChannel.unwrap()(self.cptr()) }
+      unsafe { Sound::fns().removeChannel.unwrap()(self.cptr_mut()) }
     }
     if self.owned {
-      unsafe { Self::fns().freeChannel.unwrap()(self.cptr()) }
+      unsafe { Self::fns().freeChannel.unwrap()(self.cptr_mut()) }
     }
   }
 }

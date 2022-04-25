@@ -111,21 +111,21 @@ impl Lfo {
     center: f32,
     depth: f32,
   ) {
-    unsafe { Lfo::fns().setType.unwrap()(self.cptr(), lfo_type.to_c()) };
-    unsafe { Lfo::fns().setRate.unwrap()(self.cptr(), rate) };
-    unsafe { Lfo::fns().setPhase.unwrap()(self.cptr(), phase) };
-    unsafe { Lfo::fns().setCenter.unwrap()(self.cptr(), center) };
-    unsafe { Lfo::fns().setDepth.unwrap()(self.cptr(), depth) };
+    unsafe { Lfo::fns().setType.unwrap()(self.cptr_mut(), lfo_type.to_c()) };
+    unsafe { Lfo::fns().setRate.unwrap()(self.cptr_mut(), rate) };
+    unsafe { Lfo::fns().setPhase.unwrap()(self.cptr_mut(), phase) };
+    unsafe { Lfo::fns().setCenter.unwrap()(self.cptr_mut(), center) };
+    unsafe { Lfo::fns().setDepth.unwrap()(self.cptr_mut(), depth) };
   }
 
   /// Sets the LFO type to arpeggio, where the given values are in half-steps from the center note.
   ///
   /// For example, the sequence (0, 4, 7, 12) plays the notes of a major chord.
   pub fn set_arpeggiation(&mut self, steps: &[f32]) {
-    unsafe { Lfo::fns().setType.unwrap()(self.cptr(), CSynthLfoType::kLFOTypeArpeggiator) };
+    unsafe { Lfo::fns().setType.unwrap()(self.cptr_mut(), CSynthLfoType::kLFOTypeArpeggiator) };
     unsafe {
       Lfo::fns().setArpeggiation.unwrap()(
-        self.cptr(),
+        self.cptr_mut(),
         steps.len() as i32,
         steps.as_ptr() as *mut f32,
       )
@@ -137,7 +137,7 @@ impl Lfo {
   /// TODO: What is `interpolate`?
   /// TODO: Does `f` need access to the `CSynthLfo`?
   pub fn set_user_function(&mut self, interpolate: bool, f: impl FnMut() -> f32 + Send + 'static) {
-    unsafe { Lfo::fns().setType.unwrap()(self.cptr(), CSynthLfoType::kLFOTypeFunction) };
+    unsafe { Lfo::fns().setType.unwrap()(self.cptr_mut(), CSynthLfoType::kLFOTypeFunction) };
     unsafe extern "C" fn c_func(_clfo: *mut CSynthLfo, data: *mut c_void) -> f32 {
       let data = data as *mut LfoFunctionData;
       ((*data).f)()
@@ -151,7 +151,7 @@ impl Lfo {
     };
     unsafe {
       Lfo::fns().setFunction.unwrap()(
-        self.cptr(),
+        self.cptr_mut(),
         Some(c_func),
         data_ptr as *mut c_void,
         interpolate as i32,
@@ -163,28 +163,32 @@ impl Lfo {
   /// time where the value increases linearly to its maximum depth.
   pub fn set_delay(&mut self, holdoff: TimeTicks, ramp_time: TimeTicks) {
     unsafe {
-      Self::fns().setDelay.unwrap()(self.cptr(), holdoff.to_seconds(), ramp_time.to_seconds())
+      Self::fns().setDelay.unwrap()(self.cptr_mut(), holdoff.to_seconds(), ramp_time.to_seconds())
     }
   }
 
   /// If retrigger is on, the LFO’s phase is reset to 0 when a synth using the LFO starts playing a
   /// note.
   pub fn set_retrigger(&mut self, retrigger: bool) {
-    unsafe { Self::fns().setRetrigger.unwrap()(self.cptr(), retrigger as i32) }
+    unsafe { Self::fns().setRetrigger.unwrap()(self.cptr_mut(), retrigger as i32) }
   }
 
   /// If global is set, the LFO is continuously updated whether or not it’s currently in use.
   pub fn set_global(&mut self, global: bool) {
-    unsafe { Self::fns().setGlobal.unwrap()(self.cptr(), global as i32) }
+    unsafe { Self::fns().setGlobal.unwrap()(self.cptr_mut(), global as i32) }
   }
 
   /// Return the current output value of the LFO.
   pub fn get_value(&self) -> f32 {
-    unsafe { Self::fns().getValue.unwrap()(self.cptr()) }
+    // getValue() takes a mutable pointer but it doesn't change any visible state.
+    unsafe { Self::fns().getValue.unwrap()(self.cptr() as *mut _) }
   }
 
-  pub(crate) fn cptr(&self) -> *mut CSynthLfo {
-    self.subclass.ptr.as_ptr() as *mut CSynthLfo
+  pub(crate) fn cptr(&self) -> *const CSynthLfo {
+    self.subclass.ptr.as_ptr()
+  }
+  pub(crate) fn cptr_mut(&mut self) -> *mut CSynthLfo {
+    self.subclass.ptr.as_ptr()
   }
   pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_lfo {
     unsafe { &*CApiState::get().csound.lfo }

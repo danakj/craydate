@@ -53,8 +53,8 @@ impl<'data> Instrument {
       let (start, end) = midi_range.to_start_end();
       let r = unsafe {
         Instrument::fns().addVoice.unwrap()(
-          self.cptr(),
-          synth.cptr(),
+          self.cptr_mut(),
+          synth.cptr_mut(),
           start as f32,
           end as f32,
           transpose,
@@ -100,7 +100,7 @@ impl<'data> Instrument {
   ) -> usize {
     let synth_ptr = unsafe {
       Instrument::fns().playNote.unwrap()(
-        self.cptr(),
+        self.cptr_mut(),
         frequency,
         volume,
         length.map_or(-1.0, |l| l.to_seconds()),
@@ -130,7 +130,7 @@ impl<'data> Instrument {
   ) -> usize {
     let synth_ptr = unsafe {
       Instrument::fns().playMIDINote.unwrap()(
-        self.cptr(),
+        self.cptr_mut(),
         midi_note,
         volume,
         length.map_or(-1.0, |l| l.to_seconds()),
@@ -149,7 +149,7 @@ impl<'data> Instrument {
   pub fn stop_note(&mut self, midi_note: f32, when: Option<TimeTicks>) {
     unsafe {
       Instrument::fns().noteOff.unwrap()(
-        self.cptr(),
+        self.cptr_mut(),
         midi_note,
         when.map_or(0, |w| w.to_sample_frames()),
       )
@@ -163,42 +163,54 @@ impl<'data> Instrument {
   /// at the given absolute time. Use `Sound::current_sound_time()` to get the current time.
   pub fn stop_all_notes(&mut self, when: Option<TimeTicks>) {
     unsafe {
-      Instrument::fns().allNotesOff.unwrap()(self.cptr(), when.map_or(0, |w| w.to_sample_frames()))
+      Instrument::fns().allNotesOff.unwrap()(
+        self.cptr_mut(),
+        when.map_or(0, |w| w.to_sample_frames()),
+      )
     }
   }
 
   /// Sets the pitch bend to be applied to the voices in the instrument.
   pub fn set_pitch_bend(&mut self, bend: f32) {
-    unsafe { Instrument::fns().setPitchBend.unwrap()(self.cptr(), bend) }
+    unsafe { Instrument::fns().setPitchBend.unwrap()(self.cptr_mut(), bend) }
   }
   /// Sets the pitch bend range to be applied to the voices in the instrument.
   pub fn set_pitch_bend_range(&mut self, half_steps: f32) {
-    unsafe { Instrument::fns().setPitchBendRange.unwrap()(self.cptr(), half_steps) }
+    unsafe { Instrument::fns().setPitchBendRange.unwrap()(self.cptr_mut(), half_steps) }
   }
   /// Sets the transpose parameter for all voices in the instrument.
   pub fn set_transpose(&mut self, half_steps: f32) {
-    unsafe { Instrument::fns().setTranspose.unwrap()(self.cptr(), half_steps) }
+    unsafe { Instrument::fns().setTranspose.unwrap()(self.cptr_mut(), half_steps) }
   }
 
   /// Returns the number of voices in the instrument currently playing.
   pub fn active_voice_count(&self) -> i32 {
-    unsafe { Instrument::fns().activeVoiceCount.unwrap()(self.cptr()) }
+    // activeVoiceCount() takes a mutable pointer it changes no visible state.
+    unsafe { Instrument::fns().activeVoiceCount.unwrap()(self.cptr() as *mut _) }
   }
 
   /// Gets the playback volume (0.0 - 1.0) for left and right channels of the source.
   pub fn volume(&self) -> StereoVolume {
     let mut v = StereoVolume::zero();
     unsafe {
-      Instrument::fns().getVolume.unwrap()(self.cptr(), v.left.as_mut_ptr(), v.right.as_mut_ptr())
+      // getVolume() takes a mutable pointer it changes no visible state.
+      Instrument::fns().getVolume.unwrap()(
+        self.cptr() as *mut _,
+        v.left.as_mut_ptr(),
+        v.right.as_mut_ptr(),
+      )
     };
     v
   }
   /// Sets the playback volume (0.0 - 1.0) for left and right channels of the source.
   pub fn set_volume(&mut self, v: StereoVolume) {
-    unsafe { Instrument::fns().setVolume.unwrap()(self.cptr(), v.left.into(), v.right.into()) }
+    unsafe { Instrument::fns().setVolume.unwrap()(self.cptr_mut(), v.left.into(), v.right.into()) }
   }
 
-  pub(crate) fn cptr(&self) -> *mut CSynthInstrument {
+  pub(crate) fn cptr(&self) -> *const CSynthInstrument {
+    self.ptr.as_ptr()
+  }
+  pub(crate) fn cptr_mut(&mut self) -> *mut CSynthInstrument {
     self.ptr.as_ptr()
   }
   pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_instrument {
@@ -210,7 +222,7 @@ impl Drop for Instrument {
   fn drop(&mut self) {
     // Ensure the SoundSource has a chance to clean up before it is freed.
     unsafe { ManuallyDrop::drop(&mut self.source) };
-    unsafe { Instrument::fns().freeInstrument.unwrap()(self.cptr()) }
+    unsafe { Instrument::fns().freeInstrument.unwrap()(self.cptr_mut()) }
   }
 }
 

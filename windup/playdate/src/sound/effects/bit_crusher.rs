@@ -30,12 +30,16 @@ impl BitCrusher {
   ///
   /// Valid values are 0 (no effect) to 1 (quantizing output to 1-bit).
   pub fn set_amount(&mut self, amount: f32) {
-    unsafe { Self::fns().setAmount.unwrap()(self.cptr(), amount) }
+    unsafe { Self::fns().setAmount.unwrap()(self.cptr_mut(), amount) }
   }
   /// Sets a signal to modulate the crushing amount.
   pub fn set_amount_modulator<T: AsRef<SynthSignal>>(&mut self, signal: Option<&T>) {
-    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| signal.as_ref().cptr());
-    unsafe { Self::fns().setAmountModulator.unwrap()(self.cptr(), modulator_ptr) }
+    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| {
+      // setAmountModulator() takes a mutable pointer to the modulator but there is no visible state
+      // on the modulator.
+      signal.as_ref().cptr() as *mut _
+    });
+    unsafe { Self::fns().setAmountModulator.unwrap()(self.cptr_mut(), modulator_ptr) }
     self.amount_modulator = signal.map(|signal| signal.as_ref().clone());
   }
   /// Gets the current signal modulating the crushing amount.
@@ -44,15 +48,18 @@ impl BitCrusher {
   }
 
   /// Sets the number of samples to repeat, quantizing the input in time.
-  /// 
+  ///
   /// A value of 0 produces no undersampling, 1 repeats every other sample, etc.
   pub fn set_undersampling(&mut self, undersampling: f32) {
-    unsafe { Self::fns().setUndersampling.unwrap()(self.cptr(), undersampling) }
+    unsafe { Self::fns().setUndersampling.unwrap()(self.cptr_mut(), undersampling) }
   }
   /// Sets a signal to modulate the undersampling amount.
   pub fn set_undersampling_modulator<T: AsRef<SynthSignal>>(&mut self, signal: Option<&T>) {
-    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| signal.as_ref().cptr());
-    unsafe { Self::fns().setUndersampleModulator.unwrap()(self.cptr(), modulator_ptr) }
+    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal|
+      // setUndersampleModulator() takes a mutable pointer to the modulator but there is no visible
+      // state on the modulator.
+      signal.as_ref().cptr() as *mut _);
+    unsafe { Self::fns().setUndersampleModulator.unwrap()(self.cptr_mut(), modulator_ptr) }
     self.undersampling_modulator = signal.map(|signal| signal.as_ref().clone());
   }
   /// Gets the current signal modulating the undersampling amount.
@@ -60,7 +67,7 @@ impl BitCrusher {
     self.undersampling_modulator.as_ref()
   }
 
-  pub(crate) fn cptr(&self) -> *mut CBitCrusher {
+  pub(crate) fn cptr_mut(&mut self) -> *mut CBitCrusher {
     self.ptr.as_ptr()
   }
   pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_effect_bitcrusher {
@@ -72,7 +79,7 @@ impl Drop for BitCrusher {
   fn drop(&mut self) {
     // Ensure the SoundEffect has a chance to clean up before it is freed.
     unsafe { ManuallyDrop::drop(&mut self.effect) };
-    unsafe { Self::fns().freeBitCrusher.unwrap()(self.cptr()) }
+    unsafe { Self::fns().freeBitCrusher.unwrap()(self.cptr_mut()) }
   }
 }
 

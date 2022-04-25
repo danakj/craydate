@@ -73,7 +73,7 @@ impl Sound {
   pub fn add_channel(&mut self, channel: &mut SoundChannel) {
     if !channel.is_system_channel() {
       channel.set_added(true);
-      unsafe { Self::fns().addChannel.unwrap()(channel.cptr()) };
+      unsafe { Self::fns().addChannel.unwrap()(channel.cptr_mut()) };
     }
   }
   /// Remove a user-created `SoundChannel` to no longer have it play from the device.
@@ -82,7 +82,7 @@ impl Sound {
   pub fn remove_channel(&mut self, channel: &mut SoundChannel) {
     if !channel.is_system_channel() {
       channel.set_added(false);
-      unsafe { Self::fns().removeChannel.unwrap()(channel.cptr()) }
+      unsafe { Self::fns().removeChannel.unwrap()(channel.cptr_mut()) }
     }
   }
 

@@ -38,7 +38,7 @@ impl Control {
 
   /// Clears all events from the control signal.
   pub fn clear_events(&mut self) {
-    unsafe { Self::fns().clearEvents.unwrap()(self.cptr()) }
+    unsafe { Self::fns().clearEvents.unwrap()(self.cptr_mut()) }
   }
 
   /// Adds a value to the signal’s timeline at the given step.
@@ -46,12 +46,12 @@ impl Control {
   /// If interpolate is true, the value is interpolated between the previous `step + value` and this
   /// one.
   pub fn add_event(&mut self, step: i32, value: f32, interpolate: bool) {
-    unsafe { Self::fns().addEvent.unwrap()(self.cptr(), step, value, interpolate as i32) }
+    unsafe { Self::fns().addEvent.unwrap()(self.cptr_mut(), step, value, interpolate as i32) }
   }
 
   /// Removes the control event at the given step.
   pub fn remove_event(&mut self, step: i32) {
-    unsafe { Self::fns().removeEvent.unwrap()(self.cptr(), step) }
+    unsafe { Self::fns().removeEvent.unwrap()(self.cptr_mut(), step) }
   }
 
   /// Control signals in midi files are assigned a controller number, which describes the intent of
@@ -60,11 +60,15 @@ impl Control {
   /// Returns the MIDI controller number for this ControlSignal, if it was created from a MIDI file
   /// via `Sequence::from_midi_file()`.
   pub fn midi_controller_number(&self) -> i32 {
-    unsafe { Self::fns().getMIDIControllerNumber.unwrap()(self.cptr()) }
+    // getMIDIControllerNumber() takes a mutable pointer but it doesn't change any visible state.
+    unsafe { Self::fns().getMIDIControllerNumber.unwrap()(self.cptr() as *mut _) }
   }
 
-  pub(crate) fn cptr(&self) -> *mut CControlSignal {
-    self.subclass.ptr.as_ptr() as *mut CControlSignal
+  pub(crate) fn cptr(&self) -> *const CControlSignal {
+    self.subclass.ptr.as_ptr()
+  }
+  pub(crate) fn cptr_mut(&mut self) -> *mut CControlSignal {
+    self.subclass.ptr.as_ptr()
   }
   pub(crate) fn fns() -> &'static playdate_sys::playdate_control_signal {
     unsafe { &*CApiState::get().csound.controlsignal }

@@ -24,7 +24,8 @@ impl DelayLineTap {
   ///
   /// `delay` must be less than or equal to the length of the `DelayLine`.
   pub(crate) fn new(delay_line: &mut DelayLine, delay: TimeDelta) -> Self {
-    let ptr = unsafe { Self::fns().addTap.unwrap()(delay_line.cptr(), delay.to_sample_frames()) };
+    let ptr =
+      unsafe { Self::fns().addTap.unwrap()(delay_line.cptr_mut(), delay.to_sample_frames()) };
     DelayLineTap {
       source: ManuallyDrop::new(SoundSource::from_ptr(ptr as *mut CSoundSource)),
       ptr: NonNull::new(ptr).unwrap(),
@@ -34,15 +35,18 @@ impl DelayLineTap {
 
   /// Sets the position of the tap on the `DelayLine`, up to the `DelayLine`’s length.
   pub fn set_delay(&mut self, delay: TimeDelta) {
-    unsafe { Self::fns().setTapDelay.unwrap()(self.cptr(), delay.to_sample_frames()) }
+    unsafe { Self::fns().setTapDelay.unwrap()(self.cptr_mut(), delay.to_sample_frames()) }
   }
   /// Sets a signal to modulate the tap delay.
   ///
   /// If the signal is continuous (e.g. an `Envelope` or a triangle `Lfo`, but not a square `Lfo`)
   /// playback is sped up or slowed down to compress or expand time.
   pub fn set_delay_modulator<T: AsRef<SynthSignal>>(&mut self, signal: Option<&T>) {
-    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| signal.as_ref().cptr());
-    unsafe { Self::fns().setTapDelayModulator.unwrap()(self.cptr(), modulator_ptr) }
+    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal|
+      // setTapDelayModulator() takes a mutable pointer to the modulator but there is no visible
+      // state on the modulator.
+      signal.as_ref().cptr() as *mut _);
+    unsafe { Self::fns().setTapDelayModulator.unwrap()(self.cptr_mut(), modulator_ptr) }
     self.delay_modulator = signal.map(|signal| signal.as_ref().clone());
   }
   /// Gets the current signal modulating the filter delay.
@@ -53,10 +57,10 @@ impl DelayLineTap {
   /// If the `DelayLine` is stereo and flip is set, the tap outputs the `DelayLine`’s left channel
   /// to its right output and vice versa.
   pub fn set_channels_flipped(&mut self, flipped: bool) {
-    unsafe { Self::fns().setTapChannelsFlipped.unwrap()(self.cptr(), flipped as i32) }
+    unsafe { Self::fns().setTapChannelsFlipped.unwrap()(self.cptr_mut(), flipped as i32) }
   }
 
-  pub(crate) fn cptr(&self) -> *mut CDelayLineTap {
+  pub(crate) fn cptr_mut(&mut self) -> *mut CDelayLineTap {
     self.ptr.as_ptr()
   }
   pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_effect_delayline {
@@ -68,7 +72,7 @@ impl Drop for DelayLineTap {
   fn drop(&mut self) {
     // Ensure the SoundSource has a chance to clean up before it is freed.
     unsafe { ManuallyDrop::drop(&mut self.source) };
-    unsafe { Self::fns().freeTap.unwrap()(self.cptr()) }
+    unsafe { Self::fns().freeTap.unwrap()(self.cptr_mut()) }
   }
 }
 

@@ -37,7 +37,7 @@ impl CallbackSource {
     let stereo_data = unsafe { Box::from_raw(stereo_ptr) };
     let ptr = unsafe {
       SoundChannel::fns().addCallbackSource.unwrap()(
-        channel.cptr(),
+        channel.cptr_mut(),
         Some(c_stereo_function),
         stereo_ptr as *mut c_void,
         /*stereo=*/ true as i32,
@@ -73,7 +73,7 @@ impl CallbackSource {
     let mono_data = unsafe { Box::from_raw(mono_ptr) };
     let ptr = unsafe {
       SoundChannel::fns().addCallbackSource.unwrap()(
-        channel.cptr(),
+        channel.cptr_mut(),
         Some(c_mono_function),
         mono_ptr as *mut c_void,
         /*stereo=*/ false as i32,
@@ -92,7 +92,7 @@ impl CallbackSource {
     s
   }
 
-  pub(crate) fn cptr(&self) -> *mut CSoundSource {
+  pub(crate) fn cptr_mut(&mut self) -> *mut CSoundSource {
     self.ptr.as_ptr()
   }
 }
@@ -101,7 +101,7 @@ impl Drop for CallbackSource {
   fn drop(&mut self) {
     // Ensure the SoundSource has a chance to clean up before it is freed.
     unsafe { ManuallyDrop::drop(&mut self.source) };
-    unsafe { System::fns().realloc.unwrap()(self.cptr() as *mut c_void, 0) };
+    unsafe { System::fns().realloc.unwrap()(self.cptr_mut() as *mut c_void, 0) };
   }
 }
 

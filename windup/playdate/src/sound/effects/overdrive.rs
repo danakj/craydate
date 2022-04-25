@@ -28,17 +28,20 @@ impl Overdrive {
 
   /// Sets the gain of the overdrive effect.
   pub fn set_gain(&mut self, gain: f32) {
-    unsafe { Self::fns().setGain.unwrap()(self.cptr(), gain) }
+    unsafe { Self::fns().setGain.unwrap()(self.cptr_mut(), gain) }
   }
 
   /// Sets the level where the amplified input clips.
   pub fn set_limit(&mut self, limit: f32) {
-    unsafe { Self::fns().setLimit.unwrap()(self.cptr(), limit) }
+    unsafe { Self::fns().setLimit.unwrap()(self.cptr_mut(), limit) }
   }
   /// Sets a signal to modulate the limit parameter.
   pub fn set_limit_modulator<T: AsRef<SynthSignal>>(&mut self, signal: Option<&T>) {
-    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| signal.as_ref().cptr());
-    unsafe { Self::fns().setLimitModulator.unwrap()(self.cptr(), modulator_ptr) }
+    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal|
+      // setLimitModulator() takes a mutable pointer to the modulator but there is no visible state
+      // on the modulator.
+      signal.as_ref().cptr() as *mut _);
+    unsafe { Self::fns().setLimitModulator.unwrap()(self.cptr_mut(), modulator_ptr) }
     self.limit_modulator = signal.map(|signal| signal.as_ref().clone());
   }
   /// Gets the current signal modulating the limit parameter.
@@ -48,12 +51,15 @@ impl Overdrive {
 
   /// Adds an offset to the upper and lower limits to create an asymmetric clipping.
   pub fn set_offset(&mut self, offset: f32) {
-    unsafe { Self::fns().setOffset.unwrap()(self.cptr(), offset) }
+    unsafe { Self::fns().setOffset.unwrap()(self.cptr_mut(), offset) }
   }
   /// Sets a signal to modulate the offset parameter.
   pub fn set_offset_modulator<T: AsRef<SynthSignal>>(&mut self, signal: Option<&T>) {
-    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| signal.as_ref().cptr());
-    unsafe { Self::fns().setOffsetModulator.unwrap()(self.cptr(), modulator_ptr) }
+    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal|
+      // setOffsetModulator() takes a mutable pointer to the modulator but there is no visible state
+      // on the modulator.
+      signal.as_ref().cptr() as *mut _);
+    unsafe { Self::fns().setOffsetModulator.unwrap()(self.cptr_mut(), modulator_ptr) }
     self.offset_modulator = signal.map(|signal| signal.as_ref().clone());
   }
   /// Gets the current signal modulating the offset parameter.
@@ -61,7 +67,7 @@ impl Overdrive {
     self.offset_modulator.as_ref()
   }
 
-  pub(crate) fn cptr(&self) -> *mut COverdrive {
+  pub(crate) fn cptr_mut(&mut self) -> *mut COverdrive {
     self.ptr.as_ptr()
   }
   pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_effect_overdrive {
@@ -73,7 +79,7 @@ impl Drop for Overdrive {
   fn drop(&mut self) {
     // Ensure the SoundEffect has a chance to clean up before it is freed.
     unsafe { ManuallyDrop::drop(&mut self.effect) };
-    unsafe { Self::fns().freeOverdrive.unwrap()(self.cptr()) }
+    unsafe { Self::fns().freeOverdrive.unwrap()(self.cptr_mut()) }
   }
 }
 

@@ -36,8 +36,3 @@ There are still some TODOs around for a few missing functions.
    in the simulator found at `$PLAYDATE_SDK_PATH`.
 1. Add it to `"rust-analyzer.linkedProjects"` in `.vscode/settings.json`. Then rust-analyzer will
    index it.
-
-# TODOs
-- Split `Self::cptr(&self) -> *mut T` into `Self::cptr(&self) -> *const T` and
-  `Self::cptr_mut(&self) -> *mut T` and document where we cast from *const to
-  *mut that it's intended/won't be mutated.

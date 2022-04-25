@@ -44,8 +44,8 @@ impl Synth {
 
   /// Creates a new Synth that plays a waveform.
   pub fn new_with_waveform(waveform: SoundWaveform) -> Self {
-    let synth = Self::new();
-    unsafe { Self::fns().setWaveform.unwrap()(synth.cptr(), waveform) };
+    let mut synth = Self::new();
+    unsafe { Self::fns().setWaveform.unwrap()(synth.cptr_mut(), waveform) };
     synth
   }
 
@@ -56,9 +56,10 @@ impl Synth {
   pub fn new_with_sample(sample: AudioSample, sustain_region: Option<TimeSpan>) -> Synth {
     let mut synth = Self::new();
     unsafe {
+      // setSample() takes a mutable pointer but doesn't mutate any visible state.
       Self::fns().setSample.unwrap()(
-        synth.cptr(),
-        sample.cptr(),
+        synth.cptr_mut(),
+        sample.cptr() as *mut _,
         sustain_region.as_ref().map_or(0, |r| r.start.to_sample_frames()),
         sustain_region.as_ref().map_or(0, |r| r.end.to_sample_frames()),
       )
@@ -76,10 +77,10 @@ impl Synth {
   /// The `SynthGenerator` is a set of functions that are called in order to fill the sample buffers
   /// with data and react to events on the Synth object.
   pub fn new_with_generator(generator: SynthGenerator) -> Self {
-    let synth = Self::new();
+    let mut synth = Self::new();
     unsafe {
       Self::fns().setGenerator.unwrap()(
-        synth.cptr(),
+        synth.cptr_mut(),
         // The Playdate API has incorrect types so we need to do some wild casting here:
         // https://devforum.play.date/t/c-api-playdate-sound-synth-setgenerator-has-incorrect-api/4482
         c_render_func as *mut Option<CRenderFunc>,
@@ -95,26 +96,26 @@ impl Synth {
 
   /// Sets the attack time for the sound envelope.
   pub fn set_attack_time(&mut self, attack_time: TimeDelta) {
-    unsafe { Self::fns().setAttackTime.unwrap()(self.cptr(), attack_time.to_seconds()) }
+    unsafe { Self::fns().setAttackTime.unwrap()(self.cptr_mut(), attack_time.to_seconds()) }
   }
   /// Sets the decay time for the sound envelope.
   pub fn set_decay_time(&mut self, decay_time: TimeDelta) {
-    unsafe { Self::fns().setDecayTime.unwrap()(self.cptr(), decay_time.to_seconds()) }
+    unsafe { Self::fns().setDecayTime.unwrap()(self.cptr_mut(), decay_time.to_seconds()) }
   }
   /// Sets the sustain level, from 0 to 1, for the sound envelope.
   pub fn set_sustain_level(&mut self, level: f32) {
-    unsafe { Self::fns().setSustainLevel.unwrap()(self.cptr(), level) }
+    unsafe { Self::fns().setSustainLevel.unwrap()(self.cptr_mut(), level) }
   }
   /// Sets the release time for the sound envelope.
   pub fn set_release_time(&mut self, release_time: TimeDelta) {
-    unsafe { Self::fns().setReleaseTime.unwrap()(self.cptr(), release_time.to_seconds()) }
+    unsafe { Self::fns().setReleaseTime.unwrap()(self.cptr_mut(), release_time.to_seconds()) }
   }
   /// Transposes the synth’s output by the given number of half steps.
   ///
   /// For example, if the transpose is set to 2 and a C note is played, the synth will output a D
   /// instead.
   pub fn set_transpose(&mut self, half_steps: f32) {
-    unsafe { Self::fns().setTranspose.unwrap()(self.cptr(), half_steps) }
+    unsafe { Self::fns().setTranspose.unwrap()(self.cptr_mut(), half_steps) }
   }
 
   /// Sets a signal to modulate the `Synth`’s frequency.
@@ -125,8 +126,11 @@ impl Synth {
   /// The signal is cloned, which is a shallow copy, so the caller can retain the ability to mutate
   /// the signal.
   pub fn set_frequency_modulator<T: AsRef<SynthSignal>>(&mut self, signal: Option<&T>) {
-    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| signal.as_ref().cptr());
-    unsafe { Self::fns().setFrequencyModulator.unwrap()(self.cptr(), modulator_ptr) }
+    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal|
+      // setFrequencyModulator() takes a mutable pointer to the modulator but there is no visible
+      // state on the modulator.
+      signal.as_ref().cptr() as *mut _);
+    unsafe { Self::fns().setFrequencyModulator.unwrap()(self.cptr_mut(), modulator_ptr) }
     self.frequency_modulator = signal.map(|signal| signal.as_ref().clone());
   }
   /// Gets the current signal modulating the `Synth`'s frequency.
@@ -139,8 +143,11 @@ impl Synth {
   /// The signal is cloned, which is a shallow copy, so the caller can retain the ability to mutate
   /// the signal.
   pub fn set_amplitude_modulator<T: AsRef<SynthSignal>>(&mut self, signal: Option<&T>) {
-    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| signal.as_ref().cptr());
-    unsafe { Self::fns().setAmplitudeModulator.unwrap()(self.cptr(), modulator_ptr) }
+    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal|
+      // setAmplitudeModulator() takes a mutable pointer to the modulator but there is no visible
+      // state on the modulator.
+      signal.as_ref().cptr() as *mut _);
+    unsafe { Self::fns().setAmplitudeModulator.unwrap()(self.cptr_mut(), modulator_ptr) }
     self.amplitude_modulator = signal.map(|signal| signal.as_ref().clone());
   }
   /// Gets the current signal modulating the `Synth`’s output amplitude.
@@ -153,8 +160,11 @@ impl Synth {
   /// The signal is cloned, which is a shallow copy, so the caller can retain the ability to mutate
   /// the signal.
   pub fn set_parameter_modulator<T: AsRef<SynthSignal>>(&mut self, i: i32, signal: Option<&T>) {
-    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| signal.as_ref().cptr());
-    unsafe { Self::fns().setParameterModulator.unwrap()(self.cptr(), i, modulator_ptr) }
+    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal|
+      // setParameterModulator() takes a mutable pointer to the modulator but there is no visible
+      // state on the modulator.
+      signal.as_ref().cptr() as *mut _);
+    unsafe { Self::fns().setParameterModulator.unwrap()(self.cptr_mut(), i, modulator_ptr) }
     match signal.map(|signal| signal.as_ref().clone()) {
       Some(signal) => self.parameter_modulators.insert(i, signal),
       None => self.parameter_modulators.remove(&i),
@@ -167,14 +177,15 @@ impl Synth {
 
   /// Returns the number of parameters advertised by the Synth.
   pub fn parameter_count(&self) -> i32 {
-    unsafe { Self::fns().getParameterCount.unwrap()(self.cptr()) }
+    // getParameterCount() takes a mutable pointer but doesn't change any visible state.
+    unsafe { Self::fns().getParameterCount.unwrap()(self.cptr() as *mut _) }
   }
   /// Set the Synth's `i`th parameter to `value`.
   ///
   /// `i` is 0-based, so the first parameter is `0`, the second is `1`, etc. Returns
   /// `Error::NotFoundError` is the parameter `i` is not valid.
   pub fn set_parameter(&mut self, i: i32, value: f32) -> Result<(), Error> {
-    let r = unsafe { Self::fns().setParameter.unwrap()(self.cptr(), i, value) };
+    let r = unsafe { Self::fns().setParameter.unwrap()(self.cptr_mut(), i, value) };
     match r {
       0 => Err(Error::NotFoundError),
       _ => Ok(()),
@@ -195,7 +206,7 @@ impl Synth {
   ) {
     unsafe {
       Self::fns().playNote.unwrap()(
-        self.cptr(),
+        self.cptr_mut(),
         frequency,
         volume,
         length.map_or(-1.0, |l| l.to_seconds()),
@@ -218,7 +229,7 @@ impl Synth {
   ) {
     unsafe {
       Self::fns().playMIDINote.unwrap()(
-        self.cptr(),
+        self.cptr_mut(),
         note,
         volume,
         length.map_or(-1.0, |l| l.to_seconds()),
@@ -232,10 +243,13 @@ impl Synth {
   /// If `when` is `None`, the note is stopped immediately. Otherwise it is scheduled to be stopped
   /// at the given absolute time. Use `Sound::current_sound_time()` to get the current time.
   pub fn stop(&mut self, when: Option<TimeTicks>) {
-    unsafe { Self::fns().noteOff.unwrap()(self.cptr(), when.map_or(0, |w| w.to_sample_frames())) }
+    unsafe { Self::fns().noteOff.unwrap()(self.cptr_mut(), when.map_or(0, |w| w.to_sample_frames())) }
   }
 
-  pub(crate) fn cptr(&self) -> *mut CSynth {
+  pub(crate) fn cptr(&self) -> *const CSynth {
+    self.ptr.as_ptr()
+  }
+  pub(crate) fn cptr_mut(&mut self) -> *mut CSynth {
     self.ptr.as_ptr()
   }
   fn fns() -> &'static playdate_sys::playdate_sound_synth {
@@ -250,7 +264,7 @@ impl Drop for Synth {
     // TODO: Does the generator userdata get dropped via `dealloc`?
     //
     // The AudioSample will be freed after the `Synth` which references it.
-    unsafe { Self::fns().freeSynth.unwrap()(self.cptr()) };
+    unsafe { Self::fns().freeSynth.unwrap()(self.cptr_mut()) };
   }
 }
 

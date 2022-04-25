@@ -30,19 +30,22 @@ impl TwoPoleFilter {
 
   /// Sets the type of the filter.
   pub fn set_type(&mut self, filter_type: TwoPoleFilterType) {
-    unsafe { Self::fns().setType.unwrap()(self.cptr(), filter_type) }
+    unsafe { Self::fns().setType.unwrap()(self.cptr_mut(), filter_type) }
   }
 
   /// Sets the center/corner frequency of the filter. Value is in Hz.
   pub fn set_frequency(&mut self, frequency: f32) {
-    unsafe { Self::fns().setFrequency.unwrap()(self.cptr(), frequency) }
+    unsafe { Self::fns().setFrequency.unwrap()(self.cptr_mut(), frequency) }
   }
   /// Sets a signal to modulate the effect’s frequency.
   ///
   /// The signal is scaled so that a value of 1.0 corresponds to half the sample rate.
   pub fn set_frequency_modulator<T: AsRef<SynthSignal>>(&mut self, signal: Option<&T>) {
-    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| signal.as_ref().cptr());
-    unsafe { Self::fns().setFrequencyModulator.unwrap()(self.cptr(), modulator_ptr) }
+    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal|
+      // setFrequencyModulator() takes a mutable pointer to the modulator but there is no visible state on
+      // the modulator.
+      signal.as_ref().cptr() as *mut _);
+    unsafe { Self::fns().setFrequencyModulator.unwrap()(self.cptr_mut(), modulator_ptr) }
     self.frequency_modulator = signal.map(|signal| signal.as_ref().clone());
   }
   /// Gets the current signal modulating the effect’s frequency.
@@ -52,17 +55,20 @@ impl TwoPoleFilter {
 
   /// Sets the filter gain.
   pub fn set_gain(&mut self, gain: f32) {
-    unsafe { Self::fns().setGain.unwrap()(self.cptr(), gain) }
+    unsafe { Self::fns().setGain.unwrap()(self.cptr_mut(), gain) }
   }
 
   /// Sets the center/corner resonance of the filter. Value is in Hz.
   pub fn set_resonance(&mut self, resonance: f32) {
-    unsafe { Self::fns().setResonance.unwrap()(self.cptr(), resonance) }
+    unsafe { Self::fns().setResonance.unwrap()(self.cptr_mut(), resonance) }
   }
   /// Sets a signal to modulate the effect’s filter resonance.
   pub fn set_resonance_modulator<T: AsRef<SynthSignal>>(&mut self, signal: Option<&T>) {
-    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| signal.as_ref().cptr());
-    unsafe { Self::fns().setResonanceModulator.unwrap()(self.cptr(), modulator_ptr) }
+    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal|
+      // setResonanceModulator() takes a mutable pointer to the modulator but there is no visible
+      // state on the modulator.
+      signal.as_ref().cptr() as *mut _);
+    unsafe { Self::fns().setResonanceModulator.unwrap()(self.cptr_mut(), modulator_ptr) }
     self.resonance_modulator = signal.map(|signal| signal.as_ref().clone());
   }
   /// Gets the current signal modulating the effect’s filter resonance.
@@ -70,7 +76,7 @@ impl TwoPoleFilter {
     self.resonance_modulator.as_ref()
   }
 
-  pub(crate) fn cptr(&self) -> *mut CTwoPoleFilter {
+  pub(crate) fn cptr_mut(&mut self) -> *mut CTwoPoleFilter {
     self.ptr.as_ptr()
   }
   pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_effect_twopolefilter {
@@ -82,7 +88,7 @@ impl Drop for TwoPoleFilter {
   fn drop(&mut self) {
     // Ensure the SoundEffect has a chance to clean up before it is freed.
     unsafe { ManuallyDrop::drop(&mut self.effect) };
-    unsafe { Self::fns().freeFilter.unwrap()(self.cptr()) }
+    unsafe { Self::fns().freeFilter.unwrap()(self.cptr_mut()) }
   }
 }
 

@@ -93,13 +93,14 @@ impl AudioSample {
   /// Loads the sound data from the file at `path` into the existing AudioSample.
   pub fn load_file(&mut self, path: &str) {
     unsafe {
-      Self::fns().loadIntoSample.unwrap()(self.cptr(), path.to_null_terminated_utf8().as_ptr())
+      Self::fns().loadIntoSample.unwrap()(self.cptr_mut(), path.to_null_terminated_utf8().as_ptr())
     };
   }
 
   /// Returns the length of the AudioSample.
   pub fn len(&self) -> TimeTicks {
-    TimeTicks::from_seconds_lossy(unsafe { Self::fns().getLength.unwrap()(self.cptr()) })
+    // getLength() takes a mutable pointer but doesn't mutate any visible state.
+    TimeTicks::from_seconds_lossy(unsafe { Self::fns().getLength.unwrap()(self.cptr() as *mut _) })
   }
 
   fn all_data(&self) -> (*mut u8, SoundFormat, u32, u32) {
@@ -108,8 +109,9 @@ impl AudioSample {
     let mut sample_rate = MaybeUninit::uninit();
     let mut bytes = MaybeUninit::uninit();
     unsafe {
-      Self::fns().getData.unwrap()(
-        self.cptr(),
+    // getData() takes a mutable pointer but doesn't mutate any visible state.
+    Self::fns().getData.unwrap()(
+        self.cptr() as *mut _,
         ptr.as_mut_ptr(),
         format.as_mut_ptr(),
         sample_rate.as_mut_ptr(),
@@ -145,7 +147,10 @@ impl AudioSample {
     sample_rate
   }
 
-  pub(crate) fn cptr(&self) -> *mut CAudioSample {
+  pub(crate) fn cptr(&self) -> *const CAudioSample {
+    self.ptr.as_ptr()
+  }
+  pub(crate) fn cptr_mut(&mut self) -> *mut CAudioSample {
     self.ptr.as_ptr()
   }
   pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_sample {
@@ -156,6 +161,6 @@ impl AudioSample {
 impl Drop for AudioSample {
   fn drop(&mut self) {
     // Note: The sample is destroyed before the data we own that it refers to.
-    unsafe { Self::fns().freeSample.unwrap()(self.cptr()) }
+    unsafe { Self::fns().freeSample.unwrap()(self.cptr_mut()) }
   }
 }

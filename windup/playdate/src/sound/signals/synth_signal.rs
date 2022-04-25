@@ -9,7 +9,7 @@ use crate::ctypes::*;
 /// `AsRef<SynthSignal>` and `AsMut<SynthSignal>`. They also have `as_signal()` and
 /// `as_signal_mut()` methods, through the `AsSynthSignal` trait, to access the `SynthSignal`
 /// methods more easily.
-/// 
+///
 /// Cloning a `SynthSignal` makes a shallow copy, where operations on the original or on the clone
 /// both act on the same underlying signal.
 #[derive(Clone)]
@@ -29,7 +29,10 @@ impl SynthSignal {
     }
   }
 
-  pub(crate) fn cptr(&self) -> *mut CSynthSignalValue {
+  // Note: There is no visible state on SynthSignal, as seen by the lack of methods on this type.
+  // We give a mutable pointer to it to C when setting a SynthSignal. Since there's no mutable state
+  // we don't need to worry about converting from a const pointer to mut.
+  pub(crate) fn cptr(&self) -> *const CSynthSignalValue {
     self.ptr.as_ptr()
   }
 }

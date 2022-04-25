@@ -16,7 +16,7 @@ enum Attachment {
 /// A `SoundEffect` can be attached to a `SoundChannel` to filter/mutate the sound being played on
 /// it. They all include a mix modulator that allows adjusting how much to mix the `SoundEffect`
 /// into the channel, between replacing the existing signal or leaving it unchanged.
-/// 
+///
 /// There are many types which act as a `SoundEffect`. Any such type would implement
 /// `AsRef<SoundEffect>` and `AsMut<SoundEffect>`. They also have `as_sound_effect()` and
 /// `as_sound_effect_mut()` methods, through the `AsSoundEffect` trait, to access the `SoundEffect`
@@ -42,13 +42,16 @@ impl SoundEffect {
   /// the mix (which is useful if you’re using a delay line with taps and don’t want to hear the
   /// delay line itself).
   pub fn set_mix(&mut self, mix: f32) {
-    unsafe { Self::fns().setMix.unwrap()(self.cptr(), mix) }
+    unsafe { Self::fns().setMix.unwrap()(self.cptr_mut(), mix) }
   }
 
   /// Sets a signal to modulate the effect’s mix level.
   pub fn set_mix_modulator<T: AsRef<SynthSignal>>(&mut self, signal: Option<&T>) {
-    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal| signal.as_ref().cptr());
-    unsafe { Self::fns().setMixModulator.unwrap()(self.cptr(), modulator_ptr) }
+    let modulator_ptr = signal.map_or_else(core::ptr::null_mut, |signal|
+      // setMixModulator() takes a mutable pointer to the modulator but there is no visible state on
+      // the modulator.
+      signal.as_ref().cptr() as *mut _);
+    unsafe { Self::fns().setMixModulator.unwrap()(self.cptr_mut(), modulator_ptr) }
     self.mix_modulator = signal.map(|signal| signal.as_ref().clone());
   }
   /// Gets the current signal modulating the effect’s mix level.
@@ -66,7 +69,7 @@ impl SoundEffect {
       Attachment::None => {
         self.attachment = Attachment::Channel(Rc::downgrade(&channel));
         let channel_api = CApiState::get().csound.channel;
-        unsafe { (*channel_api).addEffect.unwrap()(channel.as_ptr(), self.cptr()) };
+        unsafe { (*channel_api).addEffect.unwrap()(channel.as_ptr(), self.cptr_mut()) };
         Ok(())
       }
       _ => Err(Error::AlreadyAttachedError),
@@ -83,14 +86,14 @@ impl SoundEffect {
       Attachment::Channel(weak_ptr) if weak_ptr.ptr_eq(&Rc::downgrade(channel)) => {
         self.attachment = Attachment::None;
         let channel_api = CApiState::get().csound.channel;
-        unsafe { (*channel_api).removeEffect.unwrap()(channel.as_ptr(), self.cptr()) };
+        unsafe { (*channel_api).removeEffect.unwrap()(channel.as_ptr(), self.cptr_mut()) };
         Ok(())
       }
       _ => Err(Error::NotFoundError),
     }
   }
 
-  pub(crate) fn cptr(&self) -> *mut CSoundEffect {
+  pub(crate) fn cptr_mut(&mut self) -> *mut CSoundEffect {
     self.ptr.as_ptr()
   }
   pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_effect {

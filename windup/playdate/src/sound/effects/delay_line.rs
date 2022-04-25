@@ -65,7 +65,7 @@ impl DelayLine {
   /// added to it, and the specified length will be grown to be valid.
   pub fn set_len(&mut self, length: TimeDelta) {
     let length_in_frames = length.to_sample_frames().max(self.max_tap_position_in_frames);
-    unsafe { Self::fns().setLength.unwrap()(self.cptr(), length_in_frames) }
+    unsafe { Self::fns().setLength.unwrap()(self.cptr_mut(), length_in_frames) }
   }
   /// Returns the length of the delay line.
   pub fn len(&self) -> TimeDelta {
@@ -74,10 +74,10 @@ impl DelayLine {
 
   /// Sets the feedback level of the delay line.
   pub fn set_feedback(&mut self, feedback: f32) {
-    unsafe { Self::fns().setFeedback.unwrap()(self.cptr(), feedback) }
+    unsafe { Self::fns().setFeedback.unwrap()(self.cptr_mut(), feedback) }
   }
 
-  pub(crate) fn cptr(&self) -> *mut CDelayLine {
+  pub(crate) fn cptr_mut(&mut self) -> *mut CDelayLine {
     self.ptr.as_ptr()
   }
   pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_effect_delayline {
@@ -91,7 +91,7 @@ impl Drop for DelayLine {
     self.taps.clear();
     // Ensure the SoundEffect has a chance to clean up before it is freed.
     unsafe { ManuallyDrop::drop(&mut self.effect) };
-    unsafe { Self::fns().freeDelayLine.unwrap()(self.cptr()) }
+    unsafe { Self::fns().freeDelayLine.unwrap()(self.cptr_mut()) }
   }
 }
 

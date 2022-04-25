@@ -49,9 +49,6 @@ impl SoundSource {
       completion_callback: None,
     }
   }
-  pub(crate) fn cptr(&self) -> *mut CSoundSource {
-    self.ptr.as_ptr()
-  }
 
   /// Attach the SoundSource to the `channel` if it is not already attached to a `SoundChannel` or
   /// `Instrument`.
@@ -67,7 +64,7 @@ impl SoundSource {
         // itself in drop().
         self.attachment = Attachment::Channel(Rc::downgrade(channel));
         let r = unsafe {
-          (*CApiState::get().csound.channel).addSource.unwrap()(channel.as_ptr(), self.cptr())
+          (*CApiState::get().csound.channel).addSource.unwrap()(channel.as_ptr(), self.cptr_mut())
         };
         assert!(r != 0);
         Ok(())
@@ -85,7 +82,10 @@ impl SoundSource {
     match &mut self.attachment {
       Attachment::Channel(weak_ptr) if weak_ptr.ptr_eq(&Rc::downgrade(&channel)) => {
         let r = unsafe {
-          (*CApiState::get().csound.channel).removeSource.unwrap()(channel.as_ptr(), self.cptr())
+          (*CApiState::get().csound.channel).removeSource.unwrap()(
+            channel.as_ptr(),
+            self.cptr_mut(),
+          )
         };
         self.attachment = Attachment::None;
         assert!(r != 0);
@@ -112,8 +112,9 @@ impl SoundSource {
   pub fn volume(&self) -> StereoVolume {
     let mut v = StereoVolume::zero();
     unsafe {
-      (*CApiState::get().csound.source).getVolume.unwrap()(
-        self.cptr(),
+      // getVolume() takes a mutable pointer it changes no visible state.
+      Self::fns().getVolume.unwrap()(
+        self.cptr() as *mut _,
         v.left.as_mut_ptr(),
         v.right.as_mut_ptr(),
       )
@@ -122,17 +123,12 @@ impl SoundSource {
   }
   /// Sets the playback volume (0.0 - 1.0) for left and right channels of the source.
   pub fn set_volume(&mut self, v: StereoVolume) {
-    unsafe {
-      (*CApiState::get().csound.source).setVolume.unwrap()(
-        self.cptr(),
-        v.left.into(),
-        v.right.into(),
-      )
-    }
+    unsafe { Self::fns().setVolume.unwrap()(self.cptr_mut(), v.left.into(), v.right.into()) }
   }
   /// Returns whether the source is currently playing.
   pub fn is_playing(&self) -> bool {
-    unsafe { (*CApiState::get().csound.source).isPlaying.unwrap()(self.cptr()) != 0 }
+    // isPlaying() takes a mutable pointer it changes no visible state.
+    unsafe { Self::fns().isPlaying.unwrap()(self.cptr() as *mut _) != 0 }
   }
 
   /// Sets a callback to be called when the `SoundSource` finishes playing.
@@ -161,12 +157,22 @@ impl SoundSource {
     completion_callback: SoundCompletionCallback<'a, T, F, Constructed>,
   ) {
     let func = completion_callback.into_inner().and_then(|(callbacks, cb)| {
-      let key = self.cptr() as usize;
+      let key = self.cptr_mut() as usize;
       let (func, reg) = callbacks.add_sound_source_completion(key, cb);
       self.completion_callback = Some(reg);
       Some(func)
     });
-    unsafe { (*CApiState::get().csound.source).setFinishCallback.unwrap()(self.cptr(), func) }
+    unsafe { Self::fns().setFinishCallback.unwrap()(self.cptr_mut(), func) }
+  }
+
+  pub(crate) fn cptr(&self) -> *const CSoundSource {
+    self.ptr.as_ptr()
+  }
+  pub(crate) fn cptr_mut(&mut self) -> *mut CSoundSource {
+    self.ptr.as_ptr()
+  }
+  pub(crate) fn fns() -> &'static playdate_sys::playdate_sound_source {
+    unsafe { &*CApiState::get().csound.source }
   }
 }
 
