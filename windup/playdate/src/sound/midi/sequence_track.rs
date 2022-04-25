@@ -4,6 +4,7 @@ use core::ptr::NonNull;
 
 use super::super::sources::instrument::Instrument;
 use super::sequence::Sequence;
+use super::sequence_track_control::SequenceTrackControl;
 use super::track_note::{ResolvedTrackNote, TrackNote};
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
@@ -137,15 +138,41 @@ impl<'a> SequenceTrack<'a> {
     v.into_iter()
   }
 
-  // TODO: Replace this function with a slice or iterator accessor of the signals.
-  // /// Returns the number of control signals in the track.
-  // pub fn control_signal_count(&self) -> i32 {
-  //   unsafe { SequenceTrack::fns().getControlSignalCount.unwrap()(self.cptr()) }
-  // }
+  /// Returns the number of `Control` signals in the track.
+  pub fn signals_count(&self) -> usize {
+    // getControlSignalCount() takes a mutable pointer but doesn't change any visible state.
+    unsafe { SequenceTrack::fns().getControlSignalCount.unwrap()(self.cptr() as *mut _) as usize }
+  }
 
-  // TODO: getControlSignal
+  /// Returns an iterator over all `Control` signals in the track. The `Control` objects are
+  /// owned inside `SequenceTrack` and are returned as the `SequenceTrackControl` type.
+  pub fn signals(&self) -> impl Iterator<Item = SequenceTrackControl> {
+    let mut v = Vec::new();
+    // getControlSignalCount() takes a mutable pointer but doesn't change any visible state.
+    let count =
+      unsafe { SequenceTrack::fns().getControlSignalCount.unwrap()(self.cptr() as *mut _) };
+    for i in 0..count {
+      // getControlSignal() takes a mutable pointer but doesn't change any visible state.
+      let ptr = unsafe { SequenceTrack::fns().getControlSignal.unwrap()(self.cptr() as *mut _, i) };
+      v.push(SequenceTrackControl::from_ptr(NonNull::new(ptr).unwrap()));
+    }
+    v.into_iter()
+  }
 
-  // TODO: getSignalForController (with `create = false`)
+  // Returns the `SequenceTrackControl` (which is an track-owned `Control`) for the MIDI controller
+  // number `midi_controller`. If the `Control` does not exist, then `None` is returned.
+  pub fn signal_for_midi_controller(&self, midi_controller: i32) -> Option<SequenceTrackControl> {
+    let ptr = unsafe {
+      // getSignalForController() when create=false takes a mutable pointer but does not change any
+      // visible state.
+      Self::fns().getSignalForController.unwrap()(
+        self.cptr() as *mut _,
+        midi_controller,
+        false as i32,
+      )
+    };
+    Some(SequenceTrackControl::from_ptr(NonNull::new(ptr)?))
+  }
 
   pub(crate) fn cptr(&self) -> *const CSequenceTrack {
     self.ptr.as_ptr()
@@ -238,11 +265,39 @@ impl<'a> SequenceTrackMut<'a> {
     unsafe { SequenceTrack::fns().clearControlEvents.unwrap()(self.cptr_mut()) }
   }
 
-  // TODO: getSignalForController (with `create = true`)
+  // Create a `SequenceTrackControl` (which is an track-owned `Control`) for the MIDI controller
+  // number `midi_controller`. If the `Control` already exists, then `None` is returned.
+  pub fn create_signal_for_midi_controller(&mut self, midi_controller: i32) -> CreateSignalResult {
+    let ptr = unsafe {
+      SequenceTrack::fns().getSignalForController.unwrap()(
+        self.cptr_mut(),
+        midi_controller,
+        false as i32,
+      )
+    };
+    if !ptr.is_null() {
+      CreateSignalResult::AlreadyExists(SequenceTrackControl::from_ptr(NonNull::new(ptr).unwrap()))
+    } else {
+      let ptr = unsafe {
+        SequenceTrack::fns().getSignalForController.unwrap()(
+          self.cptr_mut(),
+          midi_controller,
+          true as i32,
+        )
+      };
+      CreateSignalResult::Created(SequenceTrackControl::from_ptr(NonNull::new(ptr).unwrap()))
+    }
+  }
 
   pub(crate) fn cptr_mut(&mut self) -> *mut CSequenceTrack {
     self.ptr.as_ptr()
   }
+}
+
+/// The result of trying to create a `Control` for a MIDI controller.
+pub enum CreateSignalResult<'a> {
+  Created(SequenceTrackControl<'a>),
+  AlreadyExists(SequenceTrackControl<'a>),
 }
 
 impl<'a> core::ops::Deref for SequenceTrackMut<'a> {
