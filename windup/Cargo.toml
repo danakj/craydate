@@ -3,17 +3,6 @@ edition = "2021"
 name = "windup"
 version = "0.1.0"
 
-[workspace]
-members = [
-  "dynpath",
-  "playdate",
-  "playdate-build",
-  "playdate-macro",
-  "playdate-sys",
-  "windup-build",
-  "windup-map",
-]
-
 [dependencies]
 playdate = {path = "playdate"}
 static_assertions = "1"

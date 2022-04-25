@@ -1,8 +1,8 @@
 {
+    "simulatorWinRoot": "windup-simulator-win",
     "rust-analyzer.linkedProjects": [
-        "simulator-win/Cargo.toml",
+        "windup-simulator-win/Cargo.toml",
     ],
-    "rust-analyzer.completion.autoimport.enable": false,
     "rust-analyzer.checkOnSave.allTargets": false,
     "[rust]": {
         "editor.rulers": [ 100 ],

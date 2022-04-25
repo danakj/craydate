@@ -1,4 +1,2 @@
 [build]
 target = "x86_64-pc-windows-msvc"
-
-#target = "armv7a-none-eabi"

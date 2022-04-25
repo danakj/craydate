@@ -1,9 +1,9 @@
 fn main() {
-  if let Err(e) = windup_build::generate_assets(env!("PDX_SOURCE_DIR")) {
-    println!("Failed to build assets\n{}", e);
-    return;
-  }
+  // TODO: Generate assets for your game here, copying them to `env!("PDX_SOURCE_DIR")`.
+  // Example:
+  //   game_build::generate_assets(env!("PDX_SOURCE_DIR"))?;
 
+  // Builds the game's pdx image.
   let r = playdate_build::build_pdx(
     env!("PDX_SOURCE_DIR"),
     env!("PDX_OUT_DIR"),

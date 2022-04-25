@@ -1,0 +1,12 @@
+{
+    "simulatorWinRoot": ".",
+    "rust-analyzer.linkedProjects": [
+        "./Cargo.toml",
+    ],
+    "rust-analyzer.checkOnSave.allTargets": false,
+    "[rust]": {
+        "editor.rulers": [
+            100
+        ],
+    }
+}

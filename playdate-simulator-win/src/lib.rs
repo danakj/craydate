@@ -1,7 +1,7 @@
 #![deny(clippy::all)]
 #![no_std]
 
-extern crate windup;
+extern crate game;
 
 #[cfg(not(doc))]
 #[panic_handler]
