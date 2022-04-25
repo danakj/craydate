@@ -61,17 +61,18 @@ pub struct CallbackBuilderWithArg<
   'a,
   Arg = (),
   T = (),
-  F: Fn(Arg, T) + 'static = fn(Arg, T),
+  Out = (),
+  F: Fn(Arg, T) -> Out + 'static = fn(Arg, T) -> Out,
   Rule = AllowNull,
   State = Unconstructed,
 > {
   callbacks: Option<&'a mut Callbacks<T>>,
   cb: Option<F>,
-  _marker: core::marker::PhantomData<(&'a u8, Arg, T, F, Rule, State)>,
+  _marker: core::marker::PhantomData<(&'a u8, Arg, T, Out, F, Rule, State)>,
 }
-impl<'a> CallbackBuilderWithArg<'a, (), (), fn((), ()), AllowNull, Unconstructed> {
+impl<'a> CallbackBuilderWithArg<'a, (), (), (), fn((), ()) -> (), AllowNull, Unconstructed> {
   /// A null callback, which is used to specify a callback should not be set, or should be removed.
-  pub fn none() -> CallbackBuilderWithArg<'a, (), (), fn((), ()), AllowNull, Constructed> {
+  pub fn none() -> CallbackBuilderWithArg<'a, (), (), (), fn((), ()) -> (), AllowNull, Constructed> {
     CallbackBuilderWithArg {
       callbacks: None,
       cb: None,
@@ -79,9 +80,13 @@ impl<'a> CallbackBuilderWithArg<'a, (), (), fn((), ()), AllowNull, Unconstructed
     }
   }
 }
-impl<'a, Arg, T, F: Fn(Arg, T) + 'static, Rule> CallbackBuilderWithArg<'a, Arg, T, F, Rule, Unconstructed> {
+impl<'a, Arg, T, Out, F: Fn(Arg, T) -> Out + 'static, Rule>
+  CallbackBuilderWithArg<'a, Arg, T, Out, F, Rule, Unconstructed>
+{
   /// Attach a `Callbacks` object to this builder, that will hold the closure.
-  pub fn with(callbacks: &'a mut Callbacks<T>) -> CallbackBuilderWithArg<'a, Arg, T, F, Rule, WithCallacks> {
+  pub fn with(
+    callbacks: &'a mut Callbacks<T>,
+  ) -> CallbackBuilderWithArg<'a, Arg, T, Out, F, Rule, WithCallacks> {
     CallbackBuilderWithArg {
       callbacks: Some(callbacks),
       cb: None,
@@ -89,10 +94,12 @@ impl<'a, Arg, T, F: Fn(Arg, T) + 'static, Rule> CallbackBuilderWithArg<'a, Arg, 
     }
   }
 }
-impl<'a, Arg, T, F: Fn(Arg, T) + 'static, Rule> CallbackBuilderWithArg<'a, Arg, T, F, Rule, WithCallacks> {
+impl<'a, Arg, T, Out, F: Fn(Arg, T) -> Out + 'static, Rule>
+  CallbackBuilderWithArg<'a, Arg, T, Out, F, Rule, WithCallacks>
+{
   /// Attach a closure to this builder, which will be held in the `Callbacks` object and called via
   /// that same `Callbacks` object.
-  pub fn call(self, cb: F) -> CallbackBuilderWithArg<'a, Arg, T, F, Rule, Constructed> {
+  pub fn call(self, cb: F) -> CallbackBuilderWithArg<'a, Arg, T, Out, F, Rule, Constructed> {
     CallbackBuilderWithArg {
       callbacks: self.callbacks,
       cb: Some(cb),
@@ -100,7 +107,9 @@ impl<'a, Arg, T, F: Fn(Arg, T) + 'static, Rule> CallbackBuilderWithArg<'a, Arg, 
     }
   }
 }
-impl<'a, Arg, T, F: Fn(Arg, T) + 'static, Rule> CallbackBuilderWithArg<'a, Arg, T, F, Rule, Constructed> {
+impl<'a, Arg, T, Out, F: Fn(Arg, T) -> Out + 'static, Rule>
+  CallbackBuilderWithArg<'a, Arg, T, Out, F, Rule, Constructed>
+{
   pub(crate) fn into_inner(self) -> Option<(&'a mut Callbacks<T>, F)> {
     self.callbacks.zip(self.cb)
   }

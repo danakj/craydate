@@ -1,5 +1,6 @@
 pub(crate) mod audio_sample;
 pub(crate) mod effects;
+pub(crate) mod headphone;
 pub(crate) mod headphone_state;
 pub(crate) mod loop_sound_span;
 pub(crate) mod midi;
@@ -17,6 +18,7 @@ pub use effects::overdrive::Overdrive;
 pub use effects::ring_modulator::RingModulator;
 pub use effects::sound_effect::SoundEffect;
 pub use effects::two_pole_filter::TwoPoleFilter;
+pub use headphone::{ActiveMicrophoneCallback, MicrophoneCallbackOutput};
 pub use headphone_state::HeadphoneState;
 pub use loop_sound_span::LoopTimeSpan;
 pub use midi::midi_note_range::MidiNoteRange;
@@ -49,7 +51,7 @@ pub type SoundCompletionCallback<'a, T, F, S> = CallbackBuilder<'a, T, F, AllowN
 
 /// A callback builder for a closure to be called on headphone change events.
 pub type HeadphoneChangeCallback<'a, T, F, S> =
-  CallbackBuilderWithArg<'a, HeadphoneState, T, F, AllowNull, S>;
+  CallbackBuilderWithArg<'a, HeadphoneState, T, (), F, AllowNull, S>;
 
 /// Access to the speaker and headphone outputs of the Playdate device, along with the audio clock.
 #[derive(Debug)]
@@ -97,12 +99,43 @@ impl Sound {
   }
 
   /// Force audio output to the given outputs, regardless of headphone status.
-  pub fn set_active_outputs(&self, headphone: bool, speaker: bool) {
+  pub fn set_active_outputs(&mut self, headphone: bool, speaker: bool) {
     unsafe { Self::fns().setOutputsActive.unwrap()(headphone as i32, speaker as i32) };
   }
 
-  // TODO: setMicCallback - consider recordToSample() instead like for LUA:
-  // https://sdk.play.date/1.10.0/Inside%20Playdate.html#f-sound.micinput.recordToSample
+  // TODO: Consider adding a record_to_sample() like Lua, which would produce an AudioSample:
+  // https://sdk.play.date/1.10.0/Inside%20Playdate.html#f-sound.micinput.recordToSample. That might
+  // replace set_microphone_callback() entirely.
+
+  /// Set a callback that is called each sound frame with the microphone's input sound.
+  /// 
+  /// BUG: This function currently does nothing, as the callback is never called. This is possibly
+  /// due to missing functions in the Playdate C Api:
+  /// <https://devforum.play.date/t/c-api-missing-microphone-monitoring-functions/4926/2>
+  ///
+  /// Pass `None` as the closure to remove the current callback without setting a new one. The
+  /// closure will be run on an audio thread, so it must be `Sync`.
+  ///
+  /// If `force_device_microphone` is true, then the device's internal microphone will be used
+  /// regardless of whether the plugged in headphones have a microphone. Otherwise, the headphones
+  /// are preferred.
+  pub fn set_microphone_callback<F: Fn(&[i16]) -> MicrophoneCallbackOutput + Sync + 'static>(
+    &mut self,
+    maybe_closure: Option<F>,
+    force_device_microphone: bool,
+  ) -> Option<ActiveMicrophoneCallback> {
+    match maybe_closure {
+      Some(closure) => Some(ActiveMicrophoneCallback::set_active_callback(
+        closure,
+        force_device_microphone,
+      )),
+      None => {
+        // Set a null callback.
+        unsafe { Self::fns().setMicCallback.unwrap()(None, core::ptr::null_mut(), false as i32) }
+        None
+      }
+    }
+  }
 
   /// Sets a callback to be called when the headphone state changes.
   ///

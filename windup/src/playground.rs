@@ -276,6 +276,22 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   );
   options_item.set_value(2);
 
+  api.sound.set_microphone_callback(
+    Some(|buf: &[i16]| {
+      assert!(false);
+      log(format!("mic data {:?}", buf));
+      MicrophoneCallbackOutput::ContinueRecording
+    }),
+    true,
+  );
+
+  match api.sound.headphone_state() {
+    HeadphoneState::HeadphoneNotConnected => log("headphone? no"),
+    HeadphoneState::HeadphoneConnected { has_microphone } => {
+      log(format!("headphone? yep! mic? {}", has_microphone))
+    }
+  };
+
   log(format!(
     "Entering main loop at time {}",
     api.system.current_time()

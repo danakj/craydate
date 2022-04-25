@@ -30,6 +30,8 @@ pub(crate) struct CApiState {
   // Tracks how many times the font was set.
   pub font_generation: Cell<usize>,
   pub system_event_watcher_state: RefCell<Rc<SystemEventWatcherState>>,
+  // Tracks how many times the callback was set.
+  pub headphone_change_generation: Cell<usize>,
   pub headphone_change_callback: RefCell<Option<RegisteredCallback>>,
   pub headphone_change_func: RefCell<Option<unsafe extern "C" fn(i32, i32)>>,
 }
@@ -49,6 +51,7 @@ impl CApiState {
       stencil_generation: Cell::new(0),
       font_generation: Cell::new(0),
       system_event_watcher_state: RefCell::new(Rc::new(SystemEventWatcherState::new())),
+      headphone_change_generation: Cell::new(0),
       headphone_change_callback: RefCell::new(None),
       headphone_change_func: RefCell::new(None),
     }
