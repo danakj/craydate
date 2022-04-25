@@ -1,0 +1,198 @@
+{
+    // See https:/go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        // Builds the tools for all platforms, targetting the host system.
+        {
+            "type": "process",
+            "label": "build tools",
+            "command": "cargo",
+            "args": [
+                "build",
+                "--release",
+                "--bins",
+                "--features=bins",
+            ],
+            "options": {
+                "cwd": "${config:projectRootCrate}",
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        },
+        // Windows simulator.
+        {
+            "type": "process",
+            "label": "simulator-win: cargo check",
+            "command": "cargo",
+            "args": [
+                "check",
+                "--target",
+                "x86_64-pc-windows-msvc",
+            ],
+            "options": {
+                "cwd": "${config:projectRootCrate}",
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        },
+        {
+            "type": "process",
+            "label": "simulator-win (dev): cargo build",
+            "command": "cargo",
+            "args": [
+                "build",
+                "--lib",
+                "--target",
+                "x86_64-pc-windows-msvc",
+            ],
+            "options": {
+                "cwd": "${config:projectRootCrate}",
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        },
+        {
+            "type": "process",
+            "label": "simulator-win (release): cargo build",
+            "command": "cargo",
+            "args": [
+                "build",
+                "--release",
+                "--lib",
+                "--target",
+                "x86_64-pc-windows-msvc",
+            ],
+            "options": {
+                "cwd": "${config:projectRootCrate}",
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        },
+        {
+            "type": "process",
+            "label": "simulator-win (dev): make pdx",
+            "command": "${config:projectRootCrate}/target/x86_64-pc-windows-msvc/debug/make_pdx.exe",
+            "dependsOn": [
+                "simulator-win (dev): cargo build",
+                "build tools",
+            ],
+            "group": "build",
+        },
+        {
+            "type": "process",
+            "label": "simulator-win (release): make pdx",
+            "command": "${config:projectRootCrate}/target/x86_64-pc-windows-msvc/debug/make_pdx.exe",
+            "dependsOn": [
+                "simulator-win (release): cargo build",
+                "build tools",
+            ],
+            "group": "build",
+        },
+        {
+            "type": "shell",
+            "label": "simulator-win (dev): run simulator",
+            "command": "${config:projectRootCrate}/target/x86_64-pc-windows-msvc/debug/run_simulator.exe",
+            "args": [
+                ">stdout.txt",
+                "2>&1",
+            ],
+            "dependsOn": [
+                "simulator-win (dev): make pdx"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        },
+        {
+            "type": "shell",
+            "label": "simulator-win (release): run simulator",
+            "command": "${config:projectRootCrate}/target/x86_64-pc-windows-msvc/debug/run_simulator.exe",
+            "args": [
+                ">stdout.txt",
+                "2>&1",
+            ],
+            "dependsOn": [
+                "simulator-win (release): make pdx"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        }, // Playdate hardware device.
+        {
+            "type": "process",
+            "label": "device: cargo check",
+            "command": "cargo",
+            "args": [
+                "check",
+                "--target",
+                "thumbv7em-none-eabihf",
+            ],
+            "options": {
+                "cwd": "${config:projectRootCrate}",
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        },
+        {
+            "type": "process",
+            "label": "device: cargo build",
+            "command": "cargo",
+            "args": [
+                "build",
+                "--release",
+                "--lib",
+                "--target",
+                "thumbv7em-none-eabihf",
+            ],
+            "options": {
+                "cwd": "${config:projectRootCrate}",
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        },
+        {
+            "type": "process",
+            "label": "device: make pdx",
+            "command": "${config:projectRootCrate}/target/thumbv7em-none-eabihf/debug/make_pdx.exe",
+            "dependsOn": [
+                "device: cargo build",
+                "build tools",
+            ],
+            "group": "build",
+        },
+        // TODO: Figure out how to install the pdx on the device and run it.
+        /*
+        {
+            "type": "shell",
+            "label": "device: run",
+            "command": "${config:projectRootCrate}/target/thumbv7em-none-eabihf/debug/run_simulator.exe",
+            "args": [
+                ">stdout.txt",
+                "2>&1",
+            ],
+            "dependsOn": [
+                "device: make pdx"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        },
+        */
+    ],
+}

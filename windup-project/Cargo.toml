@@ -1,19 +1,19 @@
 [package]
-edition = "2021"
 name = "windup-simulator-win"
 version = "0.1.0"
+edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "staticlib"]
 
+[dependencies]
+game = {package = "windup", path = "../windup"}
+game-assets = {package = "windup-assets", path = "../windup/windup-assets", optional = true}
+playdate = {path = "../windup/playdate"}
+playdate-build = {path = "../windup/playdate-build", optional = true}
+
 [build-dependencies]
 playdate-build = {path = "../windup/playdate-build"}
-
-[dependencies]
-playdate = {path = "../windup/playdate"}
-game = {package = "windup", path = "../windup"}
-playdate-build = {path = "../windup/playdate-build", optional = true}
-game-build = {package = "windup-build", path = "../windup/windup-build", optional = true}
 
 [[bin]]
 name = "make_pdx"
@@ -21,7 +21,7 @@ name = "make_pdx"
 name = "run_simulator"
 
 [features]
-bins = ["playdate-build", "game-build"]
+bins = ["playdate-build", "game-assets"]
 
 [profile.dev]
 panic = "abort"

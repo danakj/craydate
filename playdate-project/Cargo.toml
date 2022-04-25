@@ -1,0 +1,29 @@
+[package]
+name = "YOUR GAME"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+game = {package = "YOUR_GAME", path = "../YOUR_GAME/YOUR_GAME"}
+game-assets = {package = "YOUR_GAME-assets", path = "../YOUR_GAME/YOUR_GAME-assets", optional = true}
+playdate = {path = "../windup/playdate"}
+playdate-build = {path = "../windup/playdate-build", optional = true}
+
+[build-dependencies]
+playdate-build = {path = "../windup/playdate-build"}
+
+[[bin]]
+name = "make_pdx"
+[[bin]]
+name = "run_simulator"
+
+[features]
+bins = ["playdate-build", "game-assets"]
+
+[profile.dev]
+panic = "abort"
+[profile.release]
+panic = "abort"

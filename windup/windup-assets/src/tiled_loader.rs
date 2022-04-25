@@ -75,7 +75,7 @@ pub fn relative_image_path(path: &PathBuf) -> Option<String> {
   let mut source = source.replace("\\", "/");
 
   // Delete everything before (and including) PREFIX.
-  const PREFIX: &str = "windup-build/assets/raw/";
+  const PREFIX: &str = "windup-assets/assets/raw/";
   match source.find(PREFIX) {
     Some(prefix_idx) => {
       source.replace_range(0..prefix_idx + PREFIX.len(), "");

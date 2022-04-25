@@ -5,7 +5,7 @@ fn main() {
 
 #[cfg(feature = "bins")]
 fn main() {
-  if let Err(e) = game_build::generate_assets(env!("PDX_SOURCE_DIR")) {
+  if let Err(e) = game_assets::generate_assets(env!("PDX_SOURCE_DIR")) {
     println!("Failed to build assets\n{}", e);
     return;
   }

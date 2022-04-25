@@ -30,15 +30,3 @@
 - 6.12 Sprites  **[ WONTFIX: No current plan to support Sprites ]**
 
 There are still some TODOs around for a few missing functions.
-
-# Adding to OS target
-1. Make a new top-level crate, e.g. simulator-win
-1. Set the target triple in the crate's `.cargo/config.toml` file, e.g.
-   `simulator-win/.cargo/config.toml`.
-1. Add a task to build and check it in `.vscode/tasks.json`. Then Ctrl+Shift+B will give you
-   the option to build it.
-1. Also add tasks run build and run the make_pdx and run_simulator bins, if they apply, in
-   `.vscode/tasks.json`. Then Ctrl+Shift+B will give you the option to run the project
-   in the simulator found at `$PLAYDATE_SDK_PATH`.
-1. Add it to `"rust-analyzer.linkedProjects"` in `.vscode/settings.json`. Then rust-analyzer will
-   index it.

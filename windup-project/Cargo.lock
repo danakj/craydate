@@ -955,7 +955,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "windup-build"
+name = "windup-assets"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -980,7 +980,7 @@ dependencies = [
  "playdate",
  "playdate-build",
  "windup",
- "windup-build",
+ "windup-assets",
 ]
 
 [[package]]
