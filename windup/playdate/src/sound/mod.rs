@@ -56,7 +56,7 @@ pub type HeadphoneChangeCallback<'a, T, F, S> =
 /// Access to the speaker and headphone outputs of the Playdate device, along with the audio clock.
 #[derive(Debug)]
 pub struct Sound {
-  default_channel: SoundChannel, // TODO: Move to CApiState
+  default_channel: SoundChannel,
 }
 impl Sound {
   pub(crate) fn new() -> Self {
