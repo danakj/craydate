@@ -36,7 +36,8 @@ impl StereoVolume {
   }
 }
 
-/// A volume, which is a value between 0 and 1.
+/// A volume, which is a value between 0 and 1. Setting it to a value outside the valid range will
+/// result in the value being clamped to within 0 and 1.
 #[derive(Debug, Default)]
 #[repr(transparent)]
 pub struct Volume(ClampedFloatInclusive<0, 1>);
