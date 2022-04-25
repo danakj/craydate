@@ -252,7 +252,8 @@ dependencies = [
 
 [[package]]
 name = "dynpath"
-version = "0.1.0"
+version = "0.1.1"
+source = "git+https://github.com/danakj/dynpath?branch=main#b58ae30779b0006f9b1d7daf48b09dda41fbd7ec"
 dependencies = [
  "proc-macro2",
  "quote",
