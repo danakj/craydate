@@ -4,6 +4,7 @@ use core::ptr::NonNull;
 use super::effects::sound_effect::SoundEffect;
 use super::signals::synth_signal::{SynthSignal, SynthSignalSubclass};
 use super::sources::sound_source::SoundSource;
+use super::volume::Volume;
 use super::Sound;
 use crate::capi_state::CApiState;
 use crate::clamped_float::ClampedFloatInclusive;
@@ -104,12 +105,12 @@ impl SoundChannel {
   }
 
   /// Gets the volume for the channel, in the range [0-1].
-  pub fn volume(&self) -> ClampedFloatInclusive<0, 1> {
+  pub fn volume(&self) -> Volume {
     // getVolume() takes a mutable pointer but doesn't mutate any visible state.
     unsafe { Self::fns().getVolume.unwrap()(self.cptr() as *mut _).into() }
   }
   /// Sets the volume for the channel, in the range [0-1].
-  pub fn set_volume(&mut self, volume: ClampedFloatInclusive<0, 1>) {
+  pub fn set_volume(&mut self, volume: Volume) {
     unsafe { Self::fns().setVolume.unwrap()(self.cptr_mut(), volume.into()) }
   }
   /// Sets a signal to modulate the channel volume.

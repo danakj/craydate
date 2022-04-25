@@ -1,5 +1,6 @@
 /// A floating point value that is clamped to be within `LOW` and `HIGH`.
 #[derive(Debug, PartialEq, PartialOrd)]
+#[repr(transparent)]
 pub struct ClampedFloatInclusive<const LOW: i32, const HIGH: i32>(f32);
 impl<const LOW: i32, const HIGH: i32> ClampedFloatInclusive<LOW, HIGH> {
   /// Constructs a new ClampedFloatInclusive.

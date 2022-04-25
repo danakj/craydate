@@ -3,11 +3,11 @@ use core::mem::ManuallyDrop;
 use core::ptr::NonNull;
 
 use super::super::midi::midi_note_range::MidiNoteRange;
-use super::super::StereoVolume;
+use super::super::midi::track_note::TrackNote;
+use super::super::volume::{StereoVolume, Volume};
 use super::sound_source::SoundSource;
 use super::synth::Synth;
 use crate::capi_state::CApiState;
-use crate::clamped_float::ClampedFloatInclusive;
 use crate::ctypes::*;
 use crate::error::Error;
 use crate::time::{TimeDelta, TimeTicks};
@@ -100,7 +100,7 @@ impl<'data> Instrument {
   pub fn play_frequency_note(
     &mut self,
     frequency: f32,
-    volume: ClampedFloatInclusive<0, 1>,
+    volume: Volume,
     length: Option<TimeDelta>,
     when: Option<TimeTicks>,
   ) -> usize {
@@ -129,16 +129,15 @@ impl<'data> Instrument {
   /// returned from add_voice() for the `Synth`.
   pub fn play_midi_note(
     &mut self,
-    midi_note: f32,
-    volume: ClampedFloatInclusive<0, 1>,
+    note: TrackNote,
     length: Option<TimeDelta>,
     when: Option<TimeTicks>,
   ) -> usize {
     let synth_ptr = unsafe {
       Instrument::fns().playMIDINote.unwrap()(
         self.cptr_mut(),
-        midi_note,
-        volume.into(),
+        note.midi_note.into(),
+        note.velocity.into(),
         length.map_or(-1.0, |l| l.to_seconds()),
         when.map_or(0, |w| w.to_sample_frames()),
       )

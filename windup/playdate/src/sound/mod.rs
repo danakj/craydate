@@ -6,7 +6,7 @@ pub(crate) mod signals;
 pub(crate) mod sound_channel;
 pub(crate) mod sound_format;
 pub(crate) mod sources;
-pub(crate) mod stereo_volume;
+pub(crate) mod volume;
 
 pub use audio_sample::AudioSample;
 pub use effects::bit_crusher::BitCrusher;
@@ -27,14 +27,14 @@ pub use signals::lfo::Lfo;
 pub use signals::synth_signal::{AsSynthSignal, SynthSignal};
 pub use sound_channel::SoundChannel;
 pub use sound_format::*;
-pub use sources::delay_line_tap::DelayLineTap;
 pub use sources::callback_source::CallbackSource;
+pub use sources::delay_line_tap::DelayLineTap;
 pub use sources::file_player::FilePlayer;
 pub use sources::instrument::{Instrument, VoiceId};
 pub use sources::sample_player::SamplePlayer;
 pub use sources::sound_source::{AsSoundSource, SoundSource};
 pub use sources::synth::{Synth, SynthGenerator, SynthGeneratorVTable, SynthRender};
-pub use stereo_volume::StereoVolume;
+pub use volume::{StereoVolume, Volume};
 
 use crate::callbacks::AllowNull;
 use crate::capi_state::CApiState;

@@ -1,4 +1,4 @@
-use crate::clamped_float::ClampedFloatInclusive;
+use super::super::volume::Volume;
 
 /// A MIDI note which is played as part of a `SequenceTrack` in a `SequenceTrack`.
 #[derive(Debug)]
@@ -11,13 +11,13 @@ pub struct TrackNote {
   pub midi_note: u8,
   /// Velocity indicates how hard the key was struck when the note was played, which usually
   /// corresponds to the note's loudness.
-  pub velocity: ClampedFloatInclusive<0, 1>,
+  pub velocity: Volume,
 }
 impl Default for TrackNote {
   fn default() -> Self {
     Self {
       midi_note: 60,
-      velocity: 1.0.into(),
+      velocity: Volume::one(),
     }
   }
 }
@@ -32,7 +32,7 @@ pub struct ResolvedTrackNote {
   pub midi_note: u8,
   /// Velocity indicates how hard the key was struck when the note was played, which usually
   /// corresponds to the note's loudness.
-  pub velocity: ClampedFloatInclusive<0, 1>,
+  pub velocity: Volume,
   /// The length of the note in steps, not time. That is, the time follows the `Sequence`’s tempo.
   pub length: u32,
 }

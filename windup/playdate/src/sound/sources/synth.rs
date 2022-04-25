@@ -7,9 +7,9 @@ use core::ptr::NonNull;
 use super::super::audio_sample::AudioSample;
 use super::super::midi::track_note::TrackNote;
 use super::super::signals::synth_signal::SynthSignal;
+use super::super::volume::Volume;
 use super::sound_source::SoundSource;
 use crate::capi_state::CApiState;
-use crate::clamped_float::ClampedFloatInclusive;
 use crate::ctypes::*;
 use crate::ctypes_enums::SoundWaveform;
 use crate::error::Error;
@@ -204,7 +204,7 @@ impl Synth {
   pub fn play_frequency_note(
     &mut self,
     frequency: f32,
-    volume: ClampedFloatInclusive<0, 1>,
+    volume: Volume,
     length: Option<TimeDelta>,
     when: Option<TimeTicks>,
   ) {
