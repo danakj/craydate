@@ -7,7 +7,9 @@
 //! 
 //! # Requirements
 //! Using these crates requires the [Playdate SDK](https://play.date/dev/), which has [its own
-//! license](https://play.date/dev/sdk-license).
+//! license](https://play.date/dev/sdk-license). Install the SDK and add an environment variable
+//! named `PLAYDATE_SDK_PATH` that points to the directory where you installed it, such as
+//! `PLAYDATE_SDK_PATH=C:\playdate`.
 //! 
 //! This crate uses unstable features in order to provide a #[no_std] library and application to run
 //! on the Playdate simulator and hardware devices. Thus it requires use of the [Rust nightly
@@ -36,6 +38,8 @@
 //! [playdate-simulator-win](TODO: link). To use it, please rename and customize it for your game.
 //! To start using it, download the latest release, unzip it and edit it as follows. See below for
 //! more details:
+//! 1. Ensure your `PLAYDATE_SDK_PATH` environment variable is set to the location of the Playdate
+//!    SDK.
 //! 1. In the `Cargo.toml` file, change the `name` to include your game's name.
 //! 1. In the `Cargo.toml` file, change the `game` dependency's `package` and `path`
 //! 1. In the `Cargo.toml` file, remove or change the `game-build` dependency's to point to your
@@ -127,6 +131,13 @@
 //! 
 //! Logging to the simulator's console for debugging is possible through the `playdate::log()` and
 //! `playdate::log_error()` functions.
+//! 
+//! # Platforms
+//! 
+//! **Currently this project only supports development for the Windows simulator.** We will expand
+//! support to the Playdate hardware device once we get access to one, by introducing another
+//! template similar to the [playdate-simulator-win](TODO: link). Simulators on other platforms
+//! (e.g. Mac) are possible, and would only need changes to the root simulator crate.
 //! 
 //! # License
 //! This project is licensed under either of
