@@ -17,9 +17,8 @@ compiler](https://doc.rust-lang.org/1.2.0/book/nightly-rust.html).
 
 # Getting Started
 
-Building a #[no_std] application that is linked into a DLL file to run in the Playdate simualtor
-requires a bit of extra work and Cargo setup. The dependency structure of your project will look
-like this:
+Building a #[no_std] application that is compiled for the Playdate simulator requires a bit of
+extra work and Cargo setup. The dependency structure of your project will look like this:
 
 ```
 - your-game-project** (crate of type "cdylib")
