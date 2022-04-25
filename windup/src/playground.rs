@@ -1,5 +1,3 @@
-use alloc::boxed::Box;
-
 use playdate::*;
 
 /// A testing function to dump new functionality into for manual verification.
@@ -215,15 +213,14 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   splayer.play(1, 1.0);
 
   struct GeneratorData {}
-  let data = Box::new(GeneratorData {});
+  let data = GeneratorData {};
   static VTABLE: SynthGeneratorVTable = SynthGeneratorVTable {
     render_func: |_data, _r| false,
     note_on_func: |_data, _note, _volume, _len| {},
     release_func: |_data, _ended| {},
     set_parameter_func: |_data, _parameter, _value| false,
-    dealloc_func: |data| unsafe { drop(Box::from_raw(data as *mut GeneratorData)) },
   };
-  let generator = unsafe { SynthGenerator::new(Box::into_raw(data) as *const (), &VTABLE) };
+  let generator = unsafe { SynthGenerator::new(data, &VTABLE) };
   let mut synth = Synth::new_with_generator(generator);
   synth.play_frequency_note(0.0, 1.0.into(), None, None);
   log(format!("synth playing: {}", synth.as_source().is_playing()));

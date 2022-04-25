@@ -329,9 +329,6 @@ pub struct SynthGeneratorVTable {
   /// How does get_parameters() know what to return? What is the return value? Is `bool` the right
   /// output value, or should be it `i32` like the C function?
   pub set_parameter_func: fn(userdata: *const (), parameter: u8, value: f32) -> bool,
-  /// Called to deallocate the `userdata`. This is called when the other generator functions will no
-  /// longer be called for this `userdata`.
-  pub dealloc_func: fn(userdata: *const ()),
 }
 
 /// The implementation of a generator for a `Synth`.
@@ -353,14 +350,16 @@ impl SynthGenerator {
   /// SynthGeneratorVTable’s documentation is not upheld, or if the `data` pointer is not kept alive
   /// until `SynthGeneratorVTable::dealloc_func()` is called with the `data` as its parameter.
   /// Therefore this method is unsafe.
-  pub const unsafe fn new(data: *const (), vtable: &'static SynthGeneratorVTable) -> Self {
-    SynthGenerator { data, vtable }
+  pub unsafe fn new<T: Send + Sync>(data: T, vtable: &'static SynthGeneratorVTable) -> Self {
+    SynthGenerator {
+      data: Box::into_raw(Box::new(data)) as *const (),
+      vtable,
+    }
   }
 }
 impl Drop for SynthGenerator {
   fn drop(&mut self) {
-    // The `c_dealloc_func()` will call into here to drop `data` as well.
-    (self.vtable.dealloc_func)(self.data)
+    drop(unsafe { Box::from_raw(self.data as *mut ()) });
   }
 }
 impl core::fmt::Debug for SynthGenerator {
@@ -435,13 +434,6 @@ unsafe extern "C" fn c_set_parameter_func(
 }
 type CDeallocFunc = unsafe extern "C" fn(*mut c_void);
 unsafe extern "C" fn c_dealloc_func(generator: *mut c_void) {
-  // ```
-  // let generator = generator as *mut SynthGenerator;
-  // let func = (*generator).vtable.dealloc_func;
-  // let userdata = (*generator).data;
-  // func(userdata);
-  // ```
-  // The generator `data` is dealloced by `dealloc_func` in the `Drop::drop` method for
-  // SynthGenerator.
+  // The generator `data` is dealloced by `SynthGenerator::drop()`.
   drop(Box::from_raw(generator as *mut SynthGenerator))
 }
