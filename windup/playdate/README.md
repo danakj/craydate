@@ -24,7 +24,7 @@ of extra work and Cargo setup. The dependency structure of your project will loo
 - your-game-project**
   ├── [dependencies] your-game** (`#![no_std]` crate)
   |   ├── [dependencies] playdate (`#![no_std]` crate)
-  |   └── [dependencies] euclid (with `default-features = false` to keep it compatible with `#![no_std]`) (used in the playdate API)
+  |   └── [dependencies] euclid (with `default-features = false` and `features = ["libm"]`)
   └── [build-dependencies] playdate-build
 
 ** = is specific to your game and provided by the game developer.
@@ -32,6 +32,10 @@ of extra work and Cargo setup. The dependency structure of your project will loo
 
 Note that your game's crate must include the `#![no_std]` directive in its crate root in order
 to build for the Playdate device.
+
+The `euclid` crate is used in the playdate crate's public Apis, which is why you will need it.
+The features listed above are specified to make the crate compatible with a `#![no_std]`
+application.
 
 ## The root project crate
 
