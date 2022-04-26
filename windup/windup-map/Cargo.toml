@@ -1,8 +1,0 @@
-[package]
-name = "windup-map"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-postcard =  { version = "0.7.2", features = ["alloc"] }
-serde = { version = "1.0", default-features = false, features = ["alloc"] }
