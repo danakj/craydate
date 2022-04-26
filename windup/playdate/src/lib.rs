@@ -73,7 +73,7 @@
 //! 
 //! #### make_pdx
 //! Combines your built game, along with any asset files into a pdx image for the device or
-//! simulator, which is found in `$OUT_DIR/pdx_out`.
+//! simulator.
 //! 
 //! The `your-game-assets` dependency seen above is an optional place to construct and collect
 //! assets for your game that will be included by **make_pdx** when building the game's pdx image.
@@ -91,15 +91,14 @@
 //! 
 //! #### VSCode
 //! 
-//! If you're using VSCode, the template root project [playdate-project](TODO: link) crate comes
-//! with two files to provide tasks that build your game's pdx image and run it on the Windows
-//! simulator.
-//! * `.vscode/settings.json`: The `"projectRootCrate"` variable should point to the root project
-//!   crate. By default, since the `.vscode` directory is inside that crate, it is `"."`. Similarly,
-//!   the `"rust-analyzer.linkedProjects"` variable should point to the root project crate's
+//! We provide configurations for VSCode in the template root project [playdate-project](TODO: link)
+//! to build and use the make_pdx and run_simulator binaries correctly. The `.vscode/settings.json`
+//! file configures these tasks. You should not need to change the configuration unless you move the
+//! .vscode directory out of the root project crate.
+//! * The `"projectRootCrate"` variable should point to the root project crate. By default, since
+//!   the `.vscode` directory is inside that crate, it is `"."`.
+//! * The `"rust-analyzer.linkedProjects"` variable should point to the root project crate's
 //!   `Cargo.toml` file. By default it is `"./Cargo.toml"`.
-//! * `.vscode/tasks.json`: Provides the tasks to build a pdx for the Playdate simulator, and to
-//!   load it into the simulator, or to build a pdx for the Playdate device.
 //! 
 //! When running the simulator with this task, VSCode will capture the `stdout` and `stderr` output
 //! of the game and write it to a file called `stdout.txt`.
@@ -152,6 +151,13 @@
 //! **Currently this project only supports development for the Windows simulator.** We will expand
 //! support to the Playdate hardware device once we get access to one. Simulators on other platforms
 //! (e.g. Mac) are possible, and would only need changes to the root project crate.
+//! 
+//! * The "osx.playdateHostTarget" setting may need to change if you're working on an ARM-based mac.
+//! * The "linux.playdateHostTarget" setting hasn't been tested to see if it's correct.
+//! * A MacOSX simulator build has not been tested and may not link.
+//! * A Linux simulator build has not been tested and may not link.
+//! * There's no VSCode task to install the pdx on a Playdate device yet.
+//! * The build for a Playdate device has not been tested yet and may not load at all.
 //! 
 //! # License
 //! This project is licensed under either of
