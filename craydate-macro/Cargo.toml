@@ -1,12 +1,12 @@
 [package]
 authors = ["Adrienne Walker <enne@quisquo.us>", "Dana Jansens <danakj@orodu.net>"]
 description = "Proc macros for using the craydate crate."
-documentation = "https://docs.rs/???"
+documentation = "https://docs.rs/craydate-macro"
 edition = "2021"
-homepage = "https://github.com/danakj/???"
+homepage = "https://github.com/danakj/craydate"
 license = "MIT/Apache-2.0"
 name = "craydate-macro"
-repository = "https://github.com/danakj/???"
+repository = "https://github.com/danakj/craydate"
 version = "0.1.0"
 
 [lib]

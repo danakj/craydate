@@ -1,12 +1,12 @@
 [package]
 authors = ["Adrienne Walker <enne@quisquo.us>", "Dana Jansens <danakj@orodu.net>"]
 description = "Rust bindings for the Playdate hand held gaming system's C API, generated with bindgen."
-documentation = "https://docs.rs/???"
+documentation = "https://docs.rs/craydate-sys"
 edition = "2021"
-homepage = "https://github.com/danakj/???"
+homepage = "https://github.com/danakj/craydate"
 license = "MIT/Apache-2.0"
 name = "craydate-sys"
-repository = "https://github.com/danakj/???"
+repository = "https://github.com/danakj/craydate"
 version = "0.1.0"
 
 [dependencies]
