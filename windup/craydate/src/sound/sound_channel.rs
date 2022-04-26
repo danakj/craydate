@@ -178,7 +178,7 @@ impl Drop for SoundChannel {
   }
 }
 
-/// A LevelSignal is for a SynthSignal that is owned by playdate, so there's nothing to own in the
+/// A LevelSignal is for a SynthSignal that is owned by Playdate, so there's nothing to own in the
 /// SynthSignalSubclass.
 struct LevelSignal {}
 impl SynthSignalSubclass for LevelSignal {}

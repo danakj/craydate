@@ -184,7 +184,7 @@ impl<T> MenuItem<T> {
   pub fn title(&self) -> &str {
     // getMenuItemTitle takes a mutable pointer but does not write to its data.
     let ptr = unsafe { Self::fns().getMenuItemTitle.unwrap()(self.cptr() as *mut _) };
-    // SAFETY: Strings returned from playdate are utf8 and null-terminated.
+    // SAFETY: Strings returned from the Playdate C Api are utf8 and null-terminated.
     unsafe { crate::null_terminated::parse_null_terminated_utf8(ptr).unwrap() }
   }
   /// Set the menu item's title.

@@ -14,7 +14,7 @@ pub enum MicrophoneCallbackOutput {
 pub struct ActiveMicrophoneCallback {
   generation: usize,
   // Holds the data alive while the callback is set. The pointer in this box is passed to the C
-  // function by Playdate.
+  // function from Playdate.
   _c_function_data: Box<ActiveMicrophoneInnerBox>,
 }
 impl ActiveMicrophoneCallback {

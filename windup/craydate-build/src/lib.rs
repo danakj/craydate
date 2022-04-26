@@ -9,7 +9,7 @@ use std::env::consts::EXE_SUFFIX;
 use std::path::PathBuf;
 use std::process::Command;
 
-pub use error::{PlaydateBuildError, Result};
+pub use error::{CraydateBuildError, Result};
 
 pub const WINDOWS: (&str, &str) = ("", ".dll");
 pub const LINUX: (&str, &str) = ("lib", ".so");
@@ -112,7 +112,7 @@ pub fn build_pdx(pdx_source_dir: &str, pdx_out_dir: &str, pdx_name: &str) -> Res
     .arg(&pdx_name)
     .output()?;
   if !out.status.success() {
-    Err(PlaydateBuildError::PdxCompilerError(
+    Err(CraydateBuildError::PdxCompilerError(
       String::from_utf8_lossy(&out.stderr).into(),
     ))
   } else {

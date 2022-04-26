@@ -1,18 +1,18 @@
 {
-    "playdateProjectRootCrate": ".",
+    "craydateProjectRootCrate": ".",
     "rust-analyzer.linkedProjects": [
         "./Cargo.toml",
     ],
 
-    "playdateHostTarget": "x86_64-pc-windows-msvc",
-    "playdateTargetPlatform": "windows",
+    "craydateHostTarget": "x86_64-pc-windows-msvc",
+    "craydateTargetPlatform": "windows",
     "linux": {
-        "playdateHostTarget": "x86_64-unknown-linux-gnu",  // Is this right?
-        "playdateTargetPlatform": "linux",
+        "craydateHostTarget": "x86_64-unknown-linux-gnu",  // Is this right?
+        "craydateTargetPlatform": "linux",
     },
     "osx": {
-        "playdateHostTarget": "x86_64-apple-darwin",  // What about arm? Get it from a command?
-        "playdateTargetPlatform": "osx",
+        "craydateHostTarget": "x86_64-apple-darwin",  // What about arm? Get it from a command?
+        "craydateTargetPlatform": "osx",
     },
     "rust-analyzer.cargo.features": [
         "bins"

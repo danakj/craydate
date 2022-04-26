@@ -1,16 +1,16 @@
 use std::error::Error;
 use std::fmt::Display;
 
-pub type Result<T> = std::result::Result<T, PlaydateBuildError>;
+pub type Result<T> = std::result::Result<T, CraydateBuildError>;
 
 #[derive(Debug)]
-pub enum PlaydateBuildError {
+pub enum CraydateBuildError {
   IOError(std::io::Error),
   PdxCompilerError(String),
   String(String),
 }
 
-impl Error for PlaydateBuildError {
+impl Error for CraydateBuildError {
   fn source(&self) -> Option<&(dyn Error + 'static)> {
     match self {
       Self::IOError(e) => Some(e),
@@ -19,7 +19,7 @@ impl Error for PlaydateBuildError {
   }
 }
 
-impl Display for PlaydateBuildError {
+impl Display for CraydateBuildError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
       Self::IOError(e) => write!(f, "{}", e),
@@ -29,12 +29,12 @@ impl Display for PlaydateBuildError {
   }
 }
 
-impl From<std::io::Error> for PlaydateBuildError {
+impl From<std::io::Error> for CraydateBuildError {
   fn from(e: std::io::Error) -> Self {
     Self::IOError(e)
   }
 }
-impl From<String> for PlaydateBuildError {
+impl From<String> for CraydateBuildError {
   fn from(s: String) -> Self {
     Self::String(s)
   }

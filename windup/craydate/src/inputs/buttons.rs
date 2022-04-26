@@ -99,7 +99,7 @@ impl Buttons {
     }
   }
 
-  /// Helper function to convert the Playdate API bitmask to the ButtonState enum for a single
+  /// Helper function to convert the Playdate C Api bitmask to the ButtonState enum for a single
   /// button.
   #[inline]
   fn current_state(&self, button: CButtons) -> ButtonState {

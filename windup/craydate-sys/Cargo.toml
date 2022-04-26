@@ -1,6 +1,6 @@
 [package]
 authors = ["Adrienne Walker <enne@quisquo.us>", "Dana Jansens <danakj@orodu.net>"]
-description = "Bindings around the Playdate hand held gaming system's C API, generated with bindgen."
+description = "Rust bindings for the Playdate hand held gaming system's C API, generated with bindgen."
 documentation = "https://docs.rs/???"
 edition = "2021"
 homepage = "https://github.com/danakj/???"

@@ -26,7 +26,7 @@ pub use video::Video;
 
 use crate::ctypes::*;
 
-fn playdate_rect_from_euclid(e: euclid::default::Rect<i32>) -> CLCDRect {
+fn craydate_rect_from_euclid(e: euclid::default::Rect<i32>) -> CLCDRect {
   CLCDRect {
     left: e.origin.x,
     top: e.origin.y,

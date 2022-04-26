@@ -28,6 +28,8 @@ pub fn log<S: alloc::string::ToString>(s: S) {
 
 /// Prints an error string in red to the Playdate console, and pauses Playdate. Also prints the
 /// string to stdout.
+/// 
+/// BUG: This claims to pause Playdate but it doesn't pause the Windows Simulator.
 ///
 /// Note mostly for internal development: Note that this function may allocate, so must not be
 /// called before Playdate initialization.

@@ -18,7 +18,7 @@ pub struct RenameFilePathError {
   pub playdate: String,
 }
 
-/// The Error type for all errors in the playdate crate.
+/// The Error type for all errors in the craydate crate.
 pub enum Error {
   /// A general error which is described by the contained string.
   String(String),

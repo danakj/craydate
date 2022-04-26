@@ -56,8 +56,8 @@ impl SoundSource {
     &mut self,
     channel: &Rc<NonNull<CSoundChannel>>,
   ) -> Result<(), Error> {
-    // Mimic the Playdate API behaviour. Attaching a Source to a Channel when it's already attached
-    // does nothing.
+    // Mimic the Playdate C Api behaviour. Attaching a Source to a Channel when it's already
+    // attached does nothing.
     match self.attachment {
       Attachment::None => {
         // The SoundSource holds a Weak pointer to the SoundChannel so it knows whether to remove

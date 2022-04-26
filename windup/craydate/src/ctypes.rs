@@ -1,4 +1,4 @@
-//! This module re-exports playdate_sys types with more consistent names.
+//! This module re-exports craydate_sys types with more consistent names.
 
 pub use craydate_sys::playdate_display as CDisplayApi;
 pub use craydate_sys::playdate_file as CFileApi;

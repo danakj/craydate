@@ -154,10 +154,10 @@ impl System {
 
   /// Disables or enables sound effects when the crank is docked or undocked.
   ///
-  /// Playdate 0.12 adds sound effects for various system events, such as the menu opening or
-  /// closing, USB cable plugged or unplugged, and the crank docked or undocked. Since games can
-  /// receive notification of the crank docking and undocking, and may incorporate this into the
-  /// game, Playdate provides a function for muting the default sounds for these events.
+  /// There are sound effects for various system events, such as the menu opening or closing, USB
+  /// cable plugged or unplugged, and the crank docked or undocked. Since games can receive
+  /// notification of the crank docking and undocking, and may incorporate this into the game, this
+  /// function can mute the default sounds for these events.
   ///
   /// # Return
   ///

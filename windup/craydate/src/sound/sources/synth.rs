@@ -83,7 +83,7 @@ impl Synth {
     unsafe {
       Self::fns().setGenerator.unwrap()(
         synth.cptr_mut(),
-        // The Playdate API has incorrect types so we need to do some wild casting here:
+        // The Playdate C Api has incorrect types so we need to do some wild casting here:
         // https://devforum.play.date/t/c-api-playdate-sound-synth-setgenerator-has-incorrect-api/4482
         c_render_func as *mut Option<CRenderFunc>,
         c_note_on_func as *mut Option<CNoteOnFunc>,

@@ -1,4 +1,4 @@
-//! Helpers for the playdate-macro crate. Not meant to be used by human-written code.
+//! Helpers for the craydate-macro crate. Not meant to be used by human-written code.
 extern crate alloc; // `alloc` is fine to use once initialize() has set up the allocator.
 
 use alloc::boxed::Box;
@@ -20,15 +20,15 @@ pub mod __private {
     pub main_fn: fn(api::Api) -> Pin<Box<dyn Future<Output = !>>>,
   }
 
-  // A placeholder to avoid exposing the type/value to playdate's dependent.
+  // A placeholder to avoid exposing the type/value to craydate's dependent.
   #[repr(transparent)]
   pub struct EventHandler1(*mut CPlaydateApi);
 
-  // A placeholder to avoid exposing the type/value to playdate's dependent.
+  // A placeholder to avoid exposing the type/value to craydate's dependent.
   #[repr(transparent)]
   pub struct EventHandler2(CSystemEvent);
 
-  // A placeholder for `u32` to avoid exposing the type/value to playdate's dependent.
+  // A placeholder for `u32` to avoid exposing the type/value to craydate's dependent.
   #[repr(transparent)]
   pub struct EventHandler3(u32);
 
@@ -39,9 +39,9 @@ pub mod __private {
     eh3: EventHandler3,
     config: GameConfig,
   ) {
-    // SAFETY: We have made a shared reference to the `CPlaydateApi`. Only refer to the object through
-    // the reference hereafter. We can ensure that by never passing a pointer to the `CPlaydateApi`
-    // or any pointer or reference to `CSystemApi` elsewhere.
+    // SAFETY: We have made a shared reference to the `CPlaydateApi`. Only refer to the object
+    // through the reference hereafter. We can ensure that by never passing a pointer to the
+    // `CPlaydateApi` or any pointer or reference to `CSystemApi` elsewhere.
     let api: &CPlaydateApi = unsafe { &(*eh1.0) };
     let event = eh2.0;
     let arg = eh3.0;

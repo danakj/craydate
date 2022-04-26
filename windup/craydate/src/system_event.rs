@@ -8,7 +8,7 @@ use crate::capi_state::CApiState;
 use crate::executor::Executor;
 use crate::inputs::Inputs;
 
-/// Playdate system events.
+/// Playdate device system events.
 #[derive(Debug)]
 pub enum SystemEvent {
   /// Event when the next frame should be prepared for display. Handle this event by running the

@@ -1,6 +1,6 @@
-// Please keep the playdate crate root's comment and README.md in sync.
+// Please keep the craydate crate root's comment and README.md in sync.
 
-//! # Playdate
+//! # Craydate
 //! 
 //! This crate and its related crates together provide a safe Rust API for the
 //! [Playdate](https://play.date/) hand held gaming system.
@@ -18,7 +18,8 @@
 //! # Getting Started
 //! 
 //! Building a `#![no_std]` application that is compiled for the Playdate simulator requires a bit
-//! of extra work and Cargo setup. The dependency structure of your project will look like this:
+//! of extra Cargo setup, which we try to make easy for you. The dependency structure of your
+//! project will look like this:
 //! 
 //! ```
 //! - your-game-project**
@@ -33,30 +34,33 @@
 //! Note that your game's crate must include the `#![no_std]` directive in its crate root in order
 //! to build for the Playdate device.
 //! 
-//! The `euclid` crate is used in the playdate crate's public Apis, which is why you will need it.
-//! The features listed above are specified to make the crate compatible with a `#![no_std]`
+//! The `euclid` crate is used in the craydate public Apis, which is why you will need it. The
+//! features listed above are specified to make the crate compatible with a `#![no_std]`
 //! application.
+//! 
+//! If you choose not to use the root project crate talked about below, then you do not need the
+//! [craydate-build](TODO: link) in `[build-dependencies]`, but will be responsible to build the pdx
+//! image and install it yourself.
 //! 
 //! ## The root project crate
 //! 
-//! We provide an template root project crate at [playdate-project](TODO: link), which will act as
-//! the coordination point to build your game for the Playdate simulator and the Playdate device. To
-//! use it, please rename and customize it for your game.
+//! We provide an template of a root project crate at [craydate-project](TODO: link), which will act
+//! as the coordination point to build your game for the Playdate simulator and the Playdate device.
+//! To use it, please rename and customize it for your game.
 //! 
 //! To start using it, download the latest release, unzip it and edit it as follows. See below for
-//! more details:
+//! more details.
 //! 1. Ensure your `PLAYDATE_SDK_PATH` environment variable is set to the location of the Playdate
 //!    SDK.
-//! 1. In the `Cargo.toml` file, change the `name` to include your game's name.
+//! 1. In the `Cargo.toml` file, change the `name` to include your game's name, such as
+//!    `foo-project` for the game crate `foo`.
 //! 1. In the `Cargo.toml` file, change the `game` dependency's `package` and `path` to point to
 //!    your game's crate.
 //! 1. In the `Cargo.toml` file, remove or change the `game-assets` dependency's `package` and
-//!    `path` to point to your game's asset-generating crate.
-//! 1. If you kept the `game-assets` dependency for generating assets, call it from
-//!    `src/bin/make_pdx.rs`.
-//! 
-//! If you choose not to use the template crate, then you do not need the [craydate-build](TODO:
-//! link) crate listed in `[build-dependencies]`.
+//!    `path` to point to your game's asset-generating crate (when you have one, you can comment it
+//!    out with a `#` for now).
+//! 1. If you kept the `game-assets` dependency for generating assets, uncomment and fix the call to
+//!    it from `src/bin/make_pdx.rs` (when you have one, you can ignore this for now).
 //! 
 //! ### Development Workflow
 //! 
@@ -64,7 +68,7 @@
 //! `your-game-project` crate with the Cargo `--lib` flag, which will build your game as a
 //! dependency.
 //! 
-//! After building the game, the root project crate (if based on [playdate-project](TODO: link))
+//! After building the game, the root project crate (if based on [craydate-project](TODO: link))
 //! includes 2 binaries to help you get it onto the Playdate simulator or a hardware device. Build
 //! them by building your root project `your-game-project` crate with the Cargo `--bins` flag. The
 //! binaries are:
@@ -91,7 +95,7 @@
 //! 
 //! #### VSCode
 //! 
-//! We provide configurations for VSCode in the template root project [playdate-project](TODO: link)
+//! We provide configurations for VSCode in the template root project [craydate-project](TODO: link)
 //! to build and use the make_pdx and run_simulator binaries correctly. The `.vscode/settings.json`
 //! file configures these tasks. You should not need to change the configuration unless you move the
 //! .vscode directory out of the root project crate.
@@ -106,7 +110,7 @@
 //! ### Panics
 //! 
 //! The `Cargo.toml` for the root project crate must also set `panic = "abort"`. This is included in
-//! the template root project [playdate-project](TODO: link) crate:
+//! the template root project [craydate-project](TODO: link) crate:
 //! ```
 //! [profile.dev]
 //! panic = "abort"
@@ -140,20 +144,20 @@
 //! }
 //! ```
 //! Then, handle the various events that can be returned from `next()`. In particular, handle input,
-//! update game state, and draw to the screen when the `SystemEvent::NextFrame` event happens. The
-//! Playdate system APIs are available throught the `craydate::Api` parameter to `main()`.
+//! update game state, and draw to the screen when the `SystemEvent::NextFrame` event happens. You
+//! can access the Playdate device through the `craydate::Api` parameter to `main()`.
 //! 
-//! Logging to the simulator's console for debugging is possible through the `craydate::log()` and
-//! `craydate::log_error()` functions.
+//! Logging to the Playdate simulator's console, for debugging, is possible through the
+//! `craydate::log()` and `craydate::log_error()` functions.
 //! 
 //! # Platforms
 //! 
-//! **Currently this project only supports development for the Windows simulator.** We will expand
-//! support to the Playdate hardware device once we get access to one. Simulators on other platforms
-//! (e.g. Mac) are possible, and would only need changes to the root project crate.
+//! **Currently the craydate project only supports development for the Windows simulator.** We will
+//! expand support to the Playdate hardware device once we get access to one. Simulators on other
+//! platforms (e.g. Mac) are possible, and would only need changes to the root project crate.
 //! 
-//! * The "osx.playdateHostTarget" setting may need to change if you're working on an ARM-based mac.
-//! * The "linux.playdateHostTarget" setting hasn't been tested to see if it's correct.
+//! * The "osx.craydateHostTarget" setting may need to change if you're working on an ARM-based mac.
+//! * The "linux.craydateHostTarget" setting hasn't been tested to see if it's correct.
 //! * A MacOSX simulator build has not been tested and may not link.
 //! * A Linux simulator build has not been tested and may not link.
 //! * There's no VSCode task to install the pdx on a Playdate device yet.
@@ -170,7 +174,7 @@
 //! 
 //! ## Contribution
 //! Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in
-//! playdate by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without
+//! Craydate by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without
 //! any additional terms or conditions.
 
 #![no_std]
@@ -237,7 +241,7 @@ pub use system::*;
 pub use system_event::*;
 pub use time::*;
 
-/// The global allocator, which will defer allocation requests to the playdate system, and deal with
+/// The global allocator, which will defer allocation requests to the Playdate system, and deal with
 /// ensuring correct alignment.
 #[global_allocator]
 static mut GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();
@@ -281,7 +285,7 @@ pub fn panic_handler(_panic_info: &core::panic::PanicInfo) -> ! {
 
 /// The error handler for when allocations fail. It will simply panic.
 #[alloc_error_handler]
-fn playdate_alloc_error_handler(layout: core::alloc::Layout) -> ! {
+fn craydate_alloc_error_handler(layout: core::alloc::Layout) -> ! {
   panic!(
     "memory allocation of {} bytes at alignment {} failed",
     layout.size(),

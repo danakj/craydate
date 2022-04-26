@@ -4,8 +4,7 @@ use crate::system::System;
 use crate::graphics::Graphics;
 use crate::sound::Sound;
 
-/// The global state of the Playdate system. Used to access the device's display, sound, files,
-/// clock, menus, etc.
+/// Apis used to access the Playdate device's display, sound, files, clock, menus, etc.
 /// 
 /// This type is passed as a parameter to the `#[main]` function of the game.
 #[derive(Debug)]

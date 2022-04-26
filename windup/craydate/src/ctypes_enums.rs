@@ -1,4 +1,4 @@
-//! This module re-exports playdate_sys enums that are passed through directly. The content of
+//! This module re-exports craydate_sys enums that are passed through directly. The content of
 //! module is exposed publicly to the game.
 
 pub use craydate_sys::LCDBitmapDrawMode as BitmapDrawMode;

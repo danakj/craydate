@@ -18,7 +18,7 @@ pub struct Sequence {
   ptr: NonNull<CSoundSequence>,
   finished_callback: Option<RegisteredCallback>,
 
-  // Holds ownership of user-created tracks. Loading a MIDI file  generates Playdate-owned tracks
+  // Holds ownership of user-created tracks. Loading a MIDI file generates Playdate-owned tracks
   // which are not represented here.
   user_created_tracks: Vec<NonNull<CSequenceTrack>>,
   // The set of instruments attached to tracks. Some of the tracks are owned by Playdate, and some
@@ -258,7 +258,7 @@ impl Sequence {
   ///
   /// If loops is 0, the loop repeats endlessly.
   pub fn set_loops(&mut self, start_step: u32, end_step: u32, count: i32) {
-    // BUG: The step numbers should be u32 but Playdate has them as `int`:
+    // BUG: The step numbers should be u32 but the Playdate C Api has them as `int`:
     // <https://devforum.play.date/t/playdate-sound-sequence-setloops-takes-int-but-should-take-uint32-t/4980>
     unsafe {
       Self::fns().setLoops.unwrap()(self.cptr_mut(), start_step as i32, end_step as i32, count)

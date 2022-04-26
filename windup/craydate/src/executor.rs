@@ -18,7 +18,7 @@ impl<T> ExecutorOwnedFuture<T> {
 
 /// Manager of async tasks. The Executor lives for the life of the program, and is stored as a
 /// pointer in Wakers or accessed from within Futures. Because it's accessed through a pointer at
-/// arbitrary times, we can not store it as a reference when we would leave the playdate crate. Any
+/// arbitrary times, we can not store it as a reference when we would leave the craydate crate. Any
 /// waking of a Waker or polling of a Future can leave the crate, so we implement Executor as static
 /// functions acting on `*mut Executor` to avoid a `&mut self` reference that would be unsound when
 /// the Executor interacts with Wakers or Futures.
@@ -63,11 +63,16 @@ impl Executor {
     exec.system_wakers.push(waker.clone());
   }
 
-  //fn spawn(_exec_ptr: *mut Executor, _future: Pin<Box<dyn Future<Output = ()>>>) { // Save it in a
-  //  Vec<ExecutorOwnedFuture> until the next idle time, which is probably the // update_callback(),
-  //  since when we return up the stack we have to wait for that. We don't // have an idle callback,
-  //  or timer callback, from Playdate or anything. At that time, poll() // the future, and then
-  //  just poll() it again when the waker given to the last poll() is woken. todo!() }
+  // A possible future thing:
+  // ```
+  // fn spawn(_exec_ptr: *mut Executor, _future: Pin<Box<dyn Future<Output = ()>>>) {
+  //   Save it in a Vec<ExecutorOwnedFuture> until the next idle time, which is probably the
+  //   update_callback(), since when we return up the stack we have to wait for that. We don't
+  //   have an idle callback, or timer callback, from Playdate or anything. At that time, poll()
+  //   the future, and then just poll() it again when the waker given to the last poll() is woken.
+  //   todo!()
+  // }
+  // ```
 
   pub fn poll_futures(exec_ptr: NonNull<Executor>) {
     let exec = unsafe { Self::as_mut_ref(exec_ptr) };

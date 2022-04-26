@@ -14,7 +14,7 @@
                 "--features=bins",
             ],
             "options": {
-                "cwd": "${config:playdateProjectRootCrate}",
+                "cwd": "${config:craydateProjectRootCrate}",
             },
             "group": "build",
             "presentation": {
@@ -30,7 +30,7 @@
                 "check",
             ],
             "options": {
-                "cwd": "${config:playdateProjectRootCrate}",
+                "cwd": "${config:craydateProjectRootCrate}",
             },
             "group": "build",
             "presentation": {
@@ -49,10 +49,10 @@
                 "build",
                 "--lib",
                 "--target",
-                "${config:playdateHostTarget}",
+                "${config:craydateHostTarget}",
             ],
             "options": {
-                "cwd": "${config:playdateProjectRootCrate}",
+                "cwd": "${config:craydateProjectRootCrate}",
             },
             "group": "build",
             "presentation": {
@@ -69,10 +69,10 @@
                 "--lib",
                 "--release",
                 "--target",
-                "${config:playdateHostTarget}",
+                "${config:craydateHostTarget}",
             ],
             "options": {
-                "cwd": "${config:playdateProjectRootCrate}",
+                "cwd": "${config:craydateProjectRootCrate}",
             },
             "group": "build",
             "presentation": {
@@ -83,11 +83,11 @@
         {
             "type": "shell",
             "label": "simulator (dev): make pdx",
-            "command": "../../${config:playdateHostTarget}/debug/make_pdx.exe",
+            "command": "../../${config:craydateHostTarget}/debug/make_pdx.exe",
             "options": {
-                "cwd": "${config:playdateProjectRootCrate}/target/${config:playdateHostTarget}/debug",
+                "cwd": "${config:craydateProjectRootCrate}/target/${config:craydateHostTarget}/debug",
                 "env": {
-                    "PLAYDATE_TARGET_PLATFORM": "${config:playdateTargetPlatform}",
+                    "PLAYDATE_TARGET_PLATFORM": "${config:craydateTargetPlatform}",
                 },
             },
             "dependsOn": [
@@ -100,11 +100,11 @@
         {
             "type": "shell",
             "label": "simulator (release): make pdx",
-            "command": "../../${config:playdateHostTarget}/debug/make_pdx.exe",
+            "command": "../../${config:craydateHostTarget}/debug/make_pdx.exe",
             "options": {
-                "cwd": "${config:playdateProjectRootCrate}/target/${config:playdateHostTarget}/release",
+                "cwd": "${config:craydateProjectRootCrate}/target/${config:craydateHostTarget}/release",
                 "env": {
-                    "PLAYDATE_TARGET_PLATFORM": "${config:playdateTargetPlatform}",
+                    "PLAYDATE_TARGET_PLATFORM": "${config:craydateTargetPlatform}",
                 },
             },
             "dependsOn": [
@@ -117,9 +117,9 @@
         {
             "type": "shell",
             "label": "simulator (dev): run simulator",
-            "command": "../../${config:playdateHostTarget}/debug/run_simulator.exe",
+            "command": "../../${config:craydateHostTarget}/debug/run_simulator.exe",
             "options": {
-                "cwd": "${config:playdateProjectRootCrate}/target/${config:playdateHostTarget}/debug",
+                "cwd": "${config:craydateProjectRootCrate}/target/${config:craydateHostTarget}/debug",
             },
             "args": [
                 ">stdout.txt",
@@ -137,9 +137,9 @@
         {
             "type": "shell",
             "label": "simulator (release): run simulator",
-            "command": "../../${config:playdateHostTarget}/debug/run_simulator.exe",
+            "command": "../../${config:craydateHostTarget}/debug/run_simulator.exe",
             "options": {
-                "cwd": "${config:playdateProjectRootCrate}/target/${config:playdateHostTarget}/release",
+                "cwd": "${config:craydateProjectRootCrate}/target/${config:craydateHostTarget}/release",
             },
             "args": [
                 ">stdout.txt",
@@ -168,7 +168,7 @@
                 "thumbv7em-none-eabihf",
             ],
             "options": {
-                "cwd": "${config:playdateProjectRootCrate}",
+                "cwd": "${config:craydateProjectRootCrate}",
             },
             "group": "build",
             "presentation": {
@@ -179,9 +179,9 @@
         {
             "type": "shell",
             "label": "device: make pdx",
-            "command": "../../${config:playdateHostTarget}/debug/make_pdx.exe",
+            "command": "../../${config:craydateHostTarget}/debug/make_pdx.exe",
             "options": {
-                "cwd": "${config:playdateProjectRootCrate}/target/thumbv7em-none-eabihf/release",
+                "cwd": "${config:craydateProjectRootCrate}/target/thumbv7em-none-eabihf/release",
                 "env": {
                     "PLAYDATE_TARGET_PLATFORM": "device",
                 },

@@ -58,7 +58,8 @@ const fn calc_shift_for_align(addr: u64, align: usize) -> usize {
 
 /// The global allocator implementation.
 pub struct Allocator {
-  /// Static pointer to the playdate C api where the `realloc()` function pointer lives.
+  /// Static reference to the Playdate C Api where the `realloc()` function pointer lives. No
+  /// mutable reference is ever constrcted to this object so we can hold a reference here.
   sys: Option<&'static craydate_sys::playdate_sys>,
 }
 
