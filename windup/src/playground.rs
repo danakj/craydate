@@ -144,6 +144,10 @@ pub async fn _run(mut api: playdate::Api) -> ! {
     }
     Err(e) => log(e),
   };
+  let delete = |path: &str| match api.file.delete(path) {
+    Ok(()) => log(format!("deleted {} recursive", path)),
+    Err(e) => log(e),
+  };
   let delete_recursive = |path: &str| match api.file.delete_recursive(path) {
     Ok(()) => log(format!("deleted {} recursive", path)),
     Err(e) => log(e),
