@@ -13,8 +13,8 @@
 //! named `PLAYDATE_SDK_PATH` that points to the directory where you installed it, such as
 //! `PLAYDATE_SDK_PATH=C:\playdate`.
 //! 
-//! This crate uses unstable features in order to provide a `#![no_std]` library and application to
-//! run on the Playdate simulator and hardware devices. Thus it requires use of the [Rust nightly
+//! This crate uses unstable features in order to provide a `#![no_std]` application to run on the
+//! Playdate simulator and hardware device. Thus it requires use of the [Rust nightly
 //! compiler](https://doc.rust-lang.org/1.2.0/book/nightly-rust.html).
 //! 
 //! # Getting Started

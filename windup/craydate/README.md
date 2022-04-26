@@ -5,7 +5,7 @@
 This crate and its related crates together provide a safe Rust API for the
 [Playdate](https://play.date/) hand held gaming system.
 
-The name is crustacean pun, with our dear friends the crayfish.
+The name is crustacean pun, with our dear friends the crayfishes.
 
 # Requirements
 Using these crates requires the [Playdate SDK](https://play.date/dev/), which has [its own
@@ -13,8 +13,8 @@ license](https://play.date/dev/sdk-license). Install the SDK and add an environm
 named `PLAYDATE_SDK_PATH` that points to the directory where you installed it, such as
 `PLAYDATE_SDK_PATH=C:\playdate`.
 
-This crate uses unstable features in order to provide a `#![no_std]` library and application to
-run on the Playdate simulator and hardware devices. Thus it requires use of the [Rust nightly
+This crate uses unstable features in order to provide a `#![no_std]` application to run on the
+Playdate simulator and hardware device. Thus it requires use of the [Rust nightly
 compiler](https://doc.rust-lang.org/1.2.0/book/nightly-rust.html).
 
 # Getting Started
