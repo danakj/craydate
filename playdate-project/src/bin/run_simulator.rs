@@ -1,3 +1,9 @@
+#[cfg(not(feature = "bins"))]
+fn main() {
+  compile_error!("compile with the feature \"bins\" enabled (`--features=bins`)");
+}
+
+#[cfg(feature = "bins")]
 fn main() {
   let r = playdate_build::run_simulator(
     env!("PDX_SOURCE_DIR"),
