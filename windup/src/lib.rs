@@ -7,8 +7,8 @@ extern crate alloc;
 mod gameloop;
 mod playground;
 
-#[playdate::main]
-async fn main(api: playdate::Api) -> ! {
+#[craydate::main]
+async fn main(api: craydate::Api) -> ! {
   // TODO: could we use a different build target for this??
   // playground::_run(api).await;
 
