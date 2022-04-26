@@ -5,10 +5,9 @@ fn main() {
 
 #[cfg(feature = "bins")]
 fn main() {
-  if let Err(e) = game_assets::generate_assets(env!("PDX_SOURCE_DIR")) {
-    println!("Failed to build assets\n{}", e);
-    return;
-  }
+  // TODO: Generate assets for your game here, copying them to `env!("PDX_SOURCE_DIR")`.
+  // Example:
+  //   game_assets::generate_assets(env!("PDX_SOURCE_DIR"))?;
 
   // Builds the game's pdx image.
   let r = craydate_build::build_pdx(

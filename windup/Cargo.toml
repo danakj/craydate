@@ -4,7 +4,7 @@ name = "windup"
 version = "0.1.0"
 
 [dependencies]
-playdate = {path = "playdate"}
+craydate = {path = "craydate"}
 static_assertions = "1"
 float-ord = "0.3.2"
 windup-map = {path = "windup-map"}

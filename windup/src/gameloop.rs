@@ -4,7 +4,7 @@ use core::cmp;
 
 use float_ord::FloatOrd;
 use num_traits::float::FloatCore;
-use playdate::*;
+use craydate::*;
 use windup_map::*;
 
 const INITIAL_X: i32 = 50;
@@ -191,7 +191,7 @@ fn load_map(file: &mut File) -> Result<Map, Error> {
   Map::from_bytes(&bytes).map_err(|e| Error::String(e.to_string()))
 }
 
-pub async fn run(mut api: playdate::Api) -> ! {
+pub async fn run(mut api: craydate::Api) -> ! {
   let system = &mut api.system;
   let graphics = &mut api.graphics;
 

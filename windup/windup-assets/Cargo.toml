@@ -7,5 +7,5 @@ edition = "2021"
 anyhow = { version = "1.0", default-features = false }
 tiled = "0.10.1"
 rusync = "0.7.2"
-playdate-build = {path = "../playdate-build"}
+craydate-build = {path = "../craydate-build"}
 windup-map = {path = "../windup-map"}

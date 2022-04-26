@@ -1,7 +1,7 @@
-use playdate::*;
+use craydate::*;
 
 /// A testing function to dump new functionality into for manual verification.
-pub async fn _run(mut api: playdate::Api) -> ! {
+pub async fn _run(mut api: craydate::Api) -> ! {
   let system = &api.system;
   let graphics = &mut api.graphics;
 
@@ -180,6 +180,7 @@ pub async fn _run(mut api: playdate::Api) -> ! {
   read_file("myfolder/three/bears.txt");
   read_file("myfolder/three/no_bears.txt");
 
+  delete("myfolder/three/no_bears.txt");
   delete_recursive("myfolder");
 
   let vol = api.sound.default_channel().volume();
@@ -323,10 +324,10 @@ pub async fn _run(mut api: playdate::Api) -> ! {
     };
     for (button, event) in inputs.buttons().all_events() {
       match event {
-        playdate::ButtonEvent::Push => {
+        craydate::ButtonEvent::Push => {
           log(format!("{:?} pushed on frame {}", button, frame_number));
         }
-        playdate::ButtonEvent::Release => {
+        craydate::ButtonEvent::Release => {
           log(format!("{:?} released on frame {}", button, frame_number));
         }
       }
