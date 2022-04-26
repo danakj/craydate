@@ -12,11 +12,10 @@ version = "0.1.1"
 [lib]
 
 [dependencies]
-craydate-macro = "^0.1.1"
-craydate-sys = "^0.1.1"
+craydate-macro = {git = "https://github.com/danakj/craydate-macro", branch = "main"}
+craydate-sys = {git = "https://github.com/danakj/craydate-sys", branch = "main"}
 static_assertions = "1"
 
 [dependencies.euclid]
 default-features = false
 version = "0.22"
-features = ["libm"]
