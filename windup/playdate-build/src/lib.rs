@@ -75,15 +75,11 @@ pub fn build_pdx(pdx_source_dir: &str, pdx_out_dir: &str, pdx_name: &str) -> Res
   let pdx_source_dir = PathBuf::from(pdx_source_dir);
   let pdx_out_dir = PathBuf::from(pdx_out_dir);
 
-  println!("hi1");
   std::fs::create_dir_all(&pdx_source_dir)?;
-  println!("hi2");
   std::fs::create_dir_all(&pdx_out_dir)?;
-  println!("hi3");
 
   // Touch the source pdx.bin file, which is empty for the simulator target.
   std::fs::write(pdx_source_dir.join("pdex.bin"), "")?;
-  println!("hi4");
 
   // Copy the library into the source dir for the compiler.
   let lib_name = format!(
@@ -109,7 +105,6 @@ pub fn build_pdx(pdx_source_dir: &str, pdx_out_dir: &str, pdx_name: &str) -> Res
   }
 
   let pdx_compiler = PathBuf::from(&sdk_path).join("bin").join(format!("pdc{}", EXE_SUFFIX));
-  println!("hi5");
   let out = Command::new(&pdx_compiler)
     .current_dir(&pdx_out_dir)
     .args(["-sdkpath", &sdk_path])
