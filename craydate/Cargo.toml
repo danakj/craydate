@@ -7,13 +7,13 @@ homepage = "https://github.com/danakj/craydate"
 license = "MIT/Apache-2.0"
 name = "craydate"
 repository = "https://github.com/danakj/craydate"
-version = "0.1.1"
+version = "0.1.2"
 
 [lib]
 
 [dependencies]
-craydate-macro = "^0.1.1"
-craydate-sys = "^0.1.1"
+craydate-macro = "^0.1.2"
+craydate-sys = "^0.1.2"
 static_assertions = "1"
 
 [dependencies.euclid]
