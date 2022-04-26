@@ -2,9 +2,7 @@
 
 # Craydate
 
-[Documentation](https://docs.rs/craydate)
-
-The craydate crates together provide a safe Rust API for the
+This crate and its related crates together provide a safe Rust API for the
 [Playdate](https://play.date/) hand held gaming system.
 
 The name is crustacean pun, with our dear friends the crayfishes.
