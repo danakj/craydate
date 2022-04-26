@@ -1,12 +1,24 @@
 {
-    "projectRootCrate": "windup-project",
+    "playdateProjectRootCrate": "windup-project",
     "rust-analyzer.linkedProjects": [
         "windup-project/Cargo.toml",
     ],
+
+    "playdateHostTarget": "x86_64-pc-windows-msvc",
+    "playdateTargetPlatform": "windows",
+    "linux": {
+        "playdateHostTarget": "x86_64-unknown-linux-gnu",  // Is this right?
+        "playdateTargetPlatform": "linux",
+    },
+    "osx": {
+        "playdateHostTarget": "x86_64-apple-darwin",  // What about arm? Get it from a command?
+        "playdateTargetPlatform": "osx",
+    },
     "rust-analyzer.cargo.features": [
         "bins"
     ],
     "rust-analyzer.checkOnSave.allTargets": false,
+ 
     "[rust]": {
         "editor.rulers": [
             100

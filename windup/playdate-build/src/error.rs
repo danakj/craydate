@@ -7,6 +7,7 @@ pub type Result<T> = std::result::Result<T, PlaydateBuildError>;
 pub enum PlaydateBuildError {
   IOError(std::io::Error),
   PdxCompilerError(String),
+  String(String),
 }
 
 impl Error for PlaydateBuildError {
@@ -23,6 +24,7 @@ impl Display for PlaydateBuildError {
     match self {
       Self::IOError(e) => write!(f, "{}", e),
       Self::PdxCompilerError(s) => write!(f, "{}", s),
+      Self::String(s) => write!(f, "{}", s),
     }
   }
 }
@@ -30,5 +32,10 @@ impl Display for PlaydateBuildError {
 impl From<std::io::Error> for PlaydateBuildError {
   fn from(e: std::io::Error) -> Self {
     Self::IOError(e)
+  }
+}
+impl From<String> for PlaydateBuildError {
+  fn from(s: String) -> Self {
+    Self::String(s)
   }
 }
