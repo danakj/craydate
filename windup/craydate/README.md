@@ -5,6 +5,8 @@
 This crate and its related crates together provide a safe Rust API for the
 [Playdate](https://play.date/) hand held gaming system.
 
+The name is crustacean pun, with our dear friends the crayfish.
+
 # Requirements
 Using these crates requires the [Playdate SDK](https://play.date/dev/), which has [its own
 license](https://play.date/dev/sdk-license). Install the SDK and add an environment variable
