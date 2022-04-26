@@ -12,7 +12,7 @@ pub fn log<S: alloc::string::ToString>(s: S) {
       let string = s.to_string();
       let vec = string.to_null_terminated_utf8();
       unsafe { capi.csystem.logToConsole.unwrap()(vec.as_ptr()) };
-      #[cfg(not(target_arch = "arm"))]
+      #[cfg(not(all(target_arch = "arm", target_os = "none")))]
       {
         log_to_stdout("LOG: ");
         log_to_stdout_with_newline(&string);
@@ -20,7 +20,7 @@ pub fn log<S: alloc::string::ToString>(s: S) {
     }
     None =>
     {
-      #[cfg(not(target_arch = "arm"))]
+      #[cfg(not(all(target_arch = "arm", target_os = "none")))]
       log_to_stdout_with_newline("ERROR: debug::log() called before debug::initialize()")
     }
   }
@@ -37,7 +37,7 @@ pub fn log_error<S: alloc::string::ToString>(s: S) {
       let string = s.to_string();
       let vec = string.to_null_terminated_utf8();
       unsafe { capi.csystem.error.unwrap()(vec.as_ptr()) };
-      #[cfg(not(target_arch = "arm"))]
+      #[cfg(not(all(target_arch = "arm", target_os = "none")))]
       {
         log_to_stdout("ERROR: ");
         log_to_stdout_with_newline(&string);
@@ -45,7 +45,7 @@ pub fn log_error<S: alloc::string::ToString>(s: S) {
     }
     None =>
     {
-      #[cfg(not(target_arch = "arm"))]
+      #[cfg(not(all(target_arch = "arm", target_os = "none")))]
       log_to_stdout_with_newline("ERROR: debug::error() called before debug::initialize()")
     }
   }
@@ -60,7 +60,7 @@ pub(crate) fn log_c<S: AsRef<str>>(cstr: S) {
     Some(capi) => unsafe { capi.csystem.logToConsole.unwrap()(cstr.as_ref().as_ptr()) },
     None =>
     {
-      #[cfg(not(target_arch = "arm"))]
+      #[cfg(not(all(target_arch = "arm", target_os = "none")))]
       log_to_stdout_with_newline("debug::log() called before debug::initialize()")
     }
   }
@@ -74,14 +74,14 @@ pub(crate) fn log_c<S: AsRef<str>>(cstr: S) {
 /// for the current OS. Supported operating systems are:
 /// - Windows
 #[allow(dead_code)]
-#[cfg(not(target_arch = "arm"))]
+#[cfg(not(all(target_arch = "arm", target_os = "none")))]
 pub(crate) fn log_to_stdout<S: AsRef<str>>(s: S) {
   log_bytes_to_stdout(s.as_ref().as_bytes());
 }
 
 /// Like log_to_stdout() but adds a newline.
 #[allow(dead_code)]
-#[cfg(not(target_arch = "arm"))]
+#[cfg(not(all(target_arch = "arm", target_os = "none")))]
 pub(crate) fn log_to_stdout_with_newline<S: AsRef<str>>(s: S) {
   log_bytes_to_stdout(s.as_ref().as_bytes());
   log_bytes_to_stdout(b"\n");
@@ -94,7 +94,7 @@ extern "C" {
 }
 
 /// Writes the bytes to stdout, without adding a newline.
-#[cfg(not(target_arch = "arm"))]
+#[cfg(not(all(target_arch = "arm", target_os = "none")))]
 pub(crate) fn log_bytes_to_stdout(bytes: &[u8]) {
   for b in bytes {
     unsafe {
@@ -109,7 +109,7 @@ pub(crate) fn log_bytes_to_stdout(bytes: &[u8]) {
 }
 
 /// Logs a single byte to stdout.
-#[cfg(not(target_arch = "arm"))]
+#[cfg(not(all(target_arch = "arm", target_os = "none")))]
 pub(crate) fn log_byte_to_stdout(byte: u8) {
   unsafe {
     #[cfg(target_os = "windows")]
@@ -121,12 +121,12 @@ pub(crate) fn log_byte_to_stdout(byte: u8) {
   };
 }
 
-#[cfg(not(target_arch = "arm"))]
+#[cfg(not(all(target_arch = "arm", target_os = "none")))]
 pub(crate) fn log_usize_to_stdout(num: usize) {
   log_usize_to_stdout_with_radix(num, 10);
 }
 
-#[cfg(not(target_arch = "arm"))]
+#[cfg(not(all(target_arch = "arm", target_os = "none")))]
 pub(crate) fn log_usize_to_stdout_with_radix(mut num: usize, radix: usize) {
   const MAX_DIGITS: usize = 20;
   let mut digits: [u8; MAX_DIGITS] = [0; MAX_DIGITS];

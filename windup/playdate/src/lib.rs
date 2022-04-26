@@ -246,7 +246,7 @@ static mut GLOBAL_ALLOCATOR: allocator::Allocator = allocator::Allocator::new();
 ///
 /// Since the top-level crate has to implement the `#[panic_handler]` we make it
 /// easy by letting them simply forward over to this function.
-#[cfg(not(target_arch = "arm"))]
+#[cfg(not(all(target_arch = "arm", target_os = "none")))]
 pub fn panic_handler(panic_info: &core::panic::PanicInfo) -> ! {
   crate::log::log_to_stdout("panic!");
   if let Some(loc) = panic_info.location() {
@@ -274,7 +274,7 @@ pub fn panic_handler(panic_info: &core::panic::PanicInfo) -> ! {
 }
 
 #[doc(hidden)]
-#[cfg(target_arch = "arm")]
+#[cfg(all(target_arch = "arm", target_os = "none"))]
 pub fn panic_handler(_panic_info: &core::panic::PanicInfo) -> ! {
   core::intrinsics::abort()
 }
@@ -302,12 +302,12 @@ extern "C" {
   static __bss_end__: u32;
 }
 
-#[cfg(target_arch = "arm")]
+#[cfg(all(target_arch = "arm", target_os = "none"))]
 #[used]
 #[link_section = ".bss_start"]
 static BSS_START_PTR: BssPtr = unsafe { BssPtr(&__bss_start__) };
 
-#[cfg(target_arch = "arm")]
+#[cfg(all(target_arch = "arm", target_os = "none"))]
 #[used]
 #[link_section = ".bss_end"]
 static BSS_END_PTR: BssPtr = unsafe { BssPtr(&__bss_end__) };

@@ -8,7 +8,7 @@ use super::color::Color;
 use super::context_stack::ContextStackId;
 use super::font::Font;
 use super::framebuffer_stencil_bitmap::FramebufferStencilBitmap;
-#[cfg(not(target_arch = "arm"))]
+#[cfg(not(all(target_arch = "arm", target_os = "none")))]
 use super::unowned_bitmap::UnownedBitmapMut;
 use crate::capi_state::CApiState;
 use crate::ctypes::*;
@@ -78,7 +78,7 @@ impl Graphics {
   /// Returns the debug framebuffer as a bitmap.
   ///
   /// Only valid in the simulator, so not present in for-device builds.
-  #[cfg(not(target_arch = "arm"))]
+  #[cfg(not(all(target_arch = "arm", target_os = "none")))]
   pub fn debug_frame_bitmap(&self) -> UnownedBitmapMut<'static> {
     let bitmap_ptr = unsafe { Self::fns().getDebugBitmap.unwrap()() };
     UnownedBitmapMut::from_ptr(NonNull::new(bitmap_ptr).unwrap())
