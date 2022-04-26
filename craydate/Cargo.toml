@@ -12,8 +12,8 @@ version = "0.1.0"
 [lib]
 
 [dependencies]
-craydate-macro = {path = "../craydate-macro"}
-craydate-sys = {path = "../craydate-sys"}
+craydate-macro = "^0.1.0"
+craydate-sys = "^0.1.0"
 static_assertions = "1"
 
 [dependencies.euclid]
