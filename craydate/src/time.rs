@@ -2,8 +2,6 @@ use core::cell::Cell;
 
 use crate::ctypes::*;
 
-pub type SoundTicks = TimeTicks;
-
 /// Represents the current device time, which is a monotonically increasing value.
 ///
 /// At this time the highest resolution available is milliseconds, so callers that need a raw
