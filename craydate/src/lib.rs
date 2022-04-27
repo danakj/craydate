@@ -218,7 +218,24 @@ extern crate craydate_macro;
 /// A game crate should annotate their game loop function with this attribute macro.
 ///
 /// The annotated function must be async, and will indicate that it's done updating
-/// and ready to draw by `await`ing the `draw` Future passed to it.
+/// and ready to draw by `await`ing the `Future` returned from
+/// `api.system.system_event_watcher()`.
+/// 
+/// # Example
+/// ```rs
+/// #[craydate::main]
+/// async fn main(api: craydate::Api) -> ! {
+///   let events = api.system.system_event_watcher();
+///   loop {
+///     match events.next().await {
+///       craydate::SystemEvent::NextFrame { inputs, .. } => {
+///         // Read inputs, update game state and draw.
+///       }
+///       _ => (),
+///     }
+///   }
+/// }
+/// ```
 pub use craydate_macro::main;
 
 mod allocator;
