@@ -1,0 +1,30 @@
+[package]
+edition = "2021"
+license = "MIT/Apache-2.0"
+name = "playground-project"
+version = "0.1.0"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+game = {package = "playground", path = "./playground"}
+game-assets = {package = "playground-assets", path = "./playground-assets", optional = true}
+craydate = "0.1"
+craydate-build = {version = "0.1", optional = true}
+
+[build-dependencies]
+craydate-build = "0.1"
+
+[[bin]]
+name = "make_pdx"
+[[bin]]
+name = "run_simulator"
+
+[features]
+bins = ["craydate-build", "game-assets"]
+
+[profile.dev]
+panic = "abort"
+[profile.release]
+panic = "abort"

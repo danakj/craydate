@@ -1,0 +1,8 @@
+[package]
+edition = "2021"
+name = "playground"
+version = "0.1.0"
+
+[dependencies]
+craydate = "0.1"
+euclid = {version = "0.22", default-features = false, features = ["libm"]}
