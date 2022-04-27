@@ -28,6 +28,7 @@
             "command": "cargo",
             "args": [
                 "check",
+                "--features=bins",
             ],
             "options": {
                 "cwd": "${config:craydateProjectRootCrate}",
