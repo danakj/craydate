@@ -1,9 +1,21 @@
-extern crate bindgen;
+//! To regenerate the bindings module: `cargo run --features=generate`
 
-use std::env;
-use std::path::PathBuf;
-
+#[cfg(not(feature = "generate"))]
 fn main() {
+  println!(
+    "ERROR: to generate bindings, build and run with the 'generate' feature: \n  \
+    cargo run --features=generate"
+  );
+}
+
+#[cfg(feature = "generate")]
+use bindgen;
+
+#[cfg(feature = "generate")]
+fn main() -> std::result::Result<(), std::io::Error> {
+  use std::env;
+  use std::path::PathBuf;
+
   // Tell cargo to invalidate the built crate whenever the wrapper changes
   println!("cargo:rerun-if-changed=wrapper.h");
 
@@ -27,7 +39,6 @@ fn main() {
   let bindings = builder
     .use_core()
     .ctypes_prefix("super::ctypes")
-    .clang_arg("--target=x86_64-pc-windows-msvc")
     .clang_arg(format!("-I{}", c_api.to_str().unwrap()))
     .clang_arg("-DTARGET_EXTENSION=1")
     .clang_arg("-v")
@@ -69,7 +80,17 @@ fn main() {
     // Unwrap the Result and panic on failure.
     .expect("Unable to generate bindings");
 
-  // Write the bindings to the $OUT_DIR/bindings.rs file.
-  let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
-  bindings.write_to_file(out_path.join("bindings.rs")).expect("Couldn't write bindings!");
+  let mut bindgen_out = Vec::new();
+  bindings.write(Box::new(&mut bindgen_out)).expect("Couldn't write bindings!");
+
+  const HEADER: &str = "// To regenerate this bindings module: `cargo run --features=generate`\n\n";
+
+  // Write the bindings to the src/bindings.rs file.
+  let mut file_out = Vec::new();
+  file_out.extend(HEADER.as_bytes());
+  file_out.extend(bindgen_out.into_iter());
+  let out_path = PathBuf::from("src").join("bindings.rs");
+  std::fs::write(&out_path, file_out)?;
+  println!("Successfully generated bindings in {}!", out_path.to_str().unwrap());
+  Ok(())
 }

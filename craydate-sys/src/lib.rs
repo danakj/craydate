@@ -5,8 +5,6 @@
 #![allow(non_snake_case)]
 #![feature(proc_macro_hygiene)]
 
-use dynpath::dynpath;
-
 pub mod ctypes {
   pub type c_int = i32;
   pub type c_char = u8;
@@ -15,8 +13,7 @@ pub mod ctypes {
   pub type c_void = core::ffi::c_void;
 }
 
-#[rustfmt::skip]
-#[dynpath("OUT_DIR")]
+#[cfg(not(feature = "generate"))]
 mod bindings;
-
+#[cfg(not(feature = "generate"))]
 pub use bindings::*;

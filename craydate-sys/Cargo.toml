@@ -10,7 +10,7 @@ repository = "https://github.com/danakj/craydate"
 version = "0.1.3"
 
 [dependencies]
-dynpath = "0.1"
+bindgen = {version = "0.59", optional = true}
 
-[build-dependencies]
-bindgen = "0.59"
+[features]
+generate = ["bindgen"]
