@@ -1,9 +1,11 @@
 use std::path::PathBuf;
 use std::result::Result;
 
-const ASSETS: [&str; 2] = [
+const ASSETS: [&str; 4] = [
     "mojojojo.wav",
-    "pirate.mid"
+    "pirate.mid",
+    "Mini Sans 2X.fnt",
+    "Mini Sans 2X-table-18-20.png",
 ];
 
 pub fn generate_assets<P: Into<PathBuf>>(to: P) -> Result<(), std::io::Error> {

@@ -46,7 +46,7 @@ async fn main(mut api: craydate::Api) -> ! {
     }
   }
 
-  let font = Font::from_file("fonts/Mini Sans 2X/Mini Sans 2X.pft");
+  let font = Font::from_file("Mini Sans 2X.pft");
   let _active = match &font {
     Ok(font) => {
       log(format!("Font height: {}", font.font_height()));
