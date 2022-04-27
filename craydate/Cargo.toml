@@ -16,9 +16,6 @@ craydate-macro = "^0.1.3"
 craydate-sys = "^0.1.3"
 static_assertions = "1"
 
-[build-dependencies]
-craydate-build = "^0.1.3"
-
 [dependencies.euclid]
 default-features = false
 version = "0.22"
