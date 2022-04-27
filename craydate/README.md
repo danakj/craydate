@@ -63,12 +63,17 @@ follows. See below for more details.
    such as `foo-project` for the game crate `foo`.
 1. In the `Cargo.toml` file, change the `game` dependency's `package` and
    `path` to point to your game's crate.
-1. In the `Cargo.toml` file, remove or change the `game-assets` dependency's
-   `package` and `path` to point to your game's asset-generating crate (when
-   you have one, you can comment it out with a `#` for now).
-1. If you kept the `game-assets` dependency for generating assets, uncomment
-   and fix the call to it from `src/bin/make_pdx.rs` (when you have one, you
-   can ignore this for now).
+1. In the `Cargo.toml` file, if you want to use it, change the `game-assets`
+   dependency's `package` and `path` to point to your game's
+   asset-generating crate (when you have one, you can leave it commented out
+   with a `#` for now).
+1. If you have a `game-assets` dependency for generating assets,
+   uncomment and fix the call to it from `src/bin/make_pdx.rs` (when you
+   have one, you can ignore this for now).
+1. If you have a `game-assets` dependency for generating assets,
+   uncomment "game-assets" in the `bins` feature (when you
+   have one, you can ignore this for now). It would look like
+   `bins = ["craydate-build", game-assets"]`.
 
 ### Development Workflow
 
@@ -120,7 +125,8 @@ root project crate.
   project crate's `Cargo.toml` file. By default it is `"./Cargo.toml"`.
 
 When running the simulator with this task, VSCode will capture the `stdout`
-and `stderr` output of the game and write it to a file called `stdout.txt`.
+and `stderr` output of the game and write it to a file called `stdout.txt`
+in the project's root directory.
 
 ### Panics
 
