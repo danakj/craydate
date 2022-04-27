@@ -12,7 +12,7 @@ version = "0.1.3"
 [lib]
 
 [dependencies]
-craydate-macro = "^0.1.3"
+craydate-macro = "^0.1.2"
 craydate-sys = "^0.1.3"
 static_assertions = "1"
 
