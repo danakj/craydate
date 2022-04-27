@@ -7,7 +7,7 @@ homepage = "https://github.com/danakj/craydate"
 license = "MIT/Apache-2.0"
 name = "craydate-sys"
 repository = "https://github.com/danakj/craydate"
-version = "0.1.2"
+version = "0.1.3"
 
 [dependencies]
 dynpath = "0.1"
