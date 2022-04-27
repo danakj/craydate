@@ -1,0 +1,197 @@
+{
+    // See https:/go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        // Builds the tools for all platforms, targetting the host system.
+        {
+            "type": "process",
+            "label": "craydate-project: build tools",
+            "command": "cargo",
+            "args": [
+                "build",
+                "--bins",
+                "--features=bins",
+            ],
+            "options": {
+                "cwd": "${config:craydateProjectRootCrate}",
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        },
+        // Cargo check runs in simulator mode, for the host system.
+        {
+            "type": "process",
+            "label": "craydate-project: cargo check",
+            "command": "cargo",
+            "args": [
+                "check",
+                "--features=bins",
+            ],
+            "options": {
+                "cwd": "${config:craydateProjectRootCrate}",
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        },
+        //
+        // ======================================= SIMULATOR ======================================
+        //
+        // Simulator debug.
+        {
+            "type": "process",
+            "label": "simulator (dev): cargo build",
+            "command": "cargo",
+            "args": [
+                "build",
+                "--lib",
+                "--target",
+                "${config:craydateHostTarget}",
+            ],
+            "options": {
+                "cwd": "${config:craydateProjectRootCrate}",
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        },
+        // Simulator release.
+        {
+            "type": "process",
+            "label": "simulator (release): cargo build",
+            "command": "cargo",
+            "args": [
+                "build",
+                "--lib",
+                "--release",
+                "--target",
+                "${config:craydateHostTarget}",
+            ],
+            "options": {
+                "cwd": "${config:craydateProjectRootCrate}",
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        },
+        // Make debug pdx image for simulator.
+        {
+            "type": "shell",
+            "label": "simulator (dev): make pdx",
+            "command": "../../debug/make_pdx.exe",
+            "options": {
+                "cwd": "${config:craydateProjectRootCrate}/target/${config:craydateHostTarget}/debug",
+                "env": {
+                    "PLAYDATE_TARGET_PLATFORM": "${config:craydateTargetPlatform}",
+                },
+            },
+            "dependsOn": [
+                "simulator (dev): cargo build",
+                "craydate-project: build tools",
+            ],
+            "group": "build",
+        },
+        // Make release pdx image for simulator.
+        {
+            "type": "shell",
+            "label": "simulator (release): make pdx",
+            "command": "../../debug/make_pdx.exe",
+            "options": {
+                "cwd": "${config:craydateProjectRootCrate}/target/${config:craydateHostTarget}/release",
+                "env": {
+                    "PLAYDATE_TARGET_PLATFORM": "${config:craydateTargetPlatform}",
+                },
+            },
+            "dependsOn": [
+                "simulator (release): cargo build",
+                "craydate-project: build tools",
+            ],
+            "group": "build",
+        },
+        // Run debug pdx image on the simulator.
+        {
+            "type": "shell",
+            "label": "simulator (dev): run simulator",
+            "command": "../../debug/run_simulator.exe",
+            "options": {
+                "cwd": "${config:craydateProjectRootCrate}/target/${config:craydateHostTarget}/debug",
+            },
+            "args": [
+                ">../../../stdout.txt",
+                "2>&1",
+            ],
+            "dependsOn": [
+                "simulator (dev): make pdx"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        },
+        // Run release pdx image on the simulator.
+        {
+            "type": "shell",
+            "label": "simulator (release): run simulator",
+            "command": "../../debug/run_simulator.exe",
+            "options": {
+                "cwd": "${config:craydateProjectRootCrate}/target/${config:craydateHostTarget}/release",
+            },
+            "args": [
+                ">../../../stdout.txt",
+                "2>&1",
+            ],
+            "dependsOn": [
+                "simulator (release): make pdx"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        },
+        //
+        // ==================================== PLAYDATE DEVICE ===================================
+        // Build for deviuce.
+        {
+            "type": "process",
+            "label": "device: cargo build",
+            "command": "cargo",
+            "args": [
+                "build",
+                "--lib",
+                "--release",
+                "--target",
+                "thumbv7em-none-eabihf",
+            ],
+            "options": {
+                "cwd": "${config:craydateProjectRootCrate}",
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+            }
+        },
+        // Make pdx image for device.
+        {
+            "type": "shell",
+            "label": "device: make pdx",
+            "command": "../../debug/make_pdx.exe",
+            "options": {
+                "cwd": "${config:craydateProjectRootCrate}/target/thumbv7em-none-eabihf/release",
+                "env": {
+                    "PLAYDATE_TARGET_PLATFORM": "device",
+                },
+            },
+            "dependsOn": [
+                "device: cargo build",
+                "craydate-project: build tools",
+            ],
+            "group": "build",
+        },
+    ]
+}
