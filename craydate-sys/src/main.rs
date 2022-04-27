@@ -83,7 +83,9 @@ fn main() -> std::result::Result<(), std::io::Error> {
   let mut bindgen_out = Vec::new();
   bindings.write(Box::new(&mut bindgen_out)).expect("Couldn't write bindings!");
 
-  const HEADER: &str = "// To regenerate this bindings module: `cargo run --features=generate`\n\n";
+  const HEADER: &str = "// To regenerate this bindings module: `cargo run --features=generate`\n\
+    \n\
+    #![allow(deref_nullptr)]\n\n";
 
   // Write the bindings to the src/bindings.rs file.
   let mut file_out = Vec::new();
@@ -91,6 +93,9 @@ fn main() -> std::result::Result<(), std::io::Error> {
   file_out.extend(bindgen_out.into_iter());
   let out_path = PathBuf::from("src").join("bindings.rs");
   std::fs::write(&out_path, file_out)?;
-  println!("Successfully generated bindings in {}!", out_path.to_str().unwrap());
+  println!(
+    "Successfully generated bindings in {}!",
+    out_path.to_str().unwrap()
+  );
   Ok(())
 }
