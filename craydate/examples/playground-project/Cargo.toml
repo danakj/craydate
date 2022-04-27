@@ -28,3 +28,11 @@ bins = ["craydate-build", "game-assets"]
 panic = "abort"
 [profile.release]
 panic = "abort"
+
+# We force using the crates from within this git repo so that we can use this example for
+# local development of craydate. Normal crates would not include this patch section.
+[patch.crates-io]
+craydate = { path = '../../../craydate' }
+craydate-build = { path = '../../../craydate-build' }
+craydate-macro = { path = '../../../craydate-macro' }
+craydate-sys = { path = '../../../craydate-sys' }
