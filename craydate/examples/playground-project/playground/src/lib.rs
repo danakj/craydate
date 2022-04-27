@@ -230,7 +230,7 @@ async fn main(mut api: craydate::Api) -> ! {
     release_func: |_data, _ended| {},
     set_parameter_func: |_data, _parameter, _value| false,
   };
-  let generator = unsafe { SynthGenerator::new(data, &VTABLE) };
+  let generator = SynthGenerator::new(data, &VTABLE);
   let mut synth = Synth::new_with_generator(generator);
   synth.play_frequency_note(0.0, 1.0.into(), None, None);
   log(format!("synth playing: {}", synth.as_source().is_playing()));

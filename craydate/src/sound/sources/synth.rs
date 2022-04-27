@@ -72,7 +72,7 @@ impl Synth {
 
   /// Creates a new Synth that plays from a `SynthGenerator`.
   ///
-  /// NOTE: THIS DOES NOT WORK!! See
+  /// BUG: THIS DOES NOT WORK!! See
   /// <https://devforum.play.date/t/c-api-playdate-sound-synth-setgenerator-has-incorrect-api/4482>
   /// as this is due to a Playdate bug.
   ///
@@ -307,10 +307,6 @@ pub struct SynthRender<'a> {
 
 /// A virtual function pointer table (vtable) that specifies the behaviour of a `SynthGenerator`.
 ///
-/// The `userdata` pointer passed to all the methods is the pointer given when constructing the
-/// SynthGenerator. The pointer must stay alive until `dealloc_func` is called, which is responsible
-/// for cleaning up the `userdata`.
-///
 /// The functions are only meant to be called as part of a SynthGenerator, and calling them in any
 /// other context will cause undefined behaviour.
 pub struct SynthGeneratorVTable {
@@ -339,18 +335,9 @@ pub struct SynthGenerator {
 impl SynthGenerator {
   /// Construct a `SynthGenerator` that generates the sample data for a `Synth`.
   ///
-  /// The `data` can point to arbitrary data, and will be passed to all the methods in the
-  /// `vtable` as the first parameter.
-  ///
-  /// The `vtable` defines the behaviour of the generator, and the `data` is a pointer that will
-  /// passed to each function in the `vtable`. The `data` pointer is deallocated by the
-  /// `SynthGeneratorVTable::dealloc` function.
-  ///
-  /// The behavior of the returned SynthGenerator is undefined if the contract defined in
-  /// SynthGeneratorVTable’s documentation is not upheld, or if the `data` pointer is not kept alive
-  /// until `SynthGeneratorVTable::dealloc_func()` is called with the `data` as its parameter.
-  /// Therefore this method is unsafe.
-  pub unsafe fn new<T: Send + Sync>(data: T, vtable: &'static SynthGeneratorVTable) -> Self {
+  /// The `data` will be stored on the heap, and a pointer to it will be passed to all the methods
+  /// in the `vtable` as the first parameter. The `vtable` defines the behaviour of the generator.
+  pub fn new<T: Send + Sync>(data: T, vtable: &'static SynthGeneratorVTable) -> Self {
     SynthGenerator {
       data: Box::into_raw(Box::new(data)) as *const (),
       vtable,
